@@ -1,0 +1,74 @@
+package se.qxx.protodb.test;
+
+option java_package = "se.qxx.protodb.test";
+option java_generic_services = true;
+
+//---------------------------------------------------------------------------------------
+//----------------------------------------------------------------------- Enumerations
+//---------------------------------------------------------------------------------------
+
+//---------------------------------------------------------------------------------------
+//----------------------------------------------------------------------- Objects
+//---------------------------------------------------------------------------------------
+message SimpleTest {
+  required int32 ID = 1;
+  optional double dd = 2;
+  optional float ff = 3;
+  optional int32 is = 4;
+  optional int64 il = 5;
+  optional bool bb = 6;  
+  optional string ss = 7;
+  optional bytes by = 8;
+}
+
+message SimpleTwo {
+  required int32 ID = 1;
+  optional string title = 2;
+  optional string director = 3;
+}
+
+message ObjectOne {
+  required int32 ID = 1;
+  optional SimpleTest testOne = 2;
+  optional int32 oois = 3;
+}
+
+message ObjectTwo {
+  required int32 ID = 1;
+  optional SimpleTest testOne = 2;
+  optional ObjectOne testTwo = 3;
+  optional int32 otis = 4;
+}
+
+message RepSimpleList {
+  required int32 ID = 1;
+  repeated string list_of_strings = 2;
+  required int32 happycamper = 3;
+}
+
+message RepObjectOne {
+  required int32 ID = 1;
+  repeated SimpleTwo list_of_objects = 2;
+  required int32 happycamper = 3;
+}
+
+enum Rating {
+	NotMatched = 1;
+	ProbableMatch = 2;
+	PositiveMatch = 3;
+	ExactMatch = 4;
+	SubsExist = 5;
+}
+
+message EnumOne {
+	required int32 ID = 1;
+	optional string title = 2;
+	required Rating rating = 3;
+}
+
+message EnumOneList {
+	required int32 ID = 1;
+	optional string title = 2;
+	repeated Rating list_of_ratings = 3;
+	optional string producer = 4;
+}
