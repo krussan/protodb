@@ -401,7 +401,9 @@ public class ProtoDB {
 				if (field.getJavaType() == JavaType.MESSAGE) {
 					DynamicMessage innerInstance = DynamicMessage.getDefaultInstance(field.getMessageType());
 					DynamicMessage otherMsg = get(otherID, innerInstance, conn);
-					b.setField(field, otherMsg);
+					
+					if (otherMsg != null)
+						b.setField(field, otherMsg);
 				}
 				else if (field.getJavaType() == JavaType.ENUM){
 					b.setField(field, field.getEnumType().findValueByNumber(otherID));
