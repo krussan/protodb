@@ -4,7 +4,7 @@
 
   <groupId>se.qxx.protodb</groupId>
   <artifactId>protodb-java</artifactId>
-  <version>1.0</version>
+  <version>1.1</version>
   <packaging>jar</packaging>
 
   <name>protodb</name>
@@ -57,5 +57,23 @@
             </plugin>
         </plugins>
     </pluginManagement>
+    
+    <plugins>
+        <plugin>
+            <groupId>org.xolstice.maven.plugins</groupId>
+            <artifactId>protobuf-maven-plugin</artifactId>
+            <version>0.5.0</version>
+            <configuration>
+              <protocExecutable>/usr/local/bin/protoc</protocExecutable>
+            </configuration>
+            <executions>
+              <execution>
+                <goals>
+                  <goal>test-compile</goal>
+                </goals>
+              </execution>
+            </executions>
+        </plugin>    
+    </plugins>
   </build>
 </project>
