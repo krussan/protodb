@@ -941,6 +941,10 @@ public class ProtoDB {
 	//----------------------------------------------------------------------  SEARCH
 	//---------------------------------------------------------------------------------
 
+	public <T extends Message> List<T> find(T instance, String fieldName, Object searchFor, Boolean isLikeOperator) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
+		return find(instance, fieldName, searchFor, isLikeOperator, -1);
+	}
+	
 	/***
 	 * 
 	 * @param desc
@@ -952,7 +956,7 @@ public class ProtoDB {
 	 * @throws SQLException
 	 * @throws SearchFieldNotFoundException 
 	 */
-	public <T extends Message> List<T> find(T instance, String fieldName, Object searchFor, Boolean isLikeOperator) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
+	public <T extends Message> List<T> find(T instance, String fieldName, Object searchFor, Boolean isLikeOperator, int maxResults) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
 		// if field is repeated -> search link objects
 		Connection conn = null;
 		List<T> result = new ArrayList<T>();
@@ -960,7 +964,7 @@ public class ProtoDB {
 		try {
 			conn = this.initialize();
 			
-			result = this.find(instance, fieldName, searchFor, isLikeOperator, conn);
+			result = this.find(instance, fieldName, searchFor, isLikeOperator, maxResults, conn);
 			
 		}
 		catch (Exception e) {
@@ -976,7 +980,7 @@ public class ProtoDB {
 		return result;		
 	}
 	
-	private <T extends Message> List<T> find(T instance, String fieldName, Object searchFor, Boolean isLikeFilter, Connection conn) throws SearchFieldNotFoundException, SQLException, ClassNotFoundException {
+	private <T extends Message> List<T> find(T instance, String fieldName, Object searchFor, Boolean isLikeFilter, int maxResults, Connection conn) throws SearchFieldNotFoundException, SQLException, ClassNotFoundException {
 		List<T> result = new ArrayList<T>();
 //		DynamicMessage dm = DynamicMessage.getDefaultInstance(desc);
 		ProtoDBScanner scanner = new ProtoDBScanner(instance);
@@ -1020,6 +1024,7 @@ public class ProtoDB {
 								StringUtils.join(ArrayUtils.subarray(fieldParts, 1, fieldParts.length), "."),
 								searchFor,
 								isLikeFilter,
+								maxResults,
 								conn);
 						
 						for (DynamicMessage m : matchingSubObjects)
@@ -1048,11 +1053,14 @@ public class ProtoDB {
 					//find sub objects that match the criteria
 					if (f.getName().equalsIgnoreCase(fieldParts[0])) {
 						matchingField = f;
-						List<DynamicMessage> dmObjects = find(DynamicMessage.getDefaultInstance(f.getMessageType())
-								, StringUtils.join(ArrayUtils.subarray(fieldParts, 1, fieldParts.length), ".")
-								, searchFor
-								, isLikeFilter
-								, conn);
+						List<DynamicMessage> dmObjects = 
+								find(
+									  DynamicMessage.getDefaultInstance(f.getMessageType())
+									, StringUtils.join(ArrayUtils.subarray(fieldParts, 1, fieldParts.length), ".")
+									, searchFor
+									, isLikeFilter
+									, maxResults
+									, conn);
 						
 						if (dmObjects.size() > 0) {
 							List<Integer> ids = new ArrayList<Integer>();
@@ -1089,8 +1097,14 @@ public class ProtoDB {
 		if (prep != null) {
 			ResultSet rs = prep.executeQuery();
 			List<Integer> ids = new ArrayList<Integer>();
+			
+			int counter = 0;
 			while (rs.next()) {
+				counter++;
 				ids.add(rs.getInt(1));
+				
+				if (maxResults > 0 && counter >= maxResults)
+					break;
 			}
 			
 			for (int i : ids) {
