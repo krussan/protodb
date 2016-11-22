@@ -34,6 +34,7 @@ import com.google.protobuf.Descriptors.FieldDescriptor;
 public class ProtoDB {
 	private String connectionString = "jdbc:sqlite:jukebox.db";
 	private String logfile = "";
+	private boolean populateBlobs = true;
 	
 	//---------------------------------------------------------------------------------
 	//----------------------------------------------------------------------  PROPS
@@ -47,7 +48,14 @@ public class ProtoDB {
 	private void setConnectionString(String connectionString) {
 		this.connectionString = connectionString;
 	}
+	
+	public boolean isPopulateBlobsActive() {
+		return populateBlobs;
+	}
 
+	public void setPopulateBlobs(boolean populateBlobs) {
+		this.populateBlobs = populateBlobs;
+	}
 	
 	//---------------------------------------------------------------------------------
 	//------------------------------------------------------------------ CONSTRUCTORS
@@ -411,14 +419,17 @@ public class ProtoDB {
 			}
 			
 			// populate blobs
-			for (FieldDescriptor field : scanner.getBlobFields()) {
-				int otherID = rs.getInt(scanner.getObjectFieldName(field));
-				Log(String.format("Populating blob id :: %s", otherID));
-				
-				byte[] data = getBlob(otherID, conn);
-				
-				if (data != null)
-					b.setField(field, ByteString.copyFrom(data));
+			
+			if (this.isPopulateBlobsActive()) {
+				for (FieldDescriptor field : scanner.getBlobFields()) {
+					int otherID = rs.getInt(scanner.getObjectFieldName(field));
+					Log(String.format("Populating blob id :: %s", otherID));
+					
+					byte[] data = getBlob(otherID, conn);
+					
+					if (data != null)
+						b.setField(field, ByteString.copyFrom(data));
+				}
 			}
 			
 			// populate basic fields			
@@ -1211,5 +1222,6 @@ public class ProtoDB {
 	    Date date = new Date();
 	    return dateFormat.format(date);
 	}
+
 
 }
