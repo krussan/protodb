@@ -10,7 +10,9 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -942,21 +944,30 @@ public class ProtoDB {
 	//---------------------------------------------------------------------------------
 
 	public <T extends Message> List<T> find(T instance, String fieldName, Object searchFor, Boolean isLikeOperator) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
-		return find(instance, fieldName, searchFor, isLikeOperator, -1);
+		return find(instance, fieldName, searchFor, isLikeOperator, null, -1);
+	}
+	
+	public <T extends Message> List<T> find(T instance, String fieldName, Object searchFor, Boolean isLikeOperator, List<String> excludedObjects) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
+		return find(instance, fieldName, searchFor, isLikeOperator, excludedObjects, -1);
 	}
 	
 	/***
 	 * 
-	 * @param desc
-	 * @param fieldName
-	 * @param searchFor
-	 * @param isLikeOperator
+	 * @param instance			An (empty) instance of the protobuf entity to initiate search on 
+	 * @param fieldName   		The field name in the object to match the search criteria
+	 * 							Specify a field in a sub object by separating the objects by dot (.)
+	 * 							I.e. obj1.obj2.fieldXX 
+	 * @param searchFor			The search criteria
+	 * @param isLikeOperator	Specifies if the search criteria contains wild characters i.e. %
+	 * @param excludedObjects	List of objects paths that should be excluded from the get method
+	 * 							when retrieving results
+	 * @param maxResults		Maximum number of results to retrieve. Specify -1 for unlimited results.
 	 * @return
 	 * @throws ClassNotFoundException
 	 * @throws SQLException
-	 * @throws SearchFieldNotFoundException 
+	 * @throws SearchFieldNotFoundException
 	 */
-	public <T extends Message> List<T> find(T instance, String fieldName, Object searchFor, Boolean isLikeOperator, int maxResults) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
+	public <T extends Message> List<T> find(T instance, String fieldName, Object searchFor, Boolean isLikeOperator, List<String> excludedObjects,  int maxResults) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
 		// if field is repeated -> search link objects
 		Connection conn = null;
 		List<T> result = new ArrayList<T>();
@@ -964,7 +975,7 @@ public class ProtoDB {
 		try {
 			conn = this.initialize();
 			
-			result = this.find(instance, fieldName, searchFor, isLikeOperator, maxResults, conn);
+			result = this.find(instance, getFieldQueue(fieldName), searchFor, isLikeOperator, excludedObjects, maxResults, conn);
 			
 		}
 		catch (Exception e) {
@@ -980,152 +991,226 @@ public class ProtoDB {
 		return result;		
 	}
 	
-	private <T extends Message> List<T> find(T instance, String fieldName, Object searchFor, Boolean isLikeFilter, int maxResults, Connection conn) throws SearchFieldNotFoundException, SQLException, ClassNotFoundException {
+	private <T extends Message> List<T> find(T instance, Queue<String> fieldQueue, Object searchFor, Boolean isLikeFilter, List<String> excludedObjects, int maxResults, Connection conn) throws SearchFieldNotFoundException, SQLException, ClassNotFoundException {
 		List<T> result = new ArrayList<T>();
-//		DynamicMessage dm = DynamicMessage.getDefaultInstance(desc);
 		ProtoDBScanner scanner = new ProtoDBScanner(instance);
 		
-		FieldDescriptor matchingField = null;
-
-		// Split fieldName on dot (.) to be able to search sub objects
-		// fieldName should then be on the form <object>.[<object>...].fieldName
-		String[] fieldParts = StringUtils.split(fieldName, ".");
-		PreparedStatement prep = null;
+		// Get first field
+		String firstField = fieldQueue.poll();
 		
-		if (fieldParts.length == 1) {
-			for (FieldDescriptor field : scanner.getBasicFields()) {
-				if (field.getName().equalsIgnoreCase(fieldName)) {
-					matchingField = field;
-					break;
-				}
-			}
-			
-			if (matchingField == null)
-				throw new SearchFieldNotFoundException(fieldName, scanner.getObjectName());
-			
-			prep = conn.prepareStatement(scanner.getSearchStatement(matchingField, isLikeFilter));
-			if (matchingField.getJavaType() == JavaType.BOOLEAN)
-				prep.setString(1, (Boolean)searchFor ? "Y": "N");
-			else
-				prep.setObject(1, searchFor);
+		DBStatement prep = new DBStatement(conn);
+		
+		// If the size of the queue is zero this means that we only had one field in the queue
+		if (fieldQueue.size() == 0) {
+			prep = prepareStatementSingleObject(firstField, searchFor, isLikeFilter, conn, scanner);
 		}
 		else {
 			// object fields
-			for (FieldDescriptor field : scanner.getObjectFields()) {
-				if (field.getName().equalsIgnoreCase(fieldParts[0])) {
-					matchingField = field;
-					
-					List<DynamicMessage> matchingSubObjects = null;
-					List<Integer> ids = new ArrayList<Integer>();
-					if (field.getJavaType() == JavaType.MESSAGE) {
-						DynamicMessage innerInstance = DynamicMessage.getDefaultInstance(field.getMessageType());
-						matchingSubObjects = 
-							find(innerInstance,
-								StringUtils.join(ArrayUtils.subarray(fieldParts, 1, fieldParts.length), "."),
-								searchFor,
-								isLikeFilter,
-								maxResults,
-								conn);
-						
-						for (DynamicMessage m : matchingSubObjects)
-							for (FieldDescriptor f : m.getDescriptorForType().getFields())
-								if (f.getName().equalsIgnoreCase("ID"))
-									ids.add((int)m.getField(f));
-						
-					}
-					else if (field.getJavaType() == JavaType.ENUM) {
-						ids =
-							find(field.getEnumType(),
-								scanner,
-								StringUtils.join(ArrayUtils.subarray(fieldParts, 1, fieldParts.length), "."),
-								searchFor,
-								conn);
-					}
-					
-					// get all messages of this type that have matching sub objects
-					prep = conn.prepareStatement(scanner.getSearchStatementSubObject(field, ids));
-				}
-			}
+			// Find the object field matching the first name in the field name path.
+			prep = searchObjectFields(fieldQueue, searchFor, isLikeFilter, excludedObjects, maxResults, conn, scanner,
+					firstField);
 			
-			if (matchingField == null) {
-				// check repeated fields
-				for (FieldDescriptor f : scanner.getRepeatedObjectFields()) {
-					//find sub objects that match the criteria
-					if (f.getName().equalsIgnoreCase(fieldParts[0])) {
-						matchingField = f;
-						List<DynamicMessage> dmObjects = 
-								find(
-									  DynamicMessage.getDefaultInstance(f.getMessageType())
-									, StringUtils.join(ArrayUtils.subarray(fieldParts, 1, fieldParts.length), ".")
-									, searchFor
-									, isLikeFilter
-									, maxResults
-									, conn);
-						
-						if (dmObjects.size() > 0) {
-							List<Integer> ids = new ArrayList<Integer>();
-							FieldDescriptor idField = f.getMessageType().findFieldByName("ID");
-							if (idField != null) 
-								for (DynamicMessage dmpart : dmObjects)
-									ids.add((int)dmpart.getField(idField));
-							
-							
-							// find id:s of obejcts
-//							for (DynamicMessage dmpart : dmObjects) {
-//								for (FieldDescriptor idfield : dmpart.getDescriptorForType().getFields()) {
-//									if (idfield.getName().equalsIgnoreCase("ID")) {
-//										ids.add((int)dmpart.getField(idfield));
-//									}
-//								}
-//							}
-							
-							//find main objects that contain the sub objects (ID-wise)
-							ProtoDBScanner other = new ProtoDBScanner(dmObjects.get(0));
-							prep = conn.prepareStatement(scanner.getSearchStatementLinkObject(f, other, ids));
-						}
-					}
-				}
-				
-				if (matchingField == null)
-					throw new SearchFieldNotFoundException(fieldName, scanner.getObjectName());
+			// if not found search all repeated fields
+			if (prep != null && prep.getMatchingField() == null) {
+				prep = searchRepeatedFields(searchFor, isLikeFilter, excludedObjects, maxResults, conn, scanner,
+						firstField, fieldQueue);
 				
 			}
-			
-			//object.fieldName
 		}
-			
+
+		// TODO: This could be done a lot more efficient by doing smarter sql queries in 
+		// the search method above.
 		if (prep != null) {
 			ResultSet rs = prep.executeQuery();
-			List<Integer> ids = new ArrayList<Integer>();
-			
-			int counter = 0;
-			while (rs.next()) {
-				counter++;
-				ids.add(rs.getInt(1));
-				
-				if (maxResults > 0 && counter >= maxResults)
-					break;
-			}
-			
-			for (int i : ids) {
-				result.add(this.get(i, instance, conn));
-			}
+			result = getAllObjects(instance, maxResults, conn, rs);
 		}
 		
 		return result;
+	}
+	
+	private Queue<String> getFieldQueue(String fields) {
+		Queue<String> fieldQueue = new LinkedList<String>();
+		
+		String[] list = StringUtils.split(fields, ".");
+		
+		for (String s : list)
+			fieldQueue.add(s);
+		
+		return fieldQueue;
+	}
+
+	private <T extends Message> List<T> getAllObjects(
+			T instance, 
+			int maxResults, 
+			Connection conn, 
+			ResultSet rs) throws SQLException {
+		
+		List<Integer> ids = new ArrayList<Integer>();
+		List<T> result = new ArrayList<T>();
+		
+		int counter = 0;
+		while (rs.next()) {
+			counter++;
+			ids.add(rs.getInt(1));
+			
+			if (maxResults > 0 && counter >= maxResults)
+				break;
+		}
+		
+		for (int i : ids) {
+			result.add(this.get(i, instance, conn));
+		}
+		
+		return result;
+	}
+
+	private DBStatement searchRepeatedFields(
+			Object searchFor, 
+			Boolean isLikeFilter, 
+			List<String> excludedObjects,
+			int maxResults, 
+			Connection conn, 
+			ProtoDBScanner scanner, 
+			String firstField, 
+			Queue<String> fieldQueue)
+			throws SearchFieldNotFoundException, SQLException, ClassNotFoundException {
+		
+		DBStatement prep = new DBStatement(conn);
+		
+		// check repeated fields
+		for (FieldDescriptor field : scanner.getRepeatedObjectFields()) {
+			//find sub objects that match the criteria
+			if (field.getName().equalsIgnoreCase(firstField)) {
+				prep.setMatchingField(field);
+				List<DynamicMessage> dmObjects = 
+						find(
+							  DynamicMessage.getDefaultInstance(field.getMessageType())
+							, fieldQueue
+							, searchFor
+							, isLikeFilter
+							, excludedObjects
+							, maxResults
+							, conn);
+				
+				if (dmObjects.size() > 0) {
+					List<Integer> ids = new ArrayList<Integer>();
+					FieldDescriptor idField = field.getMessageType().findFieldByName("ID");
+					if (idField != null) 
+						for (DynamicMessage dmpart : dmObjects)
+							ids.add((int)dmpart.getField(idField));
+					
+					//find main objects that contain the sub objects (ID-wise)
+					ProtoDBScanner other = new ProtoDBScanner(dmObjects.get(0));
+					prep.prepareStatement(scanner.getSearchStatementLinkObject(field, other, ids));
+				}
+			}
+		}
+		
+		if (prep != null && prep.getMatchingField() == null)
+			throw new SearchFieldNotFoundException(firstField, scanner.getObjectName());
+		
+		return prep;
+	}
+
+	private DBStatement searchObjectFields(
+			Queue<String> fieldQueue, 
+			Object searchFor, 
+			Boolean isLikeFilter,
+			List<String> excludedObjects, 
+			int maxResults, 
+			Connection conn, 
+			ProtoDBScanner scanner, 
+			String firstField) throws SearchFieldNotFoundException, SQLException, ClassNotFoundException {
+		
+		DBStatement prep = new DBStatement(conn);
+		
+		for (FieldDescriptor field : scanner.getObjectFields()) {
+			if (field.getName().equalsIgnoreCase(firstField)) {
+				prep.setMatchingField(field);
+				
+				List<DynamicMessage> matchingSubObjects = null;
+				List<Integer> ids = new ArrayList<Integer>();
+				if (field.getJavaType() == JavaType.MESSAGE) {
+					// If field is a sub object then make a recursive call
+					DynamicMessage innerInstance = DynamicMessage.getDefaultInstance(field.getMessageType());
+					
+					matchingSubObjects = 
+						find(innerInstance,
+							fieldQueue,
+							searchFor,
+							isLikeFilter,
+							excludedObjects,
+							maxResults,
+							conn);
+					
+					// for each matching sub instance add the id's to a list
+					for (DynamicMessage m : matchingSubObjects)
+						for (FieldDescriptor f : m.getDescriptorForType().getFields())
+							if (f.getName().equalsIgnoreCase("ID"))
+								ids.add((int)m.getField(f));
+					
+				}
+				else if (field.getJavaType() == JavaType.ENUM) {
+					// if field is an enum field then make a call to then enum find function 
+					ids =
+						find(field.getEnumType(),
+							scanner,
+							fieldQueue,
+							searchFor,
+							conn);
+				}
+				
+				// get all messages of this type that have matching sub objects
+				prep.prepareStatement(scanner.getSearchStatementSubObject(field, ids));
+			}
+		}
+		
+		return prep;
+	}
+
+	private DBStatement prepareStatementSingleObject(
+			String fieldName, 
+			Object searchFor, 
+			Boolean isLikeFilter, 
+			Connection conn,
+			ProtoDBScanner scanner) throws SearchFieldNotFoundException, SQLException {
+		
+		DBStatement prep = null;
+		FieldDescriptor matchingField = null;
+		
+		for (FieldDescriptor field : scanner.getBasicFields()) {
+			if (field.getName().equalsIgnoreCase(fieldName)) {
+				matchingField = field;
+				break;
+			}
+		}
+		
+		if (matchingField == null)
+			throw new SearchFieldNotFoundException(fieldName, scanner.getObjectName());
+		
+		prep = new DBStatement(matchingField, scanner.getSearchStatement(matchingField, isLikeFilter), conn);
+		
+		if (matchingField.getJavaType() == JavaType.BOOLEAN)
+			prep.addString((Boolean)searchFor ? "Y": "N");
+		else
+			prep.addObject(searchFor);
+		
+		return prep;
 	}
 	
 
 	private List<Integer> find(
 			EnumDescriptor enumType, 
 			ProtoDBScanner scanner,
-			String fieldName,
+			Queue<String> fieldQueue,
 			Object searchFor, 
 			Connection conn) throws SearchFieldNotFoundException, SQLException {
 		
 		List<Integer> ids = new ArrayList<Integer>();
-		String[] fieldParts = StringUtils.split(fieldName, ".");
-		if (fieldParts.length == 1) {
+		
+		String fieldName = fieldQueue.poll();
+		
+		if (fieldQueue.size() == 0) {
 			PreparedStatement prep = conn.prepareStatement(scanner.getSearchStatement(enumType));
 			prep.setString(1, searchFor.toString());
 
