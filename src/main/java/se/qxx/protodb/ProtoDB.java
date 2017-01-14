@@ -319,23 +319,29 @@ public class ProtoDB {
 	//----------------------------------------------------------------------  GET
 	//---------------------------------------------------------------------------------
 
+	
+	public <T extends Message> T get(int id, T instance) throws ClassNotFoundException, SQLException{
+		return this.get(id, new ArrayList<String>(), instance);
+	}
+	
 	/***
 	 * 
 	 * @param <T>
 	 * @param id
+	 * @param excludedObjects
 	 * @param desc
 	 * @return
 	 * @throws SQLException 
 	 * @throws ClassNotFoundException 
 	 */
-	public <T extends Message> T get(int id, List<String> excludiedObjects, T instance) throws ClassNotFoundException, SQLException{
+	public <T extends Message> T get(int id, List<String> excludedObjects, T instance) throws ClassNotFoundException, SQLException{
 		Connection conn = null;
 		T msg = null;
 		
 		try {
 			conn = this.initialize();
 			
-			msg = get(id, instance, conn);
+			msg = get(id, excludedObjects, instance, conn);
 			
 		}
 		catch (Exception e) {
@@ -358,14 +364,14 @@ public class ProtoDB {
 	 * @throws SQLException 
 	 */
 	@SuppressWarnings("unchecked")
-	private <T extends Message> T get(int id, T instance, Connection conn) throws SQLException{
+	private <T extends Message> T get(int id, List<String> excludedObjects, T instance, Connection conn) throws SQLException{
 		Builder b = instance.newBuilderForType();
 
 		ProtoDBScanner scanner = new ProtoDBScanner(instance);
 		Log(String.format("Populating object %s :: %s", scanner.getObjectName(), id));
 		
 		// populate list of sub objects
-		populateRepeatedObjectFields(id, conn, b, scanner);
+		populateRepeatedObjectFields(id, excludedObjects, conn, b, scanner);
 
 		// populate list of basic types
 		populateRepeatedBasicFields(id, conn, b, scanner);			
@@ -375,7 +381,7 @@ public class ProtoDB {
 		int rowcount = 0;
 		while(rs.next()) {
 			// populate object fields
-			populateObjectFields(conn, b, scanner, rs);
+			populateObjectFields(conn, b, scanner, rs, excludedObjects);
 			
 			// populate blobs			
 			populateBlobs(conn, b, scanner, rs);
@@ -425,11 +431,12 @@ public class ProtoDB {
 		}
 	}
 
-	private void populateRepeatedObjectFields(int id, Connection conn, Builder b, ProtoDBScanner scanner)
+	private void populateRepeatedObjectFields(int id, List<String> excludedObjects, Connection conn, Builder b, ProtoDBScanner scanner)
 			throws SQLException {
+		
 		for (FieldDescriptor field : scanner.getRepeatedObjectFields()) {
 			Log(String.format("Populating repeated object field :: %s", field.getName()));
-			getLinkObject(id, b, scanner, field, conn);
+			getLinkObject(id, excludedObjects, b, scanner, field, conn);
 		}
 	}
 
@@ -484,7 +491,7 @@ public class ProtoDB {
 		}
 	}
 
-	private void populateObjectFields(Connection conn, Builder b, ProtoDBScanner scanner, ResultSet rs)
+	private void populateObjectFields(Connection conn, Builder b, ProtoDBScanner scanner, ResultSet rs, List<String> excludedObjects)
 			throws SQLException {
 		
 		for (FieldDescriptor field : scanner.getObjectFields()) {
@@ -493,9 +500,9 @@ public class ProtoDB {
 			int otherID = rs.getInt(scanner.getObjectFieldName(field));
 			Log(String.format("OtherID :: %s", otherID));
 			
-			if (field.getJavaType() == JavaType.MESSAGE) {
+			if (field.getJavaType() == JavaType.MESSAGE && !isExcludedField(field.getName(), excludedObjects)) {
 				DynamicMessage innerInstance = DynamicMessage.getDefaultInstance(field.getMessageType());
-				DynamicMessage otherMsg = get(otherID, innerInstance, conn);
+				DynamicMessage otherMsg = get(otherID, stripExcludedFields(field.getName(), excludedObjects), innerInstance, conn);
 				
 				if (otherMsg != null)
 					b.setField(field, otherMsg);
@@ -522,6 +529,7 @@ public class ProtoDB {
 	}
 
 	protected void getLinkObject(int id
+			, List<String> excludedObjects
 			, Builder b
 			, ProtoDBScanner scanner			
 			, FieldDescriptor field
@@ -532,37 +540,70 @@ public class ProtoDB {
 		DynamicMessage mg = DynamicMessage.getDefaultInstance(mt);
 		
 		if (mg instanceof MessageOrBuilder) {
-			MessageOrBuilder b2 = (MessageOrBuilder)mg;
-			ProtoDBScanner other = new ProtoDBScanner(b2);
-		
-			if (field.isRepeated()) {
-				// get select statement for link table
-				String sql = scanner.getLinkTableSelectStatement(other, field.getName());
-				Log(sql);
-				
-				PreparedStatement prep = conn.prepareStatement(sql);
-				prep.setInt(1, id);
-				
-				ResultSet rs = prep.executeQuery();
-				
-				int c = 0;
-				while(rs.next()) {
-					// get sub objects
-					DynamicMessage otherMsg = get(rs.getInt("ID"), mg, conn);
-					b.addRepeatedField(field, otherMsg);
-					c++;
+			if (!isExcludedField(field.getName(), excludedObjects)) {
+			
+				MessageOrBuilder b2 = (MessageOrBuilder)mg;
+				ProtoDBScanner other = new ProtoDBScanner(b2);
+			
+				if (field.isRepeated()) {
+					// get select statement for link table
+					String sql = scanner.getLinkTableSelectStatement(other, field.getName());
+					Log(sql);
+					
+					PreparedStatement prep = conn.prepareStatement(sql);
+					prep.setInt(1, id);
+					
+					ResultSet rs = prep.executeQuery();
+					
+					int c = 0;
+					while(rs.next()) {
+						// get sub objects
+						DynamicMessage otherMsg = get(rs.getInt("ID"), stripExcludedFields(field.getName(), excludedObjects), mg, conn);
+						b.addRepeatedField(field, otherMsg);
+						c++;
+					}
+					
+					Log(String.format("Number of records retreived :: %s", c));
+					
+					rs.close();
 				}
-				
-				Log(String.format("Number of records retreived :: %s", c));
-				
-				rs.close();
 			}
 		}
 	}
 
+	private boolean isExcludedField(String name, List<String> excludedObjects) {
+		if (excludedObjects == null)
+			return false;
+		
+		for (String fields : excludedObjects) {
+			String[] fieldParts = StringUtils.split(fields, ".");
+			
+			if (fieldParts.length == 1 && StringUtils.equalsIgnoreCase(name, fieldParts[0]))
+				return true;
+		}
+		
+		return false;
+	}
+	
+	private List<String> stripExcludedFields(String firstField, List<String> excludedObjects) {
+		List<String> strippedList = new ArrayList<String>();
+		
+		if (excludedObjects != null) {
+			for (String fields : excludedObjects) {
+				int ii = fields.indexOf(".");
+	
+				if (ii >= 0 && StringUtils.equalsIgnoreCase(fields.substring(0, ii), firstField))
+					strippedList.add(fields.substring(ii + 1));
+			}
+		}
+		
+		return strippedList;
+	}
+	
 	//---------------------------------------------------------------------------------
 	//----------------------------------------------------------------------  SAVE
 	//---------------------------------------------------------------------------------
+
 
 	/***
 	 * Saves a protobuf class to database.
@@ -1049,7 +1090,7 @@ public class ProtoDB {
 		// the search method above.
 		if (prep != null) {
 			ResultSet rs = prep.executeQuery();
-			result = getAllObjects(instance, maxResults, conn, rs);
+			result = getAllObjects(instance, maxResults, conn, rs, excludedObjects);
 		}
 		
 		return result;
@@ -1070,7 +1111,8 @@ public class ProtoDB {
 			T instance, 
 			int maxResults, 
 			Connection conn, 
-			ResultSet rs) throws SQLException {
+			ResultSet rs,
+			List<String> excludedObjects) throws SQLException {
 		
 		List<Integer> ids = new ArrayList<Integer>();
 		List<T> result = new ArrayList<T>();
@@ -1085,7 +1127,7 @@ public class ProtoDB {
 		}
 		
 		for (int i : ids) {
-			result.add(this.get(i, instance, conn));
+			result.add(this.get(i, excludedObjects, instance, conn));
 		}
 		
 		return result;
