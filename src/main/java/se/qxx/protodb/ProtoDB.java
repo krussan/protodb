@@ -328,7 +328,7 @@ public class ProtoDB {
 	 * @throws SQLException 
 	 * @throws ClassNotFoundException 
 	 */
-	public <T extends Message> T get(int id, T instance) throws ClassNotFoundException, SQLException{
+	public <T extends Message> T get(int id, List<String> excludiedObjects, T instance) throws ClassNotFoundException, SQLException{
 		Connection conn = null;
 		T msg = null;
 		
@@ -360,19 +360,53 @@ public class ProtoDB {
 	@SuppressWarnings("unchecked")
 	private <T extends Message> T get(int id, T instance, Connection conn) throws SQLException{
 		Builder b = instance.newBuilderForType();
-		
-		
-		//DynamicMessage d = DynamicMessage.getDefaultInstance(desc);
+
 		ProtoDBScanner scanner = new ProtoDBScanner(instance);
 		Log(String.format("Populating object %s :: %s", scanner.getObjectName(), id));
 		
 		// populate list of sub objects
-		for (FieldDescriptor field : scanner.getRepeatedObjectFields()) {
-			Log(String.format("Populating repeated object field :: %s", field.getName()));
-			getLinkObject(id, b, scanner, field, conn);
-		}
+		populateRepeatedObjectFields(id, conn, b, scanner);
 
 		// populate list of basic types
+		populateRepeatedBasicFields(id, conn, b, scanner);			
+		
+		ResultSet rs = getResultSetForObject(id, conn, b, scanner);
+		
+		int rowcount = 0;
+		while(rs.next()) {
+			// populate object fields
+			populateObjectFields(conn, b, scanner, rs);
+			
+			// populate blobs			
+			populateBlobs(conn, b, scanner, rs);
+			
+			// populate basic fields			
+			populateBasicFields(id, b, scanner, rs);	
+			
+			rowcount++;
+		}
+		
+		if (rowcount>0)
+			return (T) b.build();
+		else
+			return null;
+	}
+
+	private ResultSet getResultSetForObject(int id, Connection conn, Builder b, ProtoDBScanner scanner)
+			throws SQLException {
+		String sql = scanner.getSelectStatement(id);
+		Log(sql);
+		
+		PreparedStatement prep = conn.prepareStatement(sql);
+		prep.setInt(1, id);
+		b.setField(scanner.getIdField(), id);
+		
+		ResultSet rs = prep.executeQuery();
+		return rs;
+	}
+
+	private void populateRepeatedBasicFields(int id, Connection conn, Builder b, ProtoDBScanner scanner)
+			throws SQLException {
 		for (FieldDescriptor field : scanner.getRepeatedBasicFields()) {
 			Log(String.format("Populating repeated basic field :: %s", field.getName()));
 			
@@ -388,95 +422,88 @@ public class ProtoDB {
 				b.addRepeatedField(field, rs.getObject("value"));
 			}
 			rs.close();
-		}			
-		
-		String sql = scanner.getSelectStatement(id);
-		Log(sql);
-		
-		PreparedStatement prep = conn.prepareStatement(sql);
-		prep.setInt(1, id);
-		b.setField(scanner.getIdField(), id);
-		
-		ResultSet rs = prep.executeQuery();
-		int rowcount = 0;
-		
-		while(rs.next()) {
-			// populate object fields
-			for (FieldDescriptor field : scanner.getObjectFields()) {
-				Log(String.format("Populating object fields :: %s", field.getName()));
-				
-				int otherID = rs.getInt(scanner.getObjectFieldName(field));
-				Log(String.format("OtherID :: %s", otherID));
-				
-				if (field.getJavaType() == JavaType.MESSAGE) {
-					DynamicMessage innerInstance = DynamicMessage.getDefaultInstance(field.getMessageType());
-					DynamicMessage otherMsg = get(otherID, innerInstance, conn);
-					
-					if (otherMsg != null)
-						b.setField(field, otherMsg);
-				}
-				else if (field.getJavaType() == JavaType.ENUM){
-					b.setField(field, field.getEnumType().findValueByNumber(otherID));
-				}
-			}
-			
-			// populate blobs
-			
-			if (this.isPopulateBlobsActive()) {
-				for (FieldDescriptor field : scanner.getBlobFields()) {
-					int otherID = rs.getInt(scanner.getObjectFieldName(field));
-					Log(String.format("Populating blob id :: %s", otherID));
-					
-					byte[] data = getBlob(otherID, conn);
-					
-					if (data != null)
-						b.setField(field, ByteString.copyFrom(data));
-				}
-			}
-			
-			// populate basic fields			
-			for (FieldDescriptor field : scanner.getBasicFields()) {
-				Log(String.format("Populating basic field :: %s", field.getName()));
-				
-				if (field.getName().equalsIgnoreCase("ID")) {
-					b.setField(field, id);
-				}
-				else {
-					Object o = rs.getObject(field.getName().toLowerCase());
-					if (field.getJavaType() == JavaType.FLOAT)
-						b.setField(field, ((Double)o).floatValue());
-					else if (field.getJavaType() == JavaType.INT)
-						if (o instanceof Long)
-							b.setField(field, ((Long)o).intValue()); 
-						else						
-							b.setField(field, ((Integer)o).intValue());
-					else if (field.getJavaType() == JavaType.LONG)
-						if (o instanceof Long)
-							b.setField(field, ((Long)o).longValue()); 
-						else						
-							b.setField(field, ((Integer)o).longValue());
-					else if (field.getJavaType() == JavaType.BOOLEAN ) {
-						if (o instanceof Integer) 
-							b.setField(field, ((int)o) == 1 ? true : false);
-						else
-							b.setField(field, ((String)o).equals("Y") ? true : false);	
-					}
-						
-					else
-						b.setField(field, o);
-					
-					
-					;
-				}
-			}	
-			
-			rowcount++;
 		}
+	}
+
+	private void populateRepeatedObjectFields(int id, Connection conn, Builder b, ProtoDBScanner scanner)
+			throws SQLException {
+		for (FieldDescriptor field : scanner.getRepeatedObjectFields()) {
+			Log(String.format("Populating repeated object field :: %s", field.getName()));
+			getLinkObject(id, b, scanner, field, conn);
+		}
+	}
+
+	private void populateBasicFields(int id, Builder b, ProtoDBScanner scanner, ResultSet rs) throws SQLException {
+		for (FieldDescriptor field : scanner.getBasicFields()) {
+			Log(String.format("Populating basic field :: %s", field.getName()));
+			
+			if (field.getName().equalsIgnoreCase("ID")) {
+				b.setField(field, id);
+			}
+			else {
+				Object o = rs.getObject(field.getName().toLowerCase());
+				if (field.getJavaType() == JavaType.FLOAT)
+					b.setField(field, ((Double)o).floatValue());
+				else if (field.getJavaType() == JavaType.INT)
+					if (o instanceof Long)
+						b.setField(field, ((Long)o).intValue()); 
+					else						
+						b.setField(field, ((Integer)o).intValue());
+				else if (field.getJavaType() == JavaType.LONG)
+					if (o instanceof Long)
+						b.setField(field, ((Long)o).longValue()); 
+					else						
+						b.setField(field, ((Integer)o).longValue());
+				else if (field.getJavaType() == JavaType.BOOLEAN ) {
+					if (o instanceof Integer) 
+						b.setField(field, ((int)o) == 1 ? true : false);
+					else
+						b.setField(field, ((String)o).equals("Y") ? true : false);	
+				}
+					
+				else
+					b.setField(field, o);
+				
+				
+				;
+			}
+		}
+	}
+
+	private void populateBlobs(Connection conn, Builder b, ProtoDBScanner scanner, ResultSet rs) throws SQLException {
+		if (this.isPopulateBlobsActive()) {
+			for (FieldDescriptor field : scanner.getBlobFields()) {
+				int otherID = rs.getInt(scanner.getObjectFieldName(field));
+				Log(String.format("Populating blob id :: %s", otherID));
+				
+				byte[] data = getBlob(otherID, conn);
+				
+				if (data != null)
+					b.setField(field, ByteString.copyFrom(data));
+			}
+		}
+	}
+
+	private void populateObjectFields(Connection conn, Builder b, ProtoDBScanner scanner, ResultSet rs)
+			throws SQLException {
 		
-		if (rowcount>0)
-			return (T) b.build();
-		else
-			return null;
+		for (FieldDescriptor field : scanner.getObjectFields()) {
+			Log(String.format("Populating object fields :: %s", field.getName()));
+			
+			int otherID = rs.getInt(scanner.getObjectFieldName(field));
+			Log(String.format("OtherID :: %s", otherID));
+			
+			if (field.getJavaType() == JavaType.MESSAGE) {
+				DynamicMessage innerInstance = DynamicMessage.getDefaultInstance(field.getMessageType());
+				DynamicMessage otherMsg = get(otherID, innerInstance, conn);
+				
+				if (otherMsg != null)
+					b.setField(field, otherMsg);
+			}
+			else if (field.getJavaType() == JavaType.ENUM){
+				b.setField(field, field.getEnumType().findValueByNumber(otherID));
+			}
+		}
 	}
 
 	private byte[] getBlob(int otherID, Connection conn) throws SQLException {

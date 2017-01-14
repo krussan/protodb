@@ -3,11 +3,14 @@ package se.qxx.protodb.test;
 import static org.junit.Assert.*;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
 
 import se.qxx.protodb.ProtoDB;
+import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
 
 public class TestExcludingObjects {
 
@@ -21,28 +24,29 @@ public class TestExcludingObjects {
 	}
 	
 	@Test
-	public void TestSimple() {	
+	public void TestExcluding() {	
 		try {
-			TestDomain.RepObjectOne b = db.get(1, TestDomain.RepObjectOne.getDefaultInstance());
-
-			// happyCamper should be 3
-			assertEquals(3, b.getHappycamper());
+			List<String> excludedObjects = new ArrayList<String>();
+			excludedObjects.add("testOne");
 			
-			// we should have two repeated objects
-			assertEquals(2, b.getListOfObjectsCount());
+			List<TestDomain.ObjectOne> result =
+				db.find(
+					TestDomain.ObjectOne.getDefaultInstance(), 
+					"testOne.bb", 
+					true, 
+					false,
+					excludedObjects);
 			
-			TestDomain.SimpleTwo o1 = b.getListOfObjects(0);
-			assertEquals("thisIsATitle", o1.getTitle());
-			assertEquals("madeByThisDirector", o1.getDirector());
+			// we should get one single result..
+			assertEquals(1, result.size());
+		
+			TestDomain.ObjectOne b = result.get(0);
+			assertEquals(b.getOois(), 986);
 			
-			TestDomain.SimpleTwo o2 = b.getListOfObjects(1);
-			assertEquals("thisIsAlsoATitle", o2.getTitle());
-			assertEquals("madeByAnotherDirector", o2.getDirector());
+			TestDomain.SimpleTest o1 = b.getTestOne();
+			assertNull(o1);
 			
-//			PreparedStatement prep = "SELECT * FROM SimpleTest";
-//			
-//			testTableStructure(db, "SimpleTest", SIMPLE_FIELD_NAMES, SIMPLE_FIELD_TYPES);
-		} catch (SQLException | ClassNotFoundException e) {
+		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
