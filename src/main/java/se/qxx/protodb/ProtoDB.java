@@ -10,7 +10,9 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -317,23 +319,29 @@ public class ProtoDB {
 	//----------------------------------------------------------------------  GET
 	//---------------------------------------------------------------------------------
 
+	
+	public <T extends Message> T get(int id, T instance) throws ClassNotFoundException, SQLException{
+		return this.get(id, new ArrayList<String>(), instance);
+	}
+	
 	/***
 	 * 
 	 * @param <T>
 	 * @param id
+	 * @param excludedObjects
 	 * @param desc
 	 * @return
 	 * @throws SQLException 
 	 * @throws ClassNotFoundException 
 	 */
-	public <T extends Message> T get(int id, T instance) throws ClassNotFoundException, SQLException{
+	public <T extends Message> T get(int id, List<String> excludedObjects, T instance) throws ClassNotFoundException, SQLException{
 		Connection conn = null;
 		T msg = null;
 		
 		try {
 			conn = this.initialize();
 			
-			msg = get(id, instance, conn);
+			msg = get(id, excludedObjects, instance, conn);
 			
 		}
 		catch (Exception e) {
@@ -356,21 +364,55 @@ public class ProtoDB {
 	 * @throws SQLException 
 	 */
 	@SuppressWarnings("unchecked")
-	private <T extends Message> T get(int id, T instance, Connection conn) throws SQLException{
+	private <T extends Message> T get(int id, List<String> excludedObjects, T instance, Connection conn) throws SQLException{
 		Builder b = instance.newBuilderForType();
-		
-		
-		//DynamicMessage d = DynamicMessage.getDefaultInstance(desc);
+
 		ProtoDBScanner scanner = new ProtoDBScanner(instance);
 		Log(String.format("Populating object %s :: %s", scanner.getObjectName(), id));
 		
 		// populate list of sub objects
-		for (FieldDescriptor field : scanner.getRepeatedObjectFields()) {
-			Log(String.format("Populating repeated object field :: %s", field.getName()));
-			getLinkObject(id, b, scanner, field, conn);
-		}
+		populateRepeatedObjectFields(id, excludedObjects, conn, b, scanner);
 
 		// populate list of basic types
+		populateRepeatedBasicFields(id, conn, b, scanner);			
+		
+		ResultSet rs = getResultSetForObject(id, conn, b, scanner);
+		
+		int rowcount = 0;
+		while(rs.next()) {
+			// populate object fields
+			populateObjectFields(conn, b, scanner, rs, excludedObjects);
+			
+			// populate blobs			
+			populateBlobs(conn, b, scanner, rs);
+			
+			// populate basic fields			
+			populateBasicFields(id, b, scanner, rs);	
+			
+			rowcount++;
+		}
+		
+		if (rowcount>0)
+			return (T) b.build();
+		else
+			return null;
+	}
+
+	private ResultSet getResultSetForObject(int id, Connection conn, Builder b, ProtoDBScanner scanner)
+			throws SQLException {
+		String sql = scanner.getSelectStatement(id);
+		Log(sql);
+		
+		PreparedStatement prep = conn.prepareStatement(sql);
+		prep.setInt(1, id);
+		b.setField(scanner.getIdField(), id);
+		
+		ResultSet rs = prep.executeQuery();
+		return rs;
+	}
+
+	private void populateRepeatedBasicFields(int id, Connection conn, Builder b, ProtoDBScanner scanner)
+			throws SQLException {
 		for (FieldDescriptor field : scanner.getRepeatedBasicFields()) {
 			Log(String.format("Populating repeated basic field :: %s", field.getName()));
 			
@@ -386,95 +428,89 @@ public class ProtoDB {
 				b.addRepeatedField(field, rs.getObject("value"));
 			}
 			rs.close();
-		}			
-		
-		String sql = scanner.getSelectStatement(id);
-		Log(sql);
-		
-		PreparedStatement prep = conn.prepareStatement(sql);
-		prep.setInt(1, id);
-		b.setField(scanner.getIdField(), id);
-		
-		ResultSet rs = prep.executeQuery();
-		int rowcount = 0;
-		
-		while(rs.next()) {
-			// populate object fields
-			for (FieldDescriptor field : scanner.getObjectFields()) {
-				Log(String.format("Populating object fields :: %s", field.getName()));
-				
-				int otherID = rs.getInt(scanner.getObjectFieldName(field));
-				Log(String.format("OtherID :: %s", otherID));
-				
-				if (field.getJavaType() == JavaType.MESSAGE) {
-					DynamicMessage innerInstance = DynamicMessage.getDefaultInstance(field.getMessageType());
-					DynamicMessage otherMsg = get(otherID, innerInstance, conn);
-					
-					if (otherMsg != null)
-						b.setField(field, otherMsg);
-				}
-				else if (field.getJavaType() == JavaType.ENUM){
-					b.setField(field, field.getEnumType().findValueByNumber(otherID));
-				}
-			}
-			
-			// populate blobs
-			
-			if (this.isPopulateBlobsActive()) {
-				for (FieldDescriptor field : scanner.getBlobFields()) {
-					int otherID = rs.getInt(scanner.getObjectFieldName(field));
-					Log(String.format("Populating blob id :: %s", otherID));
-					
-					byte[] data = getBlob(otherID, conn);
-					
-					if (data != null)
-						b.setField(field, ByteString.copyFrom(data));
-				}
-			}
-			
-			// populate basic fields			
-			for (FieldDescriptor field : scanner.getBasicFields()) {
-				Log(String.format("Populating basic field :: %s", field.getName()));
-				
-				if (field.getName().equalsIgnoreCase("ID")) {
-					b.setField(field, id);
-				}
-				else {
-					Object o = rs.getObject(field.getName().toLowerCase());
-					if (field.getJavaType() == JavaType.FLOAT)
-						b.setField(field, ((Double)o).floatValue());
-					else if (field.getJavaType() == JavaType.INT)
-						if (o instanceof Long)
-							b.setField(field, ((Long)o).intValue()); 
-						else						
-							b.setField(field, ((Integer)o).intValue());
-					else if (field.getJavaType() == JavaType.LONG)
-						if (o instanceof Long)
-							b.setField(field, ((Long)o).longValue()); 
-						else						
-							b.setField(field, ((Integer)o).longValue());
-					else if (field.getJavaType() == JavaType.BOOLEAN ) {
-						if (o instanceof Integer) 
-							b.setField(field, ((int)o) == 1 ? true : false);
-						else
-							b.setField(field, ((String)o).equals("Y") ? true : false);	
-					}
-						
-					else
-						b.setField(field, o);
-					
-					
-					;
-				}
-			}	
-			
-			rowcount++;
 		}
+	}
+
+	private void populateRepeatedObjectFields(int id, List<String> excludedObjects, Connection conn, Builder b, ProtoDBScanner scanner)
+			throws SQLException {
 		
-		if (rowcount>0)
-			return (T) b.build();
-		else
-			return null;
+		for (FieldDescriptor field : scanner.getRepeatedObjectFields()) {
+			Log(String.format("Populating repeated object field :: %s", field.getName()));
+			getLinkObject(id, excludedObjects, b, scanner, field, conn);
+		}
+	}
+
+	private void populateBasicFields(int id, Builder b, ProtoDBScanner scanner, ResultSet rs) throws SQLException {
+		for (FieldDescriptor field : scanner.getBasicFields()) {
+			Log(String.format("Populating basic field :: %s", field.getName()));
+			
+			if (field.getName().equalsIgnoreCase("ID")) {
+				b.setField(field, id);
+			}
+			else {
+				Object o = rs.getObject(field.getName().toLowerCase());
+				if (field.getJavaType() == JavaType.FLOAT)
+					b.setField(field, ((Double)o).floatValue());
+				else if (field.getJavaType() == JavaType.INT)
+					if (o instanceof Long)
+						b.setField(field, ((Long)o).intValue()); 
+					else						
+						b.setField(field, ((Integer)o).intValue());
+				else if (field.getJavaType() == JavaType.LONG)
+					if (o instanceof Long)
+						b.setField(field, ((Long)o).longValue()); 
+					else						
+						b.setField(field, ((Integer)o).longValue());
+				else if (field.getJavaType() == JavaType.BOOLEAN ) {
+					if (o instanceof Integer) 
+						b.setField(field, ((int)o) == 1 ? true : false);
+					else
+						b.setField(field, ((String)o).equals("Y") ? true : false);	
+				}
+					
+				else
+					b.setField(field, o);
+				
+				
+				;
+			}
+		}
+	}
+
+	private void populateBlobs(Connection conn, Builder b, ProtoDBScanner scanner, ResultSet rs) throws SQLException {
+		if (this.isPopulateBlobsActive()) {
+			for (FieldDescriptor field : scanner.getBlobFields()) {
+				int otherID = rs.getInt(scanner.getObjectFieldName(field));
+				Log(String.format("Populating blob id :: %s", otherID));
+				
+				byte[] data = getBlob(otherID, conn);
+				
+				if (data != null)
+					b.setField(field, ByteString.copyFrom(data));
+			}
+		}
+	}
+
+	private void populateObjectFields(Connection conn, Builder b, ProtoDBScanner scanner, ResultSet rs, List<String> excludedObjects)
+			throws SQLException {
+		
+		for (FieldDescriptor field : scanner.getObjectFields()) {
+			Log(String.format("Populating object fields :: %s", field.getName()));
+			
+			int otherID = rs.getInt(scanner.getObjectFieldName(field));
+			Log(String.format("OtherID :: %s", otherID));
+			
+			if (field.getJavaType() == JavaType.MESSAGE && !isExcludedField(field.getName(), excludedObjects)) {
+				DynamicMessage innerInstance = DynamicMessage.getDefaultInstance(field.getMessageType());
+				DynamicMessage otherMsg = get(otherID, stripExcludedFields(field.getName(), excludedObjects), innerInstance, conn);
+				
+				if (otherMsg != null)
+					b.setField(field, otherMsg);
+			}
+			else if (field.getJavaType() == JavaType.ENUM){
+				b.setField(field, field.getEnumType().findValueByNumber(otherID));
+			}
+		}
 	}
 
 	private byte[] getBlob(int otherID, Connection conn) throws SQLException {
@@ -493,6 +529,7 @@ public class ProtoDB {
 	}
 
 	protected void getLinkObject(int id
+			, List<String> excludedObjects
 			, Builder b
 			, ProtoDBScanner scanner			
 			, FieldDescriptor field
@@ -503,37 +540,70 @@ public class ProtoDB {
 		DynamicMessage mg = DynamicMessage.getDefaultInstance(mt);
 		
 		if (mg instanceof MessageOrBuilder) {
-			MessageOrBuilder b2 = (MessageOrBuilder)mg;
-			ProtoDBScanner other = new ProtoDBScanner(b2);
-		
-			if (field.isRepeated()) {
-				// get select statement for link table
-				String sql = scanner.getLinkTableSelectStatement(other, field.getName());
-				Log(sql);
-				
-				PreparedStatement prep = conn.prepareStatement(sql);
-				prep.setInt(1, id);
-				
-				ResultSet rs = prep.executeQuery();
-				
-				int c = 0;
-				while(rs.next()) {
-					// get sub objects
-					DynamicMessage otherMsg = get(rs.getInt("ID"), mg, conn);
-					b.addRepeatedField(field, otherMsg);
-					c++;
+			if (!isExcludedField(field.getName(), excludedObjects)) {
+			
+				MessageOrBuilder b2 = (MessageOrBuilder)mg;
+				ProtoDBScanner other = new ProtoDBScanner(b2);
+			
+				if (field.isRepeated()) {
+					// get select statement for link table
+					String sql = scanner.getLinkTableSelectStatement(other, field.getName());
+					Log(sql);
+					
+					PreparedStatement prep = conn.prepareStatement(sql);
+					prep.setInt(1, id);
+					
+					ResultSet rs = prep.executeQuery();
+					
+					int c = 0;
+					while(rs.next()) {
+						// get sub objects
+						DynamicMessage otherMsg = get(rs.getInt("ID"), stripExcludedFields(field.getName(), excludedObjects), mg, conn);
+						b.addRepeatedField(field, otherMsg);
+						c++;
+					}
+					
+					Log(String.format("Number of records retreived :: %s", c));
+					
+					rs.close();
 				}
-				
-				Log(String.format("Number of records retreived :: %s", c));
-				
-				rs.close();
 			}
 		}
 	}
 
+	private boolean isExcludedField(String name, List<String> excludedObjects) {
+		if (excludedObjects == null)
+			return false;
+		
+		for (String fields : excludedObjects) {
+			String[] fieldParts = StringUtils.split(fields, ".");
+			
+			if (fieldParts.length == 1 && StringUtils.equalsIgnoreCase(name, fieldParts[0]))
+				return true;
+		}
+		
+		return false;
+	}
+	
+	private List<String> stripExcludedFields(String firstField, List<String> excludedObjects) {
+		List<String> strippedList = new ArrayList<String>();
+		
+		if (excludedObjects != null) {
+			for (String fields : excludedObjects) {
+				int ii = fields.indexOf(".");
+	
+				if (ii >= 0 && StringUtils.equalsIgnoreCase(fields.substring(0, ii), firstField))
+					strippedList.add(fields.substring(ii + 1));
+			}
+		}
+		
+		return strippedList;
+	}
+	
 	//---------------------------------------------------------------------------------
 	//----------------------------------------------------------------------  SAVE
 	//---------------------------------------------------------------------------------
+
 
 	/***
 	 * Saves a protobuf class to database.
@@ -942,21 +1012,30 @@ public class ProtoDB {
 	//---------------------------------------------------------------------------------
 
 	public <T extends Message> List<T> find(T instance, String fieldName, Object searchFor, Boolean isLikeOperator) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
-		return find(instance, fieldName, searchFor, isLikeOperator, -1);
+		return find(instance, fieldName, searchFor, isLikeOperator, null, -1);
+	}
+	
+	public <T extends Message> List<T> find(T instance, String fieldName, Object searchFor, Boolean isLikeOperator, List<String> excludedObjects) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
+		return find(instance, fieldName, searchFor, isLikeOperator, excludedObjects, -1);
 	}
 	
 	/***
 	 * 
-	 * @param desc
-	 * @param fieldName
-	 * @param searchFor
-	 * @param isLikeOperator
+	 * @param instance			An (empty) instance of the protobuf entity to initiate search on 
+	 * @param fieldName   		The field name in the object to match the search criteria
+	 * 							Specify a field in a sub object by separating the objects by dot (.)
+	 * 							I.e. obj1.obj2.fieldXX 
+	 * @param searchFor			The search criteria
+	 * @param isLikeOperator	Specifies if the search criteria contains wild characters i.e. %
+	 * @param excludedObjects	List of objects paths that should be excluded from the get method
+	 * 							when retrieving results
+	 * @param maxResults		Maximum number of results to retrieve. Specify -1 for unlimited results.
 	 * @return
 	 * @throws ClassNotFoundException
 	 * @throws SQLException
-	 * @throws SearchFieldNotFoundException 
+	 * @throws SearchFieldNotFoundException
 	 */
-	public <T extends Message> List<T> find(T instance, String fieldName, Object searchFor, Boolean isLikeOperator, int maxResults) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
+	public <T extends Message> List<T> find(T instance, String fieldName, Object searchFor, Boolean isLikeOperator, List<String> excludedObjects,  int maxResults) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
 		// if field is repeated -> search link objects
 		Connection conn = null;
 		List<T> result = new ArrayList<T>();
@@ -964,7 +1043,7 @@ public class ProtoDB {
 		try {
 			conn = this.initialize();
 			
-			result = this.find(instance, fieldName, searchFor, isLikeOperator, maxResults, conn);
+			result = this.find(instance, getFieldQueue(fieldName), searchFor, isLikeOperator, excludedObjects, maxResults, conn);
 			
 		}
 		catch (Exception e) {
@@ -980,152 +1059,227 @@ public class ProtoDB {
 		return result;		
 	}
 	
-	private <T extends Message> List<T> find(T instance, String fieldName, Object searchFor, Boolean isLikeFilter, int maxResults, Connection conn) throws SearchFieldNotFoundException, SQLException, ClassNotFoundException {
+	private <T extends Message> List<T> find(T instance, Queue<String> fieldQueue, Object searchFor, Boolean isLikeFilter, List<String> excludedObjects, int maxResults, Connection conn) throws SearchFieldNotFoundException, SQLException, ClassNotFoundException {
 		List<T> result = new ArrayList<T>();
-//		DynamicMessage dm = DynamicMessage.getDefaultInstance(desc);
 		ProtoDBScanner scanner = new ProtoDBScanner(instance);
 		
-		FieldDescriptor matchingField = null;
-
-		// Split fieldName on dot (.) to be able to search sub objects
-		// fieldName should then be on the form <object>.[<object>...].fieldName
-		String[] fieldParts = StringUtils.split(fieldName, ".");
-		PreparedStatement prep = null;
+		// Get first field
+		String firstField = fieldQueue.poll();
 		
-		if (fieldParts.length == 1) {
-			for (FieldDescriptor field : scanner.getBasicFields()) {
-				if (field.getName().equalsIgnoreCase(fieldName)) {
-					matchingField = field;
-					break;
-				}
-			}
-			
-			if (matchingField == null)
-				throw new SearchFieldNotFoundException(fieldName, scanner.getObjectName());
-			
-			prep = conn.prepareStatement(scanner.getSearchStatement(matchingField, isLikeFilter));
-			if (matchingField.getJavaType() == JavaType.BOOLEAN)
-				prep.setString(1, (Boolean)searchFor ? "Y": "N");
-			else
-				prep.setObject(1, searchFor);
+		DBStatement prep = new DBStatement(conn);
+		
+		// If the size of the queue is zero this means that we only had one field in the queue
+		if (fieldQueue.size() == 0) {
+			prep = prepareStatementSingleObject(firstField, searchFor, isLikeFilter, conn, scanner);
 		}
 		else {
 			// object fields
-			for (FieldDescriptor field : scanner.getObjectFields()) {
-				if (field.getName().equalsIgnoreCase(fieldParts[0])) {
-					matchingField = field;
-					
-					List<DynamicMessage> matchingSubObjects = null;
-					List<Integer> ids = new ArrayList<Integer>();
-					if (field.getJavaType() == JavaType.MESSAGE) {
-						DynamicMessage innerInstance = DynamicMessage.getDefaultInstance(field.getMessageType());
-						matchingSubObjects = 
-							find(innerInstance,
-								StringUtils.join(ArrayUtils.subarray(fieldParts, 1, fieldParts.length), "."),
-								searchFor,
-								isLikeFilter,
-								maxResults,
-								conn);
-						
-						for (DynamicMessage m : matchingSubObjects)
-							for (FieldDescriptor f : m.getDescriptorForType().getFields())
-								if (f.getName().equalsIgnoreCase("ID"))
-									ids.add((int)m.getField(f));
-						
-					}
-					else if (field.getJavaType() == JavaType.ENUM) {
-						ids =
-							find(field.getEnumType(),
-								scanner,
-								StringUtils.join(ArrayUtils.subarray(fieldParts, 1, fieldParts.length), "."),
-								searchFor,
-								conn);
-					}
-					
-					// get all messages of this type that have matching sub objects
-					prep = conn.prepareStatement(scanner.getSearchStatementSubObject(field, ids));
-				}
-			}
+			// Find the object field matching the first name in the field name path.
+			prep = searchObjectFields(fieldQueue, searchFor, isLikeFilter, excludedObjects, maxResults, conn, scanner,
+					firstField);
 			
-			if (matchingField == null) {
-				// check repeated fields
-				for (FieldDescriptor f : scanner.getRepeatedObjectFields()) {
-					//find sub objects that match the criteria
-					if (f.getName().equalsIgnoreCase(fieldParts[0])) {
-						matchingField = f;
-						List<DynamicMessage> dmObjects = 
-								find(
-									  DynamicMessage.getDefaultInstance(f.getMessageType())
-									, StringUtils.join(ArrayUtils.subarray(fieldParts, 1, fieldParts.length), ".")
-									, searchFor
-									, isLikeFilter
-									, maxResults
-									, conn);
-						
-						if (dmObjects.size() > 0) {
-							List<Integer> ids = new ArrayList<Integer>();
-							FieldDescriptor idField = f.getMessageType().findFieldByName("ID");
-							if (idField != null) 
-								for (DynamicMessage dmpart : dmObjects)
-									ids.add((int)dmpart.getField(idField));
-							
-							
-							// find id:s of obejcts
-//							for (DynamicMessage dmpart : dmObjects) {
-//								for (FieldDescriptor idfield : dmpart.getDescriptorForType().getFields()) {
-//									if (idfield.getName().equalsIgnoreCase("ID")) {
-//										ids.add((int)dmpart.getField(idfield));
-//									}
-//								}
-//							}
-							
-							//find main objects that contain the sub objects (ID-wise)
-							ProtoDBScanner other = new ProtoDBScanner(dmObjects.get(0));
-							prep = conn.prepareStatement(scanner.getSearchStatementLinkObject(f, other, ids));
-						}
-					}
-				}
-				
-				if (matchingField == null)
-					throw new SearchFieldNotFoundException(fieldName, scanner.getObjectName());
+			// if not found search all repeated fields
+			if (prep != null && prep.getMatchingField() == null) {
+				prep = searchRepeatedFields(searchFor, isLikeFilter, excludedObjects, maxResults, conn, scanner,
+						firstField, fieldQueue);
 				
 			}
-			
-			//object.fieldName
 		}
-			
+
+		// TODO: This could be done a lot more efficient by doing smarter sql queries in 
+		// the search method above.
 		if (prep != null) {
 			ResultSet rs = prep.executeQuery();
-			List<Integer> ids = new ArrayList<Integer>();
-			
-			int counter = 0;
-			while (rs.next()) {
-				counter++;
-				ids.add(rs.getInt(1));
-				
-				if (maxResults > 0 && counter >= maxResults)
-					break;
-			}
-			
-			for (int i : ids) {
-				result.add(this.get(i, instance, conn));
-			}
+			result = getAllObjects(instance, maxResults, conn, rs, excludedObjects);
 		}
 		
 		return result;
+	}
+	
+	private Queue<String> getFieldQueue(String fields) {
+		Queue<String> fieldQueue = new LinkedList<String>();
+		
+		String[] list = StringUtils.split(fields, ".");
+		
+		for (String s : list)
+			fieldQueue.add(s);
+		
+		return fieldQueue;
+	}
+
+	private <T extends Message> List<T> getAllObjects(
+			T instance, 
+			int maxResults, 
+			Connection conn, 
+			ResultSet rs,
+			List<String> excludedObjects) throws SQLException {
+		
+		List<Integer> ids = new ArrayList<Integer>();
+		List<T> result = new ArrayList<T>();
+		
+		int counter = 0;
+		while (rs.next()) {
+			counter++;
+			ids.add(rs.getInt(1));
+			
+			if (maxResults > 0 && counter >= maxResults)
+				break;
+		}
+		
+		for (int i : ids) {
+			result.add(this.get(i, excludedObjects, instance, conn));
+		}
+		
+		return result;
+	}
+
+	private DBStatement searchRepeatedFields(
+			Object searchFor, 
+			Boolean isLikeFilter, 
+			List<String> excludedObjects,
+			int maxResults, 
+			Connection conn, 
+			ProtoDBScanner scanner, 
+			String firstField, 
+			Queue<String> fieldQueue)
+			throws SearchFieldNotFoundException, SQLException, ClassNotFoundException {
+		
+		DBStatement prep = new DBStatement(conn);
+		
+		// check repeated fields
+		for (FieldDescriptor field : scanner.getRepeatedObjectFields()) {
+			//find sub objects that match the criteria
+			if (field.getName().equalsIgnoreCase(firstField)) {
+				prep.setMatchingField(field);
+				List<DynamicMessage> dmObjects = 
+						find(
+							  DynamicMessage.getDefaultInstance(field.getMessageType())
+							, fieldQueue
+							, searchFor
+							, isLikeFilter
+							, excludedObjects
+							, maxResults
+							, conn);
+				
+				if (dmObjects.size() > 0) {
+					List<Integer> ids = new ArrayList<Integer>();
+					FieldDescriptor idField = field.getMessageType().findFieldByName("ID");
+					if (idField != null) 
+						for (DynamicMessage dmpart : dmObjects)
+							ids.add((int)dmpart.getField(idField));
+					
+					//find main objects that contain the sub objects (ID-wise)
+					ProtoDBScanner other = new ProtoDBScanner(dmObjects.get(0));
+					prep.prepareStatement(scanner.getSearchStatementLinkObject(field, other, ids));
+				}
+			}
+		}
+		
+		if (prep != null && prep.getMatchingField() == null)
+			throw new SearchFieldNotFoundException(firstField, scanner.getObjectName());
+		
+		return prep;
+	}
+
+	private DBStatement searchObjectFields(
+			Queue<String> fieldQueue, 
+			Object searchFor, 
+			Boolean isLikeFilter,
+			List<String> excludedObjects, 
+			int maxResults, 
+			Connection conn, 
+			ProtoDBScanner scanner, 
+			String firstField) throws SearchFieldNotFoundException, SQLException, ClassNotFoundException {
+		
+		DBStatement prep = new DBStatement(conn);
+		
+		for (FieldDescriptor field : scanner.getObjectFields()) {
+			if (field.getName().equalsIgnoreCase(firstField)) {
+				prep.setMatchingField(field);
+				
+				List<DynamicMessage> matchingSubObjects = null;
+				List<Integer> ids = new ArrayList<Integer>();
+				if (field.getJavaType() == JavaType.MESSAGE) {
+					// If field is a sub object then make a recursive call
+					DynamicMessage innerInstance = DynamicMessage.getDefaultInstance(field.getMessageType());
+					
+					matchingSubObjects = 
+						find(innerInstance,
+							fieldQueue,
+							searchFor,
+							isLikeFilter,
+							excludedObjects,
+							maxResults,
+							conn);
+					
+					// for each matching sub instance add the id's to a list
+					for (DynamicMessage m : matchingSubObjects)
+						for (FieldDescriptor f : m.getDescriptorForType().getFields())
+							if (f.getName().equalsIgnoreCase("ID"))
+								ids.add((int)m.getField(f));
+					
+				}
+				else if (field.getJavaType() == JavaType.ENUM) {
+					// if field is an enum field then make a call to then enum find function 
+					ids =
+						find(field.getEnumType(),
+							scanner,
+							fieldQueue,
+							searchFor,
+							conn);
+				}
+				
+				// get all messages of this type that have matching sub objects
+				prep.prepareStatement(scanner.getSearchStatementSubObject(field, ids));
+			}
+		}
+		
+		return prep;
+	}
+
+	private DBStatement prepareStatementSingleObject(
+			String fieldName, 
+			Object searchFor, 
+			Boolean isLikeFilter, 
+			Connection conn,
+			ProtoDBScanner scanner) throws SearchFieldNotFoundException, SQLException {
+		
+		DBStatement prep = null;
+		FieldDescriptor matchingField = null;
+		
+		for (FieldDescriptor field : scanner.getBasicFields()) {
+			if (field.getName().equalsIgnoreCase(fieldName)) {
+				matchingField = field;
+				break;
+			}
+		}
+		
+		if (matchingField == null)
+			throw new SearchFieldNotFoundException(fieldName, scanner.getObjectName());
+		
+		prep = new DBStatement(matchingField, scanner.getSearchStatement(matchingField, isLikeFilter), conn);
+		
+		if (matchingField.getJavaType() == JavaType.BOOLEAN)
+			prep.addString((Boolean)searchFor ? "Y": "N");
+		else
+			prep.addObject(searchFor);
+		
+		return prep;
 	}
 	
 
 	private List<Integer> find(
 			EnumDescriptor enumType, 
 			ProtoDBScanner scanner,
-			String fieldName,
+			Queue<String> fieldQueue,
 			Object searchFor, 
 			Connection conn) throws SearchFieldNotFoundException, SQLException {
 		
 		List<Integer> ids = new ArrayList<Integer>();
-		String[] fieldParts = StringUtils.split(fieldName, ".");
-		if (fieldParts.length == 1) {
+		
+		String fieldName = fieldQueue.poll();
+		
+		if (fieldQueue.size() == 0) {
 			PreparedStatement prep = conn.prepareStatement(scanner.getSearchStatement(enumType));
 			prep.setString(1, searchFor.toString());
 
