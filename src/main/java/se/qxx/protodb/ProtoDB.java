@@ -1088,7 +1088,7 @@ public class ProtoDB {
 
 		// TODO: This could be done a lot more efficient by doing smarter sql queries in 
 		// the search method above.
-		if (prep != null) {
+		if (prep != null && prep.getStatement() != null) {
 			ResultSet rs = prep.executeQuery();
 			result = getAllObjects(instance, maxResults, conn, rs, excludedObjects);
 		}
