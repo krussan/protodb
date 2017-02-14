@@ -134,4 +134,28 @@ public class TestExcludingObjects {
 		}
 	}
 	
+	@Test
+	public void TestExcludeOnRepeatedObjects() {
+		try {
+			List<String> excludedObjects = new ArrayList<String>();
+			excludedObjects.add("list_of_objects");
+			
+			List<TestDomain.RepObjectOne> result =
+					db.find(
+						TestDomain.RepObjectOne.getDefaultInstance(), 
+						"happycamper", 
+						3, 
+						false,
+						excludedObjects);
+			
+			assertEquals(1, result.size());
+			assertEquals(0, result.get(0).getListOfObjectsCount());
+
+		} catch (ClassNotFoundException | SQLException | SearchFieldNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+	}
+	
 }
