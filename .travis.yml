@@ -3,3 +3,6 @@ sudo: true
 
 before_install:
   - ./install-protobuf.sh
+
+cache:
+  - $HOME/.m2
