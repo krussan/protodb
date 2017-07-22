@@ -1221,11 +1221,11 @@ public class ProtoDB {
 							conn);
 					
 					// for each matching sub instance add the id's to a list
-					for (DynamicMessage m : matchingSubObjects)
-						for (FieldDescriptor f : m.getDescriptorForType().getFields())
-							if (f.getName().equalsIgnoreCase("ID"))
-								ids.add((int)m.getField(f));
-					
+					FieldDescriptor idField = field.getMessageType().findFieldByName("ID");
+					if (idField != null) {
+						for (DynamicMessage m : matchingSubObjects)
+							ids.add((int)m.getField(idField));
+					}
 					Log(String.format("Number of IDs found :: %s", ids.size()));
 					
 				}
