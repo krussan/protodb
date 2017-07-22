@@ -1065,20 +1065,24 @@ public class ProtoDB {
 		
 		// Get first field
 		String firstField = fieldQueue.poll();
+		Log(String.format("Searching for field :: %s", firstField));
 		
 		DBStatement prep = new DBStatement(conn);
 		
 		// If the size of the queue is zero this means that we only had one field in the queue
 		if (fieldQueue.size() == 0) {
+			Log("Last field.. preparing statement");
 			prep = prepareStatementSingleObject(firstField, searchFor, isLikeFilter, conn, scanner);
 		}
 		else {
 			// object fields
 			// Find the object field matching the first name in the field name path.
+			Log("Searching object fields");
 			prep = searchObjectFields(fieldQueue, searchFor, isLikeFilter, excludedObjects, maxResults, conn, scanner,
 					firstField);
 			
 			// if not found search all repeated fields
+			Log("Searching repeated fields");
 			if (prep != null && prep.getMatchingField() == null) {
 				prep = searchRepeatedFields(searchFor, isLikeFilter, excludedObjects, maxResults, conn, scanner,
 						firstField, fieldQueue);
@@ -1150,7 +1154,9 @@ public class ProtoDB {
 		for (FieldDescriptor field : scanner.getRepeatedObjectFields()) {
 			//find sub objects that match the criteria
 			if (field.getName().equalsIgnoreCase(firstField)) {
+				Log(String.format("Found match on %s",  field.getName()));
 				prep.setMatchingField(field);
+				
 				List<DynamicMessage> dmObjects = 
 						find(
 							  DynamicMessage.getDefaultInstance(field.getMessageType())
@@ -1195,12 +1201,14 @@ public class ProtoDB {
 		
 		for (FieldDescriptor field : scanner.getObjectFields()) {
 			if (field.getName().equalsIgnoreCase(firstField)) {
+				Log(String.format("Found match on %s",  field.getName()));
 				prep.setMatchingField(field);
 				
 				List<DynamicMessage> matchingSubObjects = null;
 				List<Integer> ids = new ArrayList<Integer>();
 				if (field.getJavaType() == JavaType.MESSAGE) {
 					// If field is a sub object then make a recursive call
+					Log("Making recursive call on object");
 					DynamicMessage innerInstance = DynamicMessage.getDefaultInstance(field.getMessageType());
 					
 					matchingSubObjects = 
@@ -1218,9 +1226,12 @@ public class ProtoDB {
 							if (f.getName().equalsIgnoreCase("ID"))
 								ids.add((int)m.getField(f));
 					
+					Log(String.format("Number of IDs found :: %s", ids.size()));
+					
 				}
 				else if (field.getJavaType() == JavaType.ENUM) {
-					// if field is an enum field then make a call to then enum find function 
+					// if field is an enum field then make a call to then enum find function
+					Log("Field is an enum. Searching enum field");
 					ids =
 						find(field.getEnumType(),
 							scanner,
@@ -1230,7 +1241,12 @@ public class ProtoDB {
 				}
 				
 				// get all messages of this type that have matching sub objects
-				prep.prepareStatement(scanner.getSearchStatementSubObject(field, ids));
+				Log("Preparing statement --::>" );
+				
+				String statement = scanner.getSearchStatementSubObject(field, ids);
+				Log(statement);
+				
+				prep.prepareStatement(statement);
 			}
 		}
 		
@@ -1258,6 +1274,8 @@ public class ProtoDB {
 			throw new SearchFieldNotFoundException(fieldName, scanner.getObjectName());
 		
 		prep = new DBStatement(matchingField, scanner.getSearchStatement(matchingField, isLikeFilter), conn);
+		
+		Log(String.format("Adding argument :: %s", searchFor));
 		
 		if (matchingField.getJavaType() == JavaType.BOOLEAN)
 			prep.addString((Boolean)searchFor ? "Y": "N");

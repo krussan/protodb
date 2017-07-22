@@ -40,6 +40,12 @@ message ObjectTwo {
   optional int32 otis = 4;
 }
 
+message ObjectThree {
+  required int32 ID = 1;
+  optional SimpleTest apa = 2;
+  optional ObjectTwo bepa = 3;
+}
+
 message RepSimpleList {
   required int32 ID = 1;
   repeated string list_of_strings = 2;
