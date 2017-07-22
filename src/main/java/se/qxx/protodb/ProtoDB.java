@@ -1357,6 +1357,29 @@ public class ProtoDB {
 		return b;
 		
 	}
+	
+	public void executeNonQuery(String sql) throws Exception {
+		Connection conn = null;
+
+		try {
+			conn = this.initialize();
+			PreparedStatement prep = conn.prepareStatement(sql);
+			prep.execute();
+		}
+		catch (SQLException | ClassNotFoundException e) {			
+			try {
+				conn.rollback();
+			} catch (SQLException sqlEx) {}
+
+			System.out.println("Exception in ProtoDB!");
+			e.printStackTrace();
+
+			throw e;
+		}		
+		finally {
+			this.disconnect(conn);
+		}
+	}
 
 	//---------------------------------------------------------------------------------
 	//----------------------------------------------------------------------  LOG
