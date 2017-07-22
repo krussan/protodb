@@ -28,3 +28,4 @@ log*.txt
 .metadata
 
 /target/
+protodb_search_test.db
