@@ -10,8 +10,10 @@ import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
 
+import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.EnumDescriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
+import com.google.protobuf.DynamicMessage;
 import com.google.protobuf.MessageOrBuilder;
 import com.google.protobuf.Descriptors.FieldDescriptor;
 
@@ -37,6 +39,8 @@ public class ProtoDBScanner {
 	private HashMap<String, Integer> objectIDs = new HashMap<String,Integer>();
 	private HashMap<String, Integer> blobIDs = new HashMap<String,Integer>();
 
+	private HashMap<String, String> aliases = new HashMap<String, String>();
+	
 	public ProtoDBScanner(MessageOrBuilder b) {
 		this.setMessage(b);
 		this.scan(b);
@@ -497,6 +501,87 @@ public class ProtoDBScanner {
 		Object o = this.getMessage().getField(this.getIdField());
 		return (int)o;
 	}
+	
+	public String getJoinQuery(boolean getBlobs) {
+		HashMap<String, String> aliases = new HashMap<String, String>();
+		String currentAlias = "A";
 
+		String columnList = ProtoDBScanner.getColumnListForJoin(this, aliases, currentAlias, getBlobs);
+		columnList = StringUtils.left(columnList, columnList.length() - 2);
+		String joinList = ProtoDBScanner.getJoinClause(this, aliases);
+		
+		return "SELECT ";
+		
+	}
+	
+	public static String getJoinClause(ProtoDBScanner parentScanner, ProtoDBScanner scanner, HashMap<String, String> aliases) {
+		
+		String joinClause = StringUtils.EMPTY;
+		
+		if (parentScanner == null)
+			joinClause = " FROM ";
+		else
+			joinClause = " LEFT JOIN ";
+			
+		joinClause += scanner.getObjectName() + " AS " + aliases.get(scanner.getObjectName());
+		
+		if (parentScanner != null) {
+//			joinClause += " ON "
+		}
+		
+		for (FieldDescriptor f : scanner.getObjectFields()) { 
+			DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
+			ProtoDBScanner other = new ProtoDBScanner(mg);
+			
+			String linkTable = scanner.getLinkTableName(other, f.getName()) 
+			joinClause += String.format(" LEFT JOIN %s ON L%s._%s_ID = , args) 
+		}
+		
+		return joinClause;
+		
+	}
+
+	public static String getColumnListForJoin(ProtoDBScanner scanner, HashMap<String, String> aliases, String currentAlias, boolean getBlobs) {
+		// the purpose of this is to create a sql query that joins all table together
+		// Each column returned should have a previs with the object identity followed by
+		// underscore and the column name. I.e. Object_field. This to avoid conflict with
+		// each other on field names. All link tables and foreign key columns should be excluded.
+		aliases.put(scanner.getObjectName(), currentAlias);
+		
+		String columnList = StringUtils.EMPTY;
+		
+		for (FieldDescriptor b : scanner.getBasicFields()) {
+			columnList += String.format("%s.%s AS %s_%s, ", currentAlias, b.getName(), currentAlias, b.getName()); 
+		}
+		
+		int ac = 0;
+		
+		for (FieldDescriptor f : scanner.getObjectFields()) {
+			String otherAlias = currentAlias + ((char)(65 + ac));
+			
+			DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
+
+			ProtoDBScanner other = new ProtoDBScanner(mg);
+			columnList += ProtoDBScanner.getColumnListForJoin(other, aliases, otherAlias, getBlobs);
+			
+			ac++;
+		}
+		
+		if (getBlobs) {
+			//TODO!
+			for (FieldDescriptor f : scanner.getBlobFields()) {
+				String otherAlias = currentAlias + ((char)(65 + ac));
+				
+				ac++;	
+			}
+		}
+
+//		this.getBasicFields();
+//		this.getRepeatedBasicFields();
+//		this.getRepeatedObjectFields();
+//		this.getBlobFields()();
+		
+		return columnList;
+	}
 
 }

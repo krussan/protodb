@@ -1012,13 +1012,20 @@ public class ProtoDB {
 	//---------------------------------------------------------------------------------
 
 	public <T extends Message> List<T> find(T instance, String fieldName, Object searchFor, Boolean isLikeOperator) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
-		return find(instance, fieldName, searchFor, isLikeOperator, null, -1);
+		return find(instance, fieldName, searchFor, isLikeOperator, null, -1, -1);
 	}
 	
 	public <T extends Message> List<T> find(T instance, String fieldName, Object searchFor, Boolean isLikeOperator, List<String> excludedObjects) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
-		return find(instance, fieldName, searchFor, isLikeOperator, excludedObjects, -1);
+		return find(instance, fieldName, searchFor, isLikeOperator, excludedObjects, -1, -1);
 	}
 	
+	
+
+	public <T extends Message> List<T> find(T instance, String fieldName, Object searchFor, Boolean isLikeOperator, int numberOfResults, int offset) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
+		return find(instance, fieldName, searchFor, isLikeOperator, null, numberOfResults, offset);
+	}
+	
+
 	/***
 	 * 
 	 * @param instance			An (empty) instance of the protobuf entity to initiate search on 
@@ -1035,7 +1042,7 @@ public class ProtoDB {
 	 * @throws SQLException
 	 * @throws SearchFieldNotFoundException
 	 */
-	public <T extends Message> List<T> find(T instance, String fieldName, Object searchFor, Boolean isLikeOperator, List<String> excludedObjects,  int maxResults) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
+	public <T extends Message> List<T> find(T instance, String fieldName, Object searchFor, Boolean isLikeOperator, List<String> excludedObjects,  int numberOfResults, int offset) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
 		// if field is repeated -> search link objects
 		Connection conn = null;
 		List<T> result = new ArrayList<T>();
@@ -1043,7 +1050,7 @@ public class ProtoDB {
 		try {
 			conn = this.initialize();
 			
-			result = this.find(instance, getFieldQueue(fieldName), searchFor, isLikeOperator, excludedObjects, maxResults, conn);
+			result = this.find(instance, getFieldQueue(fieldName), searchFor, isLikeOperator, excludedObjects, conn, numberOfResults, offset);
 			
 		}
 		catch (Exception e) {
@@ -1059,7 +1066,7 @@ public class ProtoDB {
 		return result;		
 	}
 	
-	private <T extends Message> List<T> find(T instance, Queue<String> fieldQueue, Object searchFor, Boolean isLikeFilter, List<String> excludedObjects, int maxResults, Connection conn) throws SearchFieldNotFoundException, SQLException, ClassNotFoundException {
+	private <T extends Message> List<T> find(T instance, Queue<String> fieldQueue, Object searchFor, Boolean isLikeFilter, List<String> excludedObjects, Connection conn, int numberOfResults, int offset) throws SearchFieldNotFoundException, SQLException, ClassNotFoundException {
 		List<T> result = new ArrayList<T>();
 		ProtoDBScanner scanner = new ProtoDBScanner(instance);
 		
@@ -1078,13 +1085,13 @@ public class ProtoDB {
 			// object fields
 			// Find the object field matching the first name in the field name path.
 			Log("Searching object fields");
-			prep = searchObjectFields(fieldQueue, searchFor, isLikeFilter, excludedObjects, maxResults, conn, scanner,
+			prep = searchObjectFields(fieldQueue, searchFor, isLikeFilter, excludedObjects, numberOfResults, offset, conn, scanner,
 					firstField);
 			
 			// if not found search all repeated fields
 			Log("Searching repeated fields");
 			if (prep != null && prep.getMatchingField() == null) {
-				prep = searchRepeatedFields(searchFor, isLikeFilter, excludedObjects, maxResults, conn, scanner,
+				prep = searchRepeatedFields(searchFor, isLikeFilter, excludedObjects, numberOfResults, offset, conn, scanner,
 						firstField, fieldQueue);
 				
 			}
@@ -1094,7 +1101,7 @@ public class ProtoDB {
 		// the search method above.
 		if (prep != null && prep.getStatement() != null) {
 			ResultSet rs = prep.executeQuery();
-			result = getAllObjects(instance, maxResults, conn, rs, excludedObjects);
+			result = getAllObjects(instance, numberOfResults, conn, rs, excludedObjects);
 		}
 		
 		return result;
@@ -1141,7 +1148,8 @@ public class ProtoDB {
 			Object searchFor, 
 			Boolean isLikeFilter, 
 			List<String> excludedObjects,
-			int maxResults, 
+			int numberOfResults,
+			int offset, 
 			Connection conn, 
 			ProtoDBScanner scanner, 
 			String firstField, 
@@ -1164,8 +1172,9 @@ public class ProtoDB {
 							, searchFor
 							, isLikeFilter
 							, excludedObjects
-							, maxResults
-							, conn);
+							, conn
+							, numberOfResults
+							, offset);
 				
 				if (dmObjects.size() > 0) {
 					List<Integer> ids = new ArrayList<Integer>();
@@ -1192,7 +1201,8 @@ public class ProtoDB {
 			Object searchFor, 
 			Boolean isLikeFilter,
 			List<String> excludedObjects, 
-			int maxResults, 
+			int numberOfResults,
+			int offset, 
 			Connection conn, 
 			ProtoDBScanner scanner, 
 			String firstField) throws SearchFieldNotFoundException, SQLException, ClassNotFoundException {
@@ -1217,8 +1227,9 @@ public class ProtoDB {
 							searchFor,
 							isLikeFilter,
 							excludedObjects,
-							maxResults,
-							conn);
+							conn,
+							numberOfResults,
+							offset);
 					
 					// for each matching sub instance add the id's to a list
 					FieldDescriptor idField = field.getMessageType().findFieldByName("ID");
