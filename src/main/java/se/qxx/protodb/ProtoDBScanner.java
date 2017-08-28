@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.mutable.MutableInt;
 
 import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.EnumDescriptor;
@@ -506,47 +507,60 @@ public class ProtoDBScanner {
 		HashMap<String, String> aliases = new HashMap<String, String>();
 		String currentAlias = "A";
 
-		String columnList = ProtoDBScanner.getColumnListForJoin(this, aliases, currentAlias, getBlobs);
+		String columnList = ProtoDBScanner.getColumnListForJoin(this, aliases, currentAlias, StringUtils.EMPTY, getBlobs);
 		columnList = StringUtils.left(columnList, columnList.length() - 2);
-		String joinList = ProtoDBScanner.getJoinClause(this, aliases);
+		String joinList = ProtoDBScanner.getJoinClause(null, this, StringUtils.EMPTY, aliases, new MutableInt(1), StringUtils.EMPTY, StringUtils.EMPTY);
 		
-		return "SELECT ";
-		
+		return String.format("SELECT %s FROM %s AS A %s"
+				, columnList
+				, this.getObjectName()
+				, joinList);
 	}
 	
-	public static String getJoinClause(ProtoDBScanner parentScanner, ProtoDBScanner scanner, HashMap<String, String> aliases) {
+	public static String getJoinClause(ProtoDBScanner parentScanner, ProtoDBScanner scanner, String parentFieldName, HashMap<String, String> aliases, MutableInt linkTableIterator, String parentHierarchy, String fieldHierarchy) {
 		
 		String joinClause = StringUtils.EMPTY;
-		
-		if (parentScanner == null)
-			joinClause = " FROM ";
-		else
-			joinClause = " LEFT JOIN ";
-			
-		joinClause += scanner.getObjectName() + " AS " + aliases.get(scanner.getObjectName());
-		
+					
 		if (parentScanner != null) {
-//			joinClause += " ON "
+			joinClause += String.format("LEFT JOIN %s AS L%s ", 
+					parentScanner.getLinkTableName(scanner, parentFieldName), 
+					linkTableIterator);
+			
+			joinClause += String.format(" ON L%s._%s_ID = %s.ID ", 
+					linkTableIterator, 
+					parentScanner.getObjectName().toLowerCase(), 
+					aliases.get(parentHierarchy));
+			
+			joinClause += String.format("LEFT JOIN %s AS %s ", 
+					scanner.getObjectName(), 
+					aliases.get(scanner.getObjectName()));
+			
+			joinClause += String.format(" ON L%s._%s_ID = %s.ID ", 
+					linkTableIterator, 
+					scanner.getObjectName().toLowerCase(), 
+					aliases.get(fieldHierarchy));
+			
+			linkTableIterator.increment();
 		}
 		
 		for (FieldDescriptor f : scanner.getObjectFields()) { 
 			DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
 			ProtoDBScanner other = new ProtoDBScanner(mg);
+			String hierarchy = String.format("%s.%s", fieldHierarchy, f.getName());
 			
-			String linkTable = scanner.getLinkTableName(other, f.getName()) 
-			joinClause += String.format(" LEFT JOIN %s ON L%s._%s_ID = , args) 
+			joinClause += getJoinClause(scanner, other, f.getName(), aliases, linkTableIterator, fieldHierarchy, hierarchy); 
 		}
 		
 		return joinClause;
 		
 	}
+	
 
-	public static String getColumnListForJoin(ProtoDBScanner scanner, HashMap<String, String> aliases, String currentAlias, boolean getBlobs) {
+	public static String getColumnListForJoin(ProtoDBScanner scanner, HashMap<String, String> aliases, String currentAlias, String parentHierarchy, boolean getBlobs) {
 		// the purpose of this is to create a sql query that joins all table together
 		// Each column returned should have a previs with the object identity followed by
 		// underscore and the column name. I.e. Object_field. This to avoid conflict with
 		// each other on field names. All link tables and foreign key columns should be excluded.
-		aliases.put(scanner.getObjectName(), currentAlias);
 		
 		String columnList = StringUtils.EMPTY;
 		
@@ -562,7 +576,10 @@ public class ProtoDBScanner {
 			DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
 
 			ProtoDBScanner other = new ProtoDBScanner(mg);
-			columnList += ProtoDBScanner.getColumnListForJoin(other, aliases, otherAlias, getBlobs);
+			String hierarchy = String.format("%s.%s", parentHierarchy, f.getName());
+			aliases.put(hierarchy, currentAlias);
+
+			columnList += ProtoDBScanner.getColumnListForJoin(other, aliases, otherAlias, hierarchy, getBlobs);
 			
 			ac++;
 		}
