@@ -196,26 +196,16 @@ public class TestSearchRecursive {
 				+ "ABBA.[ss] AS ABBA_ss "
 //				+ "ABBA.by AS ABBA_by "
 				+ "FROM ObjectThree AS A "
-				+ "LEFT JOIN ObjectThreeSimpleTest_Apa AS L1 "
-				+ " ON L1._objectthree_ID = A.ID "
 				+ "LEFT JOIN SimpleTest AS AA "
-				+ " ON L1._simpletest_ID = AA.ID "
-				+ "LEFT JOIN ObjectThreeObjectTwo_Bepa AS L2 "
-				+ " ON L2._objectthree_ID = A.ID "
+				+ " ON A._apa_ID = AA.ID "
 				+ "LEFT JOIN ObjectTwo AS AB "
-				+ " ON L2._objecttwo_ID = AB.ID "
-				+ "LEFT JOIN ObjectTwoSimpleTest_TestOne AS L3 "
-				+ " ON L3._objecttwo_ID = AB.ID "
+				+ " ON A._bepa_ID = AB.ID "
 				+ "LEFT JOIN SimpleTest AS ABA "
-				+ " ON L3._simpletest_ID = ABA.ID "
-				+ "LEFT JOIN ObjectTwoObjectOne_TestTwo AS L4 "
-				+ " ON L4._objecttwo_ID = AB.ID "
+				+ " ON AB._testone_ID = ABA.ID "
 				+ "LEFT JOIN ObjectOne AS ABB "
-				+ " ON L4._objectone_ID = ABB.ID "
-				+ "LEFT JOIN ObjectOneSimpleTest_TestOne AS L5 "
-				+ " ON L5._objectone_ID = ABB.ID "
+				+ " ON AB._testtwo_ID = ABB.ID "
 				+ "LEFT JOIN SimpleTest AS ABBA "
-				+ " ON L5._simpletest_ID = ABBA.ID ";
+				+ " ON ABB._testone_ID = ABBA.ID ";
 				
 				
 				assertEquals(expected, result.getJoinClause());

@@ -1166,8 +1166,7 @@ public class ProtoDB {
 			
 			ResultSet rs = prep.executeQuery();
 
-			//return joinClause.getResult(rs);
-			return result;
+			return joinClause.getResult(instance, rs);
 		}
 		catch (Exception e) {
 			System.out.println("Exception in ProtoDB!");

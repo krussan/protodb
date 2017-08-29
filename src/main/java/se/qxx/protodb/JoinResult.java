@@ -88,7 +88,7 @@ public class JoinResult {
 		
 		for(int i = 0; i<this.getWhereParameters().size(); i++) {
 			Object o = this.getWhereParameters().get(i);
-			prep.setObject(i, o);
+			prep.setObject(i + 1, o);
 		}
 		
 		return prep;
@@ -97,7 +97,7 @@ public class JoinResult {
 	public <T extends Message> List<T> getResult(T instance, ResultSet rs) throws SQLException {
 		List<T> result = new ArrayList<T>();
 		while (rs.next()) {
-			result.add(getResult(instance, rs, "A"));
+			result.add(getResult(instance, rs, StringUtils.EMPTY));
 		}
 		
 		return result;
@@ -122,7 +122,7 @@ public class JoinResult {
 			String columnName = String.format("%s_%s", alias, f.getName());
 			
 			Object o = rs.getObject(columnName);
-			b.setField(f, o);
+			Populator.populateField(b, f, o);
 		}
 		
 		int ac = 0;

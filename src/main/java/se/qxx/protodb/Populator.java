@@ -28,32 +28,36 @@ public class Populator {
 			}
 			else {
 				Object o = rs.getObject(field.getName().toLowerCase());
-				if (field.getJavaType() == JavaType.FLOAT)
-					b.setField(field, ((Double)o).floatValue());
-				else if (field.getJavaType() == JavaType.INT)
-					if (o instanceof Long)
-						b.setField(field, ((Long)o).intValue()); 
-					else						
-						b.setField(field, ((Integer)o).intValue());
-				else if (field.getJavaType() == JavaType.LONG)
-					if (o instanceof Long)
-						b.setField(field, ((Long)o).longValue()); 
-					else						
-						b.setField(field, ((Integer)o).longValue());
-				else if (field.getJavaType() == JavaType.BOOLEAN ) {
-					if (o instanceof Integer) 
-						b.setField(field, ((int)o) == 1 ? true : false);
-					else
-						b.setField(field, ((String)o).equals("Y") ? true : false);	
-				}
-					
-				else
-					b.setField(field, o);
-				
-				
-				;
+				populateField(b, field, o);
 			}
 		}
+	}
+
+	public static void populateField(Builder b, FieldDescriptor field, Object o) {
+		if (field.getJavaType() == JavaType.FLOAT)
+			b.setField(field, ((Double)o).floatValue());
+		else if (field.getJavaType() == JavaType.INT)
+			if (o instanceof Long)
+				b.setField(field, ((Long)o).intValue()); 
+			else						
+				b.setField(field, ((Integer)o).intValue());
+		else if (field.getJavaType() == JavaType.LONG)
+			if (o instanceof Long)
+				b.setField(field, ((Long)o).longValue()); 
+			else						
+				b.setField(field, ((Integer)o).longValue());
+		else if (field.getJavaType() == JavaType.BOOLEAN ) {
+			if (o instanceof Integer) 
+				b.setField(field, ((int)o) == 1 ? true : false);
+			else
+				b.setField(field, ((String)o).equals("Y") ? true : false);	
+		}
+			
+		else
+			b.setField(field, o);
+		
+		
+		;
 	}
 
 	public static void populateObjectFields(ProtoDB db, Connection conn, Builder b, ProtoDBScanner scanner, ResultSet rs, List<String> excludedObjects)
