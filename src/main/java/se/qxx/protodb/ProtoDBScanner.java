@@ -506,6 +506,7 @@ public class ProtoDBScanner {
 	public String getJoinQuery(boolean getBlobs) {
 		HashMap<String, String> aliases = new HashMap<String, String>();
 		String currentAlias = "A";
+		aliases.put(StringUtils.EMPTY, "A");
 
 		String columnList = ProtoDBScanner.getColumnListForJoin(this, aliases, currentAlias, StringUtils.EMPTY, getBlobs);
 		columnList = StringUtils.left(columnList, columnList.length() - 2);
@@ -533,7 +534,7 @@ public class ProtoDBScanner {
 			
 			joinClause += String.format("LEFT JOIN %s AS %s ", 
 					scanner.getObjectName(), 
-					aliases.get(scanner.getObjectName()));
+					aliases.get(fieldHierarchy));
 			
 			joinClause += String.format(" ON L%s._%s_ID = %s.ID ", 
 					linkTableIterator, 
@@ -577,7 +578,7 @@ public class ProtoDBScanner {
 
 			ProtoDBScanner other = new ProtoDBScanner(mg);
 			String hierarchy = String.format("%s.%s", parentHierarchy, f.getName());
-			aliases.put(hierarchy, currentAlias);
+			aliases.put(hierarchy, otherAlias);
 
 			columnList += ProtoDBScanner.getColumnListForJoin(other, aliases, otherAlias, hierarchy, getBlobs);
 			

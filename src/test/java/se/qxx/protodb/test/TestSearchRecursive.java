@@ -209,11 +209,11 @@ public class TestSearchRecursive {
 				+ "LEFT JOIN ObjectTwoObjectOne_TestTwo AS L4 "
 				+ " ON L4._objecttwo_ID = AB.ID "
 				+ "LEFT JOIN ObjectOne AS ABB "
-				+ " ON L4._objectone_ID = ABB.ID"
+				+ " ON L4._objectone_ID = ABB.ID "
 				+ "LEFT JOIN ObjectOneSimpleTest_TestOne AS L5 "
 				+ " ON L5._objectone_ID = ABB.ID "
 				+ "LEFT JOIN SimpleTest AS ABBA "
-				+ " ON L5._simpletest_ID = ABBA.ID";
+				+ " ON L5._simpletest_ID = ABBA.ID ";
 				
 				
 				assertEquals(expected, actual);
