@@ -114,7 +114,8 @@ public class JoinResult {
 //		populateRepeatedObjectFields(id, excludedObjects, conn, b, scanner);
 //
 //		// populate list of basic types
-//		populateRepeatedBasicFields(id, conn, b, scanner);			
+//		populateRepeatedBasicFields(id, conn, b, scanner);
+		
 		ProtoDBScanner scanner = new ProtoDBScanner(instance);
 		
 		for (FieldDescriptor f : scanner.getBasicFields()) {
@@ -138,27 +139,6 @@ public class JoinResult {
 		}
 	
 		return (T) b.build();
-//		ResultSet rs = getResultSetForObject(id, conn, b, scanner);
-//		
-//		int rowcount = 0;
-//		while(rs.next()) {
-//			// populate object fields
-//			populateObjectFields(conn, b, scanner, rs, excludedObjects);
-//			
-//			// populate blobs			
-//			populateBlobs(conn, b, scanner, rs);
-//			
-//			// populate basic fields			
-//			populateBasicFields(id, b, scanner, rs);	
-//			
-//			rowcount++;
-//		}
-//		
-//		if (rowcount>0)
-//			return (T) b.build();
-//		else
-//			return null;
-		
 	}
 	
 	
