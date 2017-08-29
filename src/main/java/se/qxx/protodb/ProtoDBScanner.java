@@ -378,7 +378,7 @@ public class ProtoDBScanner {
 		return prep;
 	}
 
-	private void compileArgument(int i, PreparedStatement prep, JavaType jType, Object value) throws SQLException {
+	private static void compileArgument(int i, PreparedStatement prep, JavaType jType, Object value) throws SQLException {
 		if (jType == JavaType.BOOLEAN)
 			prep.setBoolean(i, (boolean)value);
 		else if (jType == JavaType.DOUBLE)
@@ -503,7 +503,7 @@ public class ProtoDBScanner {
 		return (int)o;
 	}
 	
-	public String getJoinQuery(boolean getBlobs) {
+	public JoinResult getJoinQuery(boolean getBlobs) {
 		HashMap<String, String> aliases = new HashMap<String, String>();
 		String currentAlias = "A";
 		aliases.put(StringUtils.EMPTY, "A");
@@ -512,10 +512,13 @@ public class ProtoDBScanner {
 		columnList = StringUtils.left(columnList, columnList.length() - 2);
 		String joinList = ProtoDBScanner.getJoinClause(null, this, StringUtils.EMPTY, aliases, new MutableInt(1), StringUtils.EMPTY, StringUtils.EMPTY);
 		
-		return String.format("SELECT %s FROM %s AS A %s"
+		String sql = String.format("SELECT %s FROM %s AS A %s"
 				, columnList
 				, this.getObjectName()
 				, joinList);
+		
+		return new JoinResult(sql, aliases);
+		 
 	}
 	
 	public static String getJoinClause(ProtoDBScanner parentScanner, ProtoDBScanner scanner, String parentFieldName, HashMap<String, String> aliases, MutableInt linkTableIterator, String parentHierarchy, String fieldHierarchy) {
@@ -566,7 +569,7 @@ public class ProtoDBScanner {
 		String columnList = StringUtils.EMPTY;
 		
 		for (FieldDescriptor b : scanner.getBasicFields()) {
-			columnList += String.format("%s.%s AS %s_%s, ", currentAlias, b.getName(), currentAlias, b.getName()); 
+			columnList += String.format("%s.[%s] AS %s_%s, ", currentAlias, b.getName(), currentAlias, b.getName()); 
 		}
 		
 		int ac = 0;

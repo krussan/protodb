@@ -35,7 +35,6 @@ import com.google.protobuf.Descriptors.FieldDescriptor;
 
 public class ProtoDB {
 	private String connectionString = "jdbc:sqlite:jukebox.db";
-	private String logfile = "";
 	private boolean populateBlobs = true;
 	
 	//---------------------------------------------------------------------------------
@@ -72,7 +71,7 @@ public class ProtoDB {
 
 	public ProtoDB(String databaseFilename, String logFilename) {
 		this.setDatabase(databaseFilename);
-		this.setLogfile(logFilename);
+		Logger.setLogfile(logFilename);
 	}	
 
 //	protected List<String> getColumnList(Connection conn) throws SQLException {
@@ -286,14 +285,14 @@ public class ProtoDB {
 					+ "ID INTEGER PRIMARY KEY AUTOINCREMENT,"
 					+ "value TEXT NOT NULL)";
 
-			Log(sql);
+			Logger.log(sql);
 			
 			PreparedStatement prep = conn.prepareStatement(sql);
 			prep.execute();
 			
 			for (EnumValueDescriptor value : fieldName.getValues()) {
 				sql = "INSERT INTO " + tableName + " (value) VALUES (?)";
-				Log(sql);
+				Logger.log(sql);
 				
 				prep = conn.prepareStatement(sql);
 				prep.setString(1, value.getName());
@@ -309,7 +308,7 @@ public class ProtoDB {
 	}
 
 	private void executeStatement(String sql, Connection conn) throws SQLException {
-		Log(sql);
+		Logger.log(sql);
 		
 		PreparedStatement prep = conn.prepareStatement(sql);
 		prep.execute();			
@@ -364,30 +363,31 @@ public class ProtoDB {
 	 * @throws SQLException 
 	 */
 	@SuppressWarnings("unchecked")
-	private <T extends Message> T get(int id, List<String> excludedObjects, T instance, Connection conn) throws SQLException{
+	<T extends Message> T get(int id, List<String> excludedObjects, T instance, Connection conn) throws SQLException{
 		Builder b = instance.newBuilderForType();
 
 		ProtoDBScanner scanner = new ProtoDBScanner(instance);
-		Log(String.format("Populating object %s :: %s", scanner.getObjectName(), id));
+		Logger.log(String.format("Populating object %s :: %s", scanner.getObjectName(), id));
 		
 		// populate list of sub objects
-		populateRepeatedObjectFields(id, excludedObjects, conn, b, scanner);
+		Populator.populateRepeatedObjectFields(this, id, excludedObjects, conn, b, scanner);
 
 		// populate list of basic types
-		populateRepeatedBasicFields(id, conn, b, scanner);			
+		Populator.populateRepeatedBasicFields(id, conn, b, scanner);			
 		
 		ResultSet rs = getResultSetForObject(id, conn, b, scanner);
 		
 		int rowcount = 0;
 		while(rs.next()) {
 			// populate object fields
-			populateObjectFields(conn, b, scanner, rs, excludedObjects);
+			Populator.populateObjectFields(this, conn, b, scanner, rs, excludedObjects);
 			
-			// populate blobs			
-			populateBlobs(conn, b, scanner, rs);
+			// populate blobs		
+			if (this.isPopulateBlobsActive())
+				Populator.populateBlobs(conn, b, scanner, rs);
 			
 			// populate basic fields			
-			populateBasicFields(id, b, scanner, rs);	
+			Populator.populateBasicFields(id, b, scanner, rs);	
 			
 			rowcount++;
 		}
@@ -401,7 +401,7 @@ public class ProtoDB {
 	private ResultSet getResultSetForObject(int id, Connection conn, Builder b, ProtoDBScanner scanner)
 			throws SQLException {
 		String sql = scanner.getSelectStatement(id);
-		Log(sql);
+		Logger.log(sql);
 		
 		PreparedStatement prep = conn.prepareStatement(sql);
 		prep.setInt(1, id);
@@ -411,194 +411,8 @@ public class ProtoDB {
 		return rs;
 	}
 
-	private void populateRepeatedBasicFields(int id, Connection conn, Builder b, ProtoDBScanner scanner)
-			throws SQLException {
-		for (FieldDescriptor field : scanner.getRepeatedBasicFields()) {
-			Log(String.format("Populating repeated basic field :: %s", field.getName()));
-			
-			String sql = scanner.getBasicLinkTableSelectStatement(field);
-			Log(sql);
-			
-			PreparedStatement prep = conn.prepareStatement(sql);
-			prep.setInt(1, id);
-			
-			ResultSet rs = prep.executeQuery();
-			
-			while (rs.next()) {
-				b.addRepeatedField(field, rs.getObject("value"));
-			}
-			rs.close();
-		}
-	}
 
-	private void populateRepeatedObjectFields(int id, List<String> excludedObjects, Connection conn, Builder b, ProtoDBScanner scanner)
-			throws SQLException {
-		
-		for (FieldDescriptor field : scanner.getRepeatedObjectFields()) {
-			Log(String.format("Populating repeated object field :: %s", field.getName()));
-			getLinkObject(id, excludedObjects, b, scanner, field, conn);
-		}
-	}
 
-	private void populateBasicFields(int id, Builder b, ProtoDBScanner scanner, ResultSet rs) throws SQLException {
-		for (FieldDescriptor field : scanner.getBasicFields()) {
-			Log(String.format("Populating basic field :: %s", field.getName()));
-			
-			if (field.getName().equalsIgnoreCase("ID")) {
-				b.setField(field, id);
-			}
-			else {
-				Object o = rs.getObject(field.getName().toLowerCase());
-				if (field.getJavaType() == JavaType.FLOAT)
-					b.setField(field, ((Double)o).floatValue());
-				else if (field.getJavaType() == JavaType.INT)
-					if (o instanceof Long)
-						b.setField(field, ((Long)o).intValue()); 
-					else						
-						b.setField(field, ((Integer)o).intValue());
-				else if (field.getJavaType() == JavaType.LONG)
-					if (o instanceof Long)
-						b.setField(field, ((Long)o).longValue()); 
-					else						
-						b.setField(field, ((Integer)o).longValue());
-				else if (field.getJavaType() == JavaType.BOOLEAN ) {
-					if (o instanceof Integer) 
-						b.setField(field, ((int)o) == 1 ? true : false);
-					else
-						b.setField(field, ((String)o).equals("Y") ? true : false);	
-				}
-					
-				else
-					b.setField(field, o);
-				
-				
-				;
-			}
-		}
-	}
-
-	private void populateBlobs(Connection conn, Builder b, ProtoDBScanner scanner, ResultSet rs) throws SQLException {
-		if (this.isPopulateBlobsActive()) {
-			for (FieldDescriptor field : scanner.getBlobFields()) {
-				int otherID = rs.getInt(scanner.getObjectFieldName(field));
-				Log(String.format("Populating blob id :: %s", otherID));
-				
-				byte[] data = getBlob(otherID, conn);
-				
-				if (data != null)
-					b.setField(field, ByteString.copyFrom(data));
-			}
-		}
-	}
-
-	private void populateObjectFields(Connection conn, Builder b, ProtoDBScanner scanner, ResultSet rs, List<String> excludedObjects)
-			throws SQLException {
-		
-		for (FieldDescriptor field : scanner.getObjectFields()) {
-			Log(String.format("Populating object fields :: %s", field.getName()));
-			
-			int otherID = rs.getInt(scanner.getObjectFieldName(field));
-			Log(String.format("OtherID :: %s", otherID));
-			
-			if (field.getJavaType() == JavaType.MESSAGE && !isExcludedField(field.getName(), excludedObjects)) {
-				DynamicMessage innerInstance = DynamicMessage.getDefaultInstance(field.getMessageType());
-				DynamicMessage otherMsg = get(otherID, stripExcludedFields(field.getName(), excludedObjects), innerInstance, conn);
-				
-				if (otherMsg != null)
-					b.setField(field, otherMsg);
-			}
-			else if (field.getJavaType() == JavaType.ENUM){
-				b.setField(field, field.getEnumType().findValueByNumber(otherID));
-			}
-		}
-	}
-
-	private byte[] getBlob(int otherID, Connection conn) throws SQLException {
-		PreparedStatement prep = conn.prepareStatement("SELECT data FROM BlobData WHERE ID = ?");
-		prep.setInt(1, otherID);
-		byte[] data = null;
-		
-		ResultSet rs = prep.executeQuery();
-		while(rs.next()){
-			data = rs.getBytes("data");
-		}
-		rs.close();
-
-		
-		return data;
-	}
-
-	protected void getLinkObject(int id
-			, List<String> excludedObjects
-			, Builder b
-			, ProtoDBScanner scanner			
-			, FieldDescriptor field
-			, Connection conn)
-			throws SQLException {
-		
-		Descriptor mt = field.getMessageType();
-		DynamicMessage mg = DynamicMessage.getDefaultInstance(mt);
-		
-		if (mg instanceof MessageOrBuilder) {
-			if (!isExcludedField(field.getName(), excludedObjects)) {
-			
-				MessageOrBuilder b2 = (MessageOrBuilder)mg;
-				ProtoDBScanner other = new ProtoDBScanner(b2);
-			
-				if (field.isRepeated()) {
-					// get select statement for link table
-					String sql = scanner.getLinkTableSelectStatement(other, field.getName());
-					Log(sql);
-					
-					PreparedStatement prep = conn.prepareStatement(sql);
-					prep.setInt(1, id);
-					
-					ResultSet rs = prep.executeQuery();
-					
-					int c = 0;
-					while(rs.next()) {
-						// get sub objects
-						DynamicMessage otherMsg = get(rs.getInt("ID"), stripExcludedFields(field.getName(), excludedObjects), mg, conn);
-						b.addRepeatedField(field, otherMsg);
-						c++;
-					}
-					
-					Log(String.format("Number of records retreived :: %s", c));
-					
-					rs.close();
-				}
-			}
-		}
-	}
-
-	private boolean isExcludedField(String name, List<String> excludedObjects) {
-		if (excludedObjects == null)
-			return false;
-		
-		for (String fields : excludedObjects) {
-			String[] fieldParts = StringUtils.split(fields, ".");
-			
-			if (fieldParts.length == 1 && StringUtils.equalsIgnoreCase(name, fieldParts[0]))
-				return true;
-		}
-		
-		return false;
-	}
-	
-	private List<String> stripExcludedFields(String firstField, List<String> excludedObjects) {
-		List<String> strippedList = new ArrayList<String>();
-		
-		if (excludedObjects != null) {
-			for (String fields : excludedObjects) {
-				int ii = fields.indexOf(".");
-	
-				if (ii >= 0 && StringUtils.equalsIgnoreCase(fields.substring(0, ii), firstField))
-					strippedList.add(fields.substring(ii + 1));
-			}
-		}
-		
-		return strippedList;
-	}
 	
 	//---------------------------------------------------------------------------------
 	//----------------------------------------------------------------------  SAVE
@@ -755,7 +569,7 @@ public class ProtoDB {
 	
 	private void deleteBasicLinkObject(ProtoDBScanner scanner, FieldDescriptor field, Connection conn) throws SQLException {
 		String sql = scanner.getBasicLinkTableDeleteStatement(field);
-		Log(sql);
+		Logger.log(sql);
 		
 		PreparedStatement prep = conn.prepareStatement(sql);
 		prep.setInt(1, scanner.getIdValue());
@@ -768,7 +582,7 @@ public class ProtoDB {
 			FieldDescriptor field,
 			Connection conn) throws SQLException {
 		String sql = scanner.getLinkTableDeleteStatement(other, field.getName());
-		Log(sql);
+		Logger.log(sql);
 		
 		PreparedStatement prep = conn.prepareStatement(sql);
 		prep.setInt(1, scanner.getIdValue());
@@ -787,7 +601,7 @@ public class ProtoDB {
 	private void deleteBlobs(ProtoDBScanner scanner, Connection conn) throws SQLException {
 		for (FieldDescriptor field : scanner.getBlobFields()) {
 			String sql = "DELETE FROM BlobData WHERE ID IN (SELECT " + scanner.getObjectFieldName(field) + " FROM " + scanner.getObjectName() + " WHERE ID = ?)";
-			Log(sql);
+			Logger.log(sql);
 			
 			PreparedStatement prep = conn.prepareStatement(sql);
 			prep.setInt(1, scanner.getIdValue());
@@ -848,7 +662,7 @@ public class ProtoDB {
 		
 		
 		String sql = scanner.getBasicLinkInsertStatement(field);
-		Log(sql);
+		Logger.log(sql);
 		
 		PreparedStatement prep = 
 			scanner.compileLinkBasicArguments(
@@ -1072,24 +886,24 @@ public class ProtoDB {
 		
 		// Get first field
 		String firstField = fieldQueue.poll();
-		Log(String.format("Searching for field :: %s", firstField));
+		Logger.log(String.format("Searching for field :: %s", firstField));
 		
 		DBStatement prep = new DBStatement(conn);
 		
 		// If the size of the queue is zero this means that we only had one field in the queue
 		if (fieldQueue.size() == 0) {
-			Log("Last field.. preparing statement");
+			Logger.log("Last field.. preparing statement");
 			prep = prepareStatementSingleObject(firstField, searchFor, isLikeFilter, conn, scanner);
 		}
 		else {
 			// object fields
 			// Find the object field matching the first name in the field name path.
-			Log("Searching object fields");
+			Logger.log("Searching object fields");
 			prep = searchObjectFields(fieldQueue, searchFor, isLikeFilter, excludedObjects, numberOfResults, offset, conn, scanner,
 					firstField);
 			
 			// if not found search all repeated fields
-			Log("Searching repeated fields");
+			Logger.log("Searching repeated fields");
 			if (prep != null && prep.getMatchingField() == null) {
 				prep = searchRepeatedFields(searchFor, isLikeFilter, excludedObjects, numberOfResults, offset, conn, scanner,
 						firstField, fieldQueue);
@@ -1162,7 +976,7 @@ public class ProtoDB {
 		for (FieldDescriptor field : scanner.getRepeatedObjectFields()) {
 			//find sub objects that match the criteria
 			if (field.getName().equalsIgnoreCase(firstField)) {
-				Log(String.format("Found match on %s",  field.getName()));
+				Logger.log(String.format("Found match on %s",  field.getName()));
 				prep.setMatchingField(field);
 				
 				List<DynamicMessage> dmObjects = 
@@ -1211,14 +1025,14 @@ public class ProtoDB {
 		
 		for (FieldDescriptor field : scanner.getObjectFields()) {
 			if (field.getName().equalsIgnoreCase(firstField)) {
-				Log(String.format("Found match on %s",  field.getName()));
+				Logger.log(String.format("Found match on %s",  field.getName()));
 				prep.setMatchingField(field);
 				
 				List<DynamicMessage> matchingSubObjects = null;
 				List<Integer> ids = new ArrayList<Integer>();
 				if (field.getJavaType() == JavaType.MESSAGE) {
 					// If field is a sub object then make a recursive call
-					Log("Making recursive call on object");
+					Logger.log("Making recursive call on object");
 					DynamicMessage innerInstance = DynamicMessage.getDefaultInstance(field.getMessageType());
 					
 					matchingSubObjects = 
@@ -1237,12 +1051,12 @@ public class ProtoDB {
 						for (DynamicMessage m : matchingSubObjects)
 							ids.add((int)m.getField(idField));
 					}
-					Log(String.format("Number of IDs found :: %s", ids.size()));
+					Logger.log(String.format("Number of IDs found :: %s", ids.size()));
 					
 				}
 				else if (field.getJavaType() == JavaType.ENUM) {
 					// if field is an enum field then make a call to then enum find function
-					Log("Field is an enum. Searching enum field");
+					Logger.log("Field is an enum. Searching enum field");
 					ids =
 						find(field.getEnumType(),
 							scanner,
@@ -1252,10 +1066,10 @@ public class ProtoDB {
 				}
 				
 				// get all messages of this type that have matching sub objects
-				Log("Preparing statement --::>" );
+				Logger.log("Preparing statement --::>" );
 				
 				String statement = scanner.getSearchStatementSubObject(field, ids);
-				Log(statement);
+				Logger.log(statement);
 				
 				prep.prepareStatement(statement);
 			}
@@ -1286,7 +1100,7 @@ public class ProtoDB {
 		
 		prep = new DBStatement(matchingField, scanner.getSearchStatement(matchingField, isLikeFilter), conn);
 		
-		Log(String.format("Adding argument :: %s", searchFor));
+		Logger.log(String.format("Adding argument :: %s", searchFor));
 		
 		if (matchingField.getJavaType() == JavaType.BOOLEAN)
 			prep.addString((Boolean)searchFor ? "Y": "N");
@@ -1325,7 +1139,46 @@ public class ProtoDB {
 		return ids;
 	}
 	
+	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, Boolean isLikeOperator) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
+		return search(instance, fieldName, searchFor, isLikeOperator, null, -1, -1);
+	}
+	
+	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, Boolean isLikeOperator, List<String> excludedObjects) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
+		return search(instance, fieldName, searchFor, isLikeOperator, excludedObjects, -1, -1);
+	}
+	
+	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, Boolean isLikeOperator, int numberOfResults, int offset) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
+		return search(instance, fieldName, searchFor, isLikeOperator, null, numberOfResults, offset);
+	}
+	
+	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, Boolean isLikeOperator, List<String> excludedObjects,  int numberOfResults, int offset) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
+		Connection conn = null;
+		List<T> result = new ArrayList<T>();
+		
+		try {
+			conn = this.initialize();
 
+			ProtoDBScanner scanner = new ProtoDBScanner(instance);
+			JoinResult joinClause = scanner.getJoinQuery(populateBlobs);
+			joinClause.addWhereClause(fieldName, searchFor, isLikeOperator);
+			
+			PreparedStatement prep = joinClause.getStatement(conn);
+			
+			ResultSet rs = prep.executeQuery();
+
+			//return joinClause.getResult(rs);
+			return result;
+		}
+		catch (Exception e) {
+			System.out.println("Exception in ProtoDB!");
+			e.printStackTrace();
+			
+			throw e;
+		}		
+		finally {
+			this.disconnect(conn);
+		}		
+	}
 	
 	//---------------------------------------------------------------------------------
 	//----------------------------------------------------------------------  HELPERS
@@ -1391,57 +1244,4 @@ public class ProtoDB {
 			this.disconnect(conn);
 		}
 	}
-
-	//---------------------------------------------------------------------------------
-	//----------------------------------------------------------------------  LOG
-	//---------------------------------------------------------------------------------
-
-	private void Log(String message) {
-		Log(message, null);
-	}
-	
-	private void Log(String message, Exception e) {
-		logMessage(getLogString(message));
-	}
-	
-
-	private void printStackTrace(Exception e) {
-		for (StackTraceElement ste : e.getStackTrace()) {
-			logMessage(String.format("%s\n", ste));
-		}
-	}
-
-	private void logMessage(String logMessage) {
-		if (!StringUtils.isEmpty(this.getLogfile())) {
-			try {
-				java.io.FileWriter fs = new java.io.FileWriter(this.getLogfile(), true);
-				fs.write(String.format("%s\n", logMessage));
-				fs.close();
-			}
-			catch (Exception ex) {
-				System.out.println("---Exception occured in logging class---");
-				ex.printStackTrace();
-			}
-		}
-	}
-
-	public String getLogfile() {
-		return logfile;
-	}
-
-	public void setLogfile(String logfile) {
-		this.logfile = logfile;
-	}
-
-	private static String getLogString(String msg) {
-		return String.format("%s - [%s] - %s", getDateString(), Thread.currentThread().getId(), msg);
-	}
-
-	public static String getDateString() {
-		DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-	    Date date = new Date();
-	    return dateFormat.format(date);
-	}
-
-
 }

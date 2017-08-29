@@ -11,6 +11,7 @@ import org.junit.Test;
 
 import com.google.protobuf.ByteString;
 
+import se.qxx.protodb.JoinResult;
 import se.qxx.protodb.ProtoDB;
 import se.qxx.protodb.ProtoDBScanner;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
@@ -161,37 +162,38 @@ public class TestSearchRecursive {
 	    		.build();
 	    		
 		ProtoDBScanner scanner = new ProtoDBScanner(o3);
-		String actual = scanner.getJoinQuery(false);
+		JoinResult result = scanner.getJoinQuery(false);
 		
 		String expected = "SELECT "
-				+ "A.ID AS A_ID, "
-				+ "AA.ID AS AA_ID, "
-				+ "AA.dd AS AA_dd, "
-				+ "AA.ff AS AA_ff, "
-				+ "AA.is AS AA_is, "
-				+ "AA.il AS AA_il, "
-				+ "AA.bb AS AA_bb, "
-				+ "AA.ss AS AA_ss, "
+				+ "A.[ID] AS A_ID, "
+				+ "AA.[ID] AS AA_ID, "
+				+ "AA.[dd] AS AA_dd, "
+				
+				+ "AA.[ff] AS AA_ff, "
+				+ "AA.[is] AS AA_is, "
+				+ "AA.[il] AS AA_il, "
+				+ "AA.[bb] AS AA_bb, "
+				+ "AA.[ss] AS AA_ss, "
 				//+ "AA.by AS AA_by, "
-				+ "AB.ID AS AB_ID, "
-				+ "AB.otis AS AB_otis, "
-				+ "ABA.ID AS ABA_ID, "
-				+ "ABA.dd AS ABA_dd, "
-				+ "ABA.ff AS ABA_ff, "
-				+ "ABA.is AS ABA_is, "
-				+ "ABA.il AS ABA_il, "
-				+ "ABA.bb AS ABA_bb, "
-				+ "ABA.ss AS ABA_ss, "
+				+ "AB.[ID] AS AB_ID, "
+				+ "AB.[otis] AS AB_otis, "
+				+ "ABA.[ID] AS ABA_ID, "
+				+ "ABA.[dd] AS ABA_dd, "
+				+ "ABA.[ff] AS ABA_ff, "
+				+ "ABA.[is] AS ABA_is, "
+				+ "ABA.[il] AS ABA_il, "
+				+ "ABA.[bb] AS ABA_bb, "
+				+ "ABA.[ss] AS ABA_ss, "
 //				+ "ABA.by AS ABA_by, "
-				+ "ABB.ID AS ABB_ID, "
-				+ "ABB.oois AS ABB_oois, "
-				+ "ABBA.ID AS ABBA_ID, "
-				+ "ABBA.dd AS ABBA_dd, "
-				+ "ABBA.ff AS ABBA_ff, "
-				+ "ABBA.is AS ABBA_is, "
-				+ "ABBA.il AS ABBA_il, "
-				+ "ABBA.bb AS ABBA_bb, "
-				+ "ABBA.ss AS ABBA_ss "
+				+ "ABB.[ID] AS ABB_ID, "
+				+ "ABB.[oois] AS ABB_oois, "
+				+ "ABBA.[ID] AS ABBA_ID, "
+				+ "ABBA.[dd] AS ABBA_dd, "
+				+ "ABBA.[ff] AS ABBA_ff, "
+				+ "ABBA.[is] AS ABBA_is, "
+				+ "ABBA.[il] AS ABBA_il, "
+				+ "ABBA.[bb] AS ABBA_bb, "
+				+ "ABBA.[ss] AS ABBA_ss "
 //				+ "ABBA.by AS ABBA_by "
 				+ "FROM ObjectThree AS A "
 				+ "LEFT JOIN ObjectThreeSimpleTest_Apa AS L1 "
@@ -216,8 +218,38 @@ public class TestSearchRecursive {
 				+ " ON L5._simpletest_ID = ABBA.ID ";
 				
 				
-				assertEquals(expected, actual);
+				assertEquals(expected, result.getJoinClause());
 						
 				
 	}
+	
+	@Test
+	public void TestSearchExactByJoin() {	
+		try {
+			List<TestDomain.ObjectThree> result =
+				db.search(
+					TestDomain.ObjectThree.getDefaultInstance(), 
+					"bepa.testTwo.testOne.ss", 
+					"ThisIsATestOfObjectOne", 
+					false);
+			
+			// we should get one single result..
+			assertEquals(1, result.size());
+		
+			TestDomain.ObjectThree b = result.get(0);
+
+			assertEquals("ThisIsAnotherTest", b.getApa().getSs());
+			assertEquals("ThisIsATest", b.getBepa().getTestOne().getSs());
+			assertEquals("ThisIsATestOfObjectOne", b.getBepa().getTestTwo().getTestOne().getSs());
+			assertEquals(666, b.getBepa().getOtis());
+			
+//			PreparedStatement prep = "SELECT * FROM SimpleTest";
+//			
+//			testTableStructure(db, "SimpleTest", SIMPLE_FIELD_NAMES, SIMPLE_FIELD_TYPES);
+		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException  e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
+	}
+	
 }
