@@ -124,4 +124,24 @@ public class TestSearchRepeated {
 			fail(e.getMessage());
 		}
 	}
+	
+	@Test
+	public void TestSearchNoDuplicates() {	
+		try {
+			List<TestDomain.RepObjectOne> result =
+				db.search(
+					TestDomain.RepObjectOne.getDefaultInstance(), 
+					"", 
+					"%", 
+					true);
+			
+			// we should get one single result..
+			assertEquals(2, result.size());
+
+		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException  e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
+	}
+	
 }

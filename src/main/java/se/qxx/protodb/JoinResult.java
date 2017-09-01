@@ -68,15 +68,17 @@ public class JoinResult {
 	}
 
 	public void addWhereClause(String searchField, Object value, boolean isLikeOperator) {
-		String key = "." + StringUtils.substringBeforeLast(searchField, ".");
-		String field = StringUtils.substringAfterLast(searchField, ".");
-		
-		this.getWhereClauses().add(String.format("%s.%s %s ?", 
-				this.getAliases().get(key),
-				field,
-				(isLikeOperator ? "LIKE" : "=")));
-		
-		this.getWhereParameters().add(value);
+		if (!StringUtils.isEmpty(searchField)) {
+			String key = "." + StringUtils.substringBeforeLast(searchField, ".");
+			String field = StringUtils.substringAfterLast(searchField, ".");
+			
+			this.getWhereClauses().add(String.format("%s.%s %s ?", 
+					this.getAliases().get(key),
+					field,
+					(isLikeOperator ? "LIKE" : "=")));
+			
+			this.getWhereParameters().add(value);
+		}
 	}
 	
 	public String getSql() {
