@@ -621,6 +621,20 @@ public class ProtoDBScanner {
 			ac++;
 		}
 		
+		for (FieldDescriptor f : scanner.getRepeatedObjectFields()) {
+			String otherAlias = currentAlias + ((char)(65 + ac));
+			
+			DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
+
+			ProtoDBScanner other = new ProtoDBScanner(mg);
+			String hierarchy = String.format("%s.%s", parentHierarchy, f.getName());
+			aliases.put(hierarchy, otherAlias);
+
+			columnList += ProtoDBScanner.getColumnListForJoin(other, aliases, otherAlias, hierarchy, getBlobs);
+			
+			ac++;
+		}		
+		
 		if (getBlobs) {
 			//TODO!
 			for (FieldDescriptor f : scanner.getBlobFields()) {
