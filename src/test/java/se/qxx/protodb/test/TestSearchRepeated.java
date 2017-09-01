@@ -135,7 +135,8 @@ public class TestSearchRepeated {
 					"%", 
 					true);
 			
-			// we should get one single result..
+			// we should get two single result and not three as the join will create duplicates
+			// of the parent item. This is not wanted.
 			assertEquals(2, result.size());
 
 		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException  e) {
