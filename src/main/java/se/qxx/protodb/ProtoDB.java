@@ -1159,7 +1159,7 @@ public class ProtoDB {
 			conn = this.initialize();
 
 			ProtoDBScanner scanner = new ProtoDBScanner(instance);
-			JoinResult joinClause = scanner.getJoinQuery(populateBlobs);
+			JoinResult joinClause = Searcher.getJoinQuery(scanner, populateBlobs);
 			joinClause.addWhereClause(fieldName, searchFor, isLikeOperator);
 			
 			PreparedStatement prep = joinClause.getStatement(conn);

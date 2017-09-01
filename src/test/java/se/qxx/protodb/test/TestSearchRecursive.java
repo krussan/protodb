@@ -14,6 +14,7 @@ import com.google.protobuf.ByteString;
 import se.qxx.protodb.JoinResult;
 import se.qxx.protodb.ProtoDB;
 import se.qxx.protodb.ProtoDBScanner;
+import se.qxx.protodb.Searcher;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
 import se.qxx.protodb.test.TestDomain.ObjectTwo;
@@ -162,7 +163,7 @@ public class TestSearchRecursive {
 	    		.build();
 	    		
 		ProtoDBScanner scanner = new ProtoDBScanner(o3);
-		JoinResult result = scanner.getJoinQuery(false);
+		JoinResult result = Searcher.getJoinQuery(scanner, false);
 		
 		String expected = "SELECT "
 				+ "A.[ID] AS A_ID, "
