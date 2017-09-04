@@ -27,35 +27,35 @@ public class Searcher {
 		 
 	}
 	
-	private static String getJoinClauseRepeated(ProtoDBScanner parentScanner, ProtoDBScanner scanner, String parentFieldName, HashMap<String, String> aliases, MutableInt linkTableIterator, String parentHierarchy, String fieldHierarchy) {
-		
-		String joinClause = StringUtils.EMPTY;
-					
-		if (parentScanner != null) {
-			joinClause += String.format("LEFT JOIN %s AS L%s ", 
-					parentScanner.getLinkTableName(scanner, parentFieldName), 
-					linkTableIterator);
-			
-			joinClause += String.format(" ON L%s._%s_ID = %s.ID ", 
-					linkTableIterator, 
-					parentScanner.getObjectName().toLowerCase(), 
-					aliases.get(parentHierarchy));
-			
-			joinClause += String.format("LEFT JOIN %s AS %s ", 
-					scanner.getObjectName(), 
-					aliases.get(fieldHierarchy));
-			
-			joinClause += String.format(" ON L%s._%s_ID = %s.ID ", 
-					linkTableIterator, 
-					scanner.getObjectName().toLowerCase(), 
-					aliases.get(fieldHierarchy));
-			
-			linkTableIterator.increment();
-		}
-		
-		
-		return joinClause;		
-	}
+//	private static String getJoinClauseRepeated(ProtoDBScanner parentScanner, ProtoDBScanner scanner, String parentFieldName, HashMap<String, String> aliases, MutableInt linkTableIterator, String parentHierarchy, String fieldHierarchy) {
+//		
+//		String joinClause = StringUtils.EMPTY;
+//					
+//		if (parentScanner != null) {
+//			joinClause += String.format("LEFT JOIN %s AS L%s ", 
+//					parentScanner.getLinkTableName(scanner, parentFieldName), 
+//					linkTableIterator);
+//			
+//			joinClause += String.format(" ON L%s._%s_ID = %s.ID ", 
+//					linkTableIterator, 
+//					parentScanner.getObjectName().toLowerCase(), 
+//					aliases.get(parentHierarchy));
+//			
+//			joinClause += String.format("LEFT JOIN %s AS %s ", 
+//					scanner.getObjectName(), 
+//					aliases.get(fieldHierarchy));
+//			
+//			joinClause += String.format(" ON L%s._%s_ID = %s.ID ", 
+//					linkTableIterator, 
+//					scanner.getObjectName().toLowerCase(), 
+//					aliases.get(fieldHierarchy));
+//			
+//			linkTableIterator.increment();
+//		}
+//		
+//		
+//		return joinClause;		
+//	}
 	
 	private static String getJoinClauseSimple(ProtoDBScanner parentScanner, ProtoDBScanner scanner, String parentFieldName, HashMap<String, String> aliases, String parentHierarchy, String fieldHierarchy) {
 		String joinClause = StringUtils.EMPTY;
@@ -77,14 +77,14 @@ public class Searcher {
 	public static String getJoinClause(ProtoDBScanner parentScanner, ProtoDBScanner scanner, String parentFieldName, HashMap<String, String> aliases, MutableInt linkTableIterator, String parentHierarchy, String fieldHierarchy) {
 		String joinClause = StringUtils.EMPTY;
 		
-		for (FieldDescriptor f : scanner.getRepeatedObjectFields()) {
-			DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
-			ProtoDBScanner other = new ProtoDBScanner(mg);
-			String hierarchy = String.format("%s.%s", fieldHierarchy, f.getName());
-			
-			joinClause += getJoinClauseRepeated(scanner, other, f.getName(), aliases, linkTableIterator, fieldHierarchy, hierarchy);
-			joinClause += getJoinClause(scanner, other, f.getName(), aliases, linkTableIterator, fieldHierarchy, hierarchy);
-		}
+//		for (FieldDescriptor f : scanner.getRepeatedObjectFields()) {
+//			DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
+//			ProtoDBScanner other = new ProtoDBScanner(mg);
+//			String hierarchy = String.format("%s.%s", fieldHierarchy, f.getName());
+//			
+//			joinClause += getJoinClauseRepeated(scanner, other, f.getName(), aliases, linkTableIterator, fieldHierarchy, hierarchy);
+//			joinClause += getJoinClause(scanner, other, f.getName(), aliases, linkTableIterator, fieldHierarchy, hierarchy);
+//		}
 		
 		for (FieldDescriptor f : scanner.getObjectFields()) { 
 			DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
@@ -133,10 +133,11 @@ public class Searcher {
 			DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
 
 			ProtoDBScanner other = new ProtoDBScanner(mg);
-			String hierarchy = String.format("%s.%s", parentHierarchy, f.getName());
+			String hierarchy = String.format("$%s.%s", parentHierarchy, f.getName());
 			aliases.put(hierarchy, otherAlias);
 
-			columnList += Searcher.getColumnListForJoin(other, aliases, otherAlias, hierarchy, getBlobs);
+			// parentHierarchy, fieldname
+			//columnList += Searcher.getColumnListForJoin(other, aliases, otherAlias, hierarchy, getBlobs);
 			
 			ac++;
 		}		

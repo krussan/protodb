@@ -106,17 +106,11 @@ public class TestSearchRepeated {
 			ProtoDBScanner scanner = new ProtoDBScanner(o1);
 			JoinResult result = Searcher.getJoinQuery(scanner, false);
 
+			// the query of the repeated subobjects need to be populated separately
 			String expected = "SELECT "
 					+ "A.[ID] AS A_ID, "
-					+ "A.[happycamper] AS A_happycamper, "
-					+ "AA.[ID] AS AA_ID, "
-					+ "AA.[title] AS AA_title, "
-					+ "AA.[director] AS AA_director "
-					+ "FROM RepObjectOne AS A "
-					+ "LEFT JOIN RepObjectOneSimpleTwo_Listofobjects AS L1 "
-					+ " ON L1._repobjectone_ID = A.ID "
-					+ "LEFT JOIN SimpleTwo AS AA "
-					+ " ON L1._simpletwo_ID = AA.ID ";
+					+ "A.[happycamper] AS A_happycamper "
+					+ "FROM RepObjectOne AS A ";
 			
 			assertEquals(expected, result.getJoinClause());
 		}
