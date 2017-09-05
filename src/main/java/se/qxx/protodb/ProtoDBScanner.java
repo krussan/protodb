@@ -16,6 +16,10 @@ import com.google.protobuf.Descriptors.EnumDescriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
 import com.google.protobuf.DynamicMessage;
 import com.google.protobuf.MessageOrBuilder;
+
+import se.qxx.protodb.model.ProtoField;
+import se.qxx.protodb.model.ProtoTable;
+
 import com.google.protobuf.Descriptors.FieldDescriptor;
 
 public class ProtoDBScanner {
@@ -45,6 +49,13 @@ public class ProtoDBScanner {
 	public ProtoDBScanner(MessageOrBuilder b) {
 		this.setMessage(b);
 		this.scan(b);
+	}
+	
+	private ProtoTable init(MessageOrBuilder b) {
+		
+		ProtoTable t = new ProtoTable(b, "A");
+		
+		return t;
 	}
 	
 	private void scan(MessageOrBuilder b) {
