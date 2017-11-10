@@ -23,6 +23,7 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
+import se.qxx.protodb.model.ProtoDBSearchOperator;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Descriptors.EnumValueDescriptor;
@@ -413,16 +414,46 @@ public class ProtoDB {
 		return rs;
 	}
 	
+	/***
+	 * Function that retrieves recursively all the linked objects
+	 * from the database. Assumes that a shallow copy of the objects have been populated.
+	 * 
+	 * @param listOfObjects
+	 * @return
+	 */
 	private <T extends Message> List<T> getByJoin(List<T> listOfObjects) {
-		return null;
+		return null;		
 	}
 
-	private <T extends Message> List<T> getByJoin(T instance, List<Integer> ids) {
-		// TODO Auto-generated method stub
-		return null;
+	/***
+	 * Retrieves a list of objects based on their ID's using joins instead of 
+	 * repeated queries for each object (as opposed to the get function).
+	 * Complex models needs several queries to get the data (i.e. repeated objects)
+	 * 
+	 * @param instance
+	 * @param ids
+	 * @return
+	 * @throws ClassNotFoundException
+	 * @throws SQLException
+	 * @throws SearchFieldNotFoundException
+	 */
+	public <T extends Message> List<T> getByJoin(T instance, List<Integer> ids) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
+		return search(instance, "ID", StringUtils.join(ids, ","), ProtoDBSearchOperator.In, true);
 	}
 	
-	private <T extends Message> List<T> getByJoin(T instance, int id) {
+	/***
+	 * Retrieves an object based on the ID using joins instead of 
+	 * repeated queries for each object (as opposed to the get function).
+	 * Complex models needs several queries to get the data (i.e. repeated objects)
+	 * 
+	 * @param instance
+	 * @param id
+	 * @return
+	 * @throws ClassNotFoundException
+	 * @throws SQLException
+	 * @throws SearchFieldNotFoundException
+	 */
+	public <T extends Message> List<T> getByJoin(T instance, int id) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
 		return getByJoin(instance, Arrays.asList(id));
 	}	
 
@@ -1154,29 +1185,32 @@ public class ProtoDB {
 		}
 		return ids;
 	}
-	
-	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, Boolean isLikeOperator) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
-		return search(instance, fieldName, searchFor, isLikeOperator, null, -1, -1);
+
+	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
+		return search(instance, fieldName, searchFor, op, false, null, -1, -1);
+	}
+
+	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, boolean searchShallow) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
+		return search(instance, fieldName, searchFor, op, searchShallow, null, -1, -1);
 	}
 	
-	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, Boolean isLikeOperator, List<String> excludedObjects) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
-		return search(instance, fieldName, searchFor, isLikeOperator, excludedObjects, -1, -1);
+	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, boolean searchShallow, List<String> excludedObjects) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
+		return search(instance, fieldName, searchFor, op, searchShallow, excludedObjects, -1, -1);
 	}
 	
-	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, Boolean isLikeOperator, int numberOfResults, int offset) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
-		return search(instance, fieldName, searchFor, isLikeOperator, null, numberOfResults, offset);
+	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, boolean searchShallow, int numberOfResults, int offset) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
+		return search(instance, fieldName, searchFor, op, searchShallow, null, numberOfResults, offset);
 	}
 	
-	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, Boolean isLikeOperator, List<String> excludedObjects,  int numberOfResults, int offset) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
+	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, boolean searchShallow, List<String> excludedObjects,  int numberOfResults, int offset) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
 		Connection conn = null;
-		List<T> result = new ArrayList<T>();
 		
 		try {
 			conn = this.initialize();
 
 			ProtoDBScanner scanner = new ProtoDBScanner(instance);
-			JoinResult joinClause = Searcher.getJoinQuery(scanner, populateBlobs);
-			joinClause.addWhereClause(fieldName, searchFor, isLikeOperator);
+			JoinResult joinClause = Searcher.getJoinQuery(scanner, populateBlobs, !searchShallow);
+			joinClause.addWhereClause(fieldName, searchFor, op);
 			
 			PreparedStatement prep = joinClause.getStatement(conn);
 			
@@ -1191,7 +1225,7 @@ public class ProtoDB {
 			List<T> result = joinClause.getResult(instance, rs);
 			
 			if (joinClause.hasComplexJoins())
-				result = getByJoin(result, scanner);
+				result = getByJoin(result);
 
 			return result;
 		}

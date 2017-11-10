@@ -16,6 +16,8 @@ import com.google.protobuf.DynamicMessage;
 import com.google.protobuf.Message;
 import com.google.protobuf.Message.Builder;
 
+import se.qxx.protodb.model.ProtoDBSearchOperator;
+
 public class JoinResult {
 
 	private HashMap<String, String> aliases = new HashMap<String,String>();
@@ -77,17 +79,26 @@ public class JoinResult {
 		this.whereParameters = whereParameters;
 	}
 
-	public void addWhereClause(String searchField, Object value, boolean isLikeOperator) {
+	public void addWhereClause(String searchField, Object value, ProtoDBSearchOperator op) {
 		if (!StringUtils.isEmpty(searchField)) {
 			String key = "." + StringUtils.substringBeforeLast(searchField, ".");
 			String field = StringUtils.substringAfterLast(searchField, ".");
 			
-			this.getWhereClauses().add(String.format("%s.%s %s ?", 
-					this.getAliases().get(key),
-					field,
-					(isLikeOperator ? "LIKE" : "=")));
+			if (op == ProtoDBSearchOperator.In) {
+				this.getWhereClauses().add(String.format("%s.%s IN (%s)", 
+						this.getAliases().get(key),
+						field,
+						value));				
+			}
+			else {
+				this.getWhereClauses().add(String.format("%s.%s %s ?", 
+						this.getAliases().get(key),
+						field,
+						(op == ProtoDBSearchOperator.Like ? "LIKE" : "=")));
+				
+				this.getWhereParameters().add(value);
+			}
 			
-			this.getWhereParameters().add(value);
 		}
 	}
 	
