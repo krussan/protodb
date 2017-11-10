@@ -119,7 +119,7 @@ public class Searcher {
 		
 		// set that the query result has complex joins that needs to be retreived separately
 		// do this ONLY if this is not a shallow search (i.e. a search that is supposed not to travel the complex links)
-		result.setHasComplexJoins(scanner.getRepeatedObjectFields().size() > 0 && !travelComplexLinks);
+		result.setHasComplexJoins(scanner.getRepeatedObjectFields().size() > 0 && travelComplexLinks);
 		
 		for (FieldDescriptor b : scanner.getBasicFields()) {
 			result.append(String.format("%s.[%s] AS %s_%s, ", currentAlias, b.getName(), currentAlias, b.getName())); 

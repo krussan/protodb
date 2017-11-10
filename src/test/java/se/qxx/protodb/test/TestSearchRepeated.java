@@ -139,6 +139,8 @@ public class TestSearchRepeated {
 					ProtoDBSearchOperator.Equals,
 					true);
 			
+			assertNotNull(result);
+			
 			// we should get one single result..
 			assertEquals(1, result.size());
 			
