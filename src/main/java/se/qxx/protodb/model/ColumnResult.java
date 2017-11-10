@@ -6,7 +6,16 @@ public class ColumnResult {
 
 	private String columnList = StringUtils.EMPTY;
 	private boolean hasComplexJoins = false;
+	private String distinctColumnList = StringUtils.EMPTY;
 	
+	public String getDistinctColumnList() {
+		return StringUtils.left(distinctColumnList, distinctColumnList.length() - 2);
+	}
+
+	public void setDistinctColumnList() {
+		this.distinctColumnList = columnList;
+	}
+
 	public String getColumnListFinal() {
 		return StringUtils.left(columnList, columnList.length() - 2);
 	}

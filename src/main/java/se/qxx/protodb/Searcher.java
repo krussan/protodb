@@ -1,6 +1,7 @@
 package se.qxx.protodb;
 
 import java.util.HashMap;
+import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.mutable.MutableInt;
@@ -21,8 +22,12 @@ public class Searcher {
 		
 		String joinList = Searcher.getJoinClause(null, scanner, StringUtils.EMPTY, aliases, new MutableInt(1), StringUtils.EMPTY, StringUtils.EMPTY);
 		
-		String sql = String.format("SELECT %s FROM %s AS A %s"
-				, columns.getColumnListFinal()
+		// If complex join set a distinct on the first object only
+		// This to do a simple search query. The result needs to be picked up by
+		// the get query.
+		String sql = String.format("SELECT %s %s FROM %s AS A %s"
+				, columns.hasComplexJoins() ? "DISTINCT" : ""
+				, columns.hasComplexJoins() ? columns.getDistinctColumnList() : columns.getColumnListFinal()
 				, scanner.getObjectName()
 				, joinList);
 		
@@ -131,6 +136,11 @@ public class Searcher {
 			ac++;
 		}
 		
+		// set the distinct column list if this is the first object
+		if (currentAlias == "A")
+			result.setDistinctColumnList();
+		
+		
 		for (FieldDescriptor f : scanner.getRepeatedObjectFields()) {
 			String otherAlias = currentAlias + ((char)(65 + ac));
 			
@@ -162,5 +172,6 @@ public class Searcher {
 		
 		return result;
 	}
+
 
 }

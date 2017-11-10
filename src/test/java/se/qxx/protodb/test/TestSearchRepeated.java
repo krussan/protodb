@@ -78,6 +78,9 @@ public class TestSearchRepeated {
 			
 			// we should get one single result..
 			assertEquals(1, result.size());
+			
+			// we should get three sub results
+			assertEquals(3, result.get(0).getListOfObjectsList().size());
 
 		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException  e) {
 			e.printStackTrace();
@@ -107,10 +110,14 @@ public class TestSearchRepeated {
 			JoinResult result = Searcher.getJoinQuery(scanner, false);
 
 			// the query of the repeated subobjects need to be populated separately
-			String expected = "SELECT "
+			String expected = "SELECT DISTINCT "
 					+ "A.[ID] AS A_ID, "
 					+ "A.[happycamper] AS A_happycamper "
-					+ "FROM RepObjectOne AS A ";
+					+ "FROM RepObjectOne AS A "
+					+ "LEFT JOIN RepObjectOneSimpleTwo_Listofobjects AS L1 "
+					+ " ON L1._repobjectone_ID = A.ID "
+					+ "LEFT JOIN SimpleTwo AS AA "
+					+ " ON L1._simpletwo_ID = AA.ID ";
 			
 			assertEquals(expected, result.getJoinClause());
 		}

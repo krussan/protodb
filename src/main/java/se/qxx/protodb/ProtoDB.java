@@ -9,12 +9,14 @@ import java.sql.SQLException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -410,6 +412,20 @@ public class ProtoDB {
 		ResultSet rs = prep.executeQuery();
 		return rs;
 	}
+	
+	private <T extends Message> List<T> getByJoin(List<T> listOfObjects) {
+		return null;
+	}
+
+	private <T extends Message> List<T> getByJoin(T instance, List<Integer> ids) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+	
+	private <T extends Message> List<T> getByJoin(T instance, int id) {
+		return getByJoin(instance, Arrays.asList(id));
+	}	
+
 
 
 
@@ -1172,7 +1188,12 @@ public class ProtoDB {
 			// since we are calling on the parent the subqueries should return all
 			// subobjects regardless of the search criteria (maybe this could be
 			// set as a parameter)
-			return joinClause.getResult(instance, rs);
+			List<T> result = joinClause.getResult(instance, rs);
+			
+			if (joinClause.hasComplexJoins())
+				result = getByJoin(result, scanner);
+
+			return result;
 		}
 		catch (Exception e) {
 			System.out.println("Exception in ProtoDB!");
