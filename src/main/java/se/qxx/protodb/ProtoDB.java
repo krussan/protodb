@@ -422,7 +422,41 @@ public class ProtoDB {
 	 * @return
 	 */
 	public <T extends Message> List<T> getByJoin(List<T> listOfObjects) {
-		return null;		
+		
+		if (listOfObjects != null && listOfObjects.size() > 0) {
+			T instance = listOfObjects.get(0);
+			ProtoDBScanner scanner = new ProtoDBScanner(instance);
+
+			// populate list of sub objects
+			Populator.populateRepeatedObjectFields(this, id, excludedObjects, conn, b, scanner);
+
+			// populate list of basic types
+			Populator.populateRepeatedBasicFields(id, conn, b, scanner);			
+			
+			ResultSet rs = getResultSetForObject(id, conn, b, scanner);
+			
+			int rowcount = 0;
+			while(rs.next()) {
+				// populate object fields
+				Populator.populateObjectFields(this, conn, b, scanner, rs, excludedObjects);
+				
+				// populate blobs		
+				if (this.isPopulateBlobsActive())
+					Populator.populateBlobs(conn, b, scanner, rs);
+				
+				// populate basic fields			
+				Populator.populateBasicFields(id, b, scanner, rs);	
+				
+				rowcount++;
+			}
+			
+			if (rowcount>0)
+				return (T) b.build();
+			else
+				return null;
+		}
+		
+		return listOfObjects;
 	}
 
 	/***

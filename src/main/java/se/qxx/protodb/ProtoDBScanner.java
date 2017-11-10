@@ -308,6 +308,12 @@ public class ProtoDBScanner {
 			+  " FROM " + this.getLinkTableName(other, fieldName) + " A"
 			+  " WHERE A._" + this.getObjectName().toLowerCase() + "_ID = ?";
 	}
+
+	public String getLinkTableStatement(ProtoDBScanner other, String fieldName) {
+		return " SELECT A._" + other.getObjectName().toLowerCase() + "_ID AS ID"
+			+  " FROM " + this.getLinkTableName(other, fieldName) + " A"
+			+  " WHERE A._" + this.getObjectName().toLowerCase() + "_ID = ?";
+	}
 	
 	public String getBasicLinkTableSelectStatement(FieldDescriptor field) {
 		return " SELECT value FROM " + this.getBasicLinkTableName(field)

@@ -97,7 +97,53 @@ public class Populator {
 		return data;
 	}
 	
-
+	protected static void getLinkObjectJoin(
+			ProtoDB db
+		, List<Integer> ids
+	    , List<String> excludedObjects
+		, Builder b
+		, ProtoDBScanner scanner			
+		, FieldDescriptor field
+	    , Connection conn) {
+		
+		Descriptor mt = field.getMessageType();
+		DynamicMessage mg = DynamicMessage.getDefaultInstance(mt);
+		
+		if (mg instanceof MessageOrBuilder) {
+			if (!isExcludedField(field.getName(), excludedObjects)) {
+			
+				MessageOrBuilder b2 = (MessageOrBuilder)mg;
+				ProtoDBScanner other = new ProtoDBScanner(b2);
+			
+				if (field.isRepeated()) {
+					// get select statement for link table
+					// we could join this into the next query. but small steps at a time
+					
+					String sql = scanner.getLinkTableSelectStatement(other, field.getName());
+					Logger.log(sql);
+					
+					PreparedStatement prep = conn.prepareStatement(sql);
+					prep.setInt(1, id);
+					
+					ResultSet rs = prep.executeQuery();
+					
+					int c = 0;
+					while(rs.next()) {
+						// get sub objects
+						DynamicMessage otherMsg = db.get(rs.getInt("ID"), stripExcludedFields(field.getName(), excludedObjects), mg, conn);
+						b.addRepeatedField(field, otherMsg);
+						c++;
+					}
+					
+					Logger.log(String.format("Number of records retreived :: %s", c));
+					
+					rs.close();
+				}
+			}
+		}
+		
+	}
+	
 	protected static void getLinkObject(ProtoDB db
 			, int id
 			, List<String> excludedObjects
