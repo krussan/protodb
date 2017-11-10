@@ -25,8 +25,8 @@ public class Searcher {
 		// If complex join set a distinct on the first object only
 		// This to do a simple search query. The result needs to be picked up by
 		// the get query.
-		String sql = String.format("SELECT %s %s FROM %s AS A %s"
-				, columns.hasComplexJoins() ? "DISTINCT" : ""
+		String sql = String.format("SELECT %s%s FROM %s AS A %s"
+				, columns.hasComplexJoins() ? "DISTINCT " : ""
 				, columns.hasComplexJoins() ? columns.getDistinctColumnList() : columns.getColumnListFinal()
 				, scanner.getObjectName()
 				, joinList);

@@ -421,7 +421,7 @@ public class ProtoDB {
 	 * @param listOfObjects
 	 * @return
 	 */
-	private <T extends Message> List<T> getByJoin(List<T> listOfObjects) {
+	public <T extends Message> List<T> getByJoin(List<T> listOfObjects) {
 		return null;		
 	}
 

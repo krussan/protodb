@@ -17,6 +17,7 @@ import se.qxx.protodb.ProtoDBScanner;
 import se.qxx.protodb.Searcher;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
+import se.qxx.protodb.model.ProtoDBSearchOperator;
 import se.qxx.protodb.test.TestDomain.ObjectTwo;
 
 public class TestSearchRecursive {
@@ -163,7 +164,7 @@ public class TestSearchRecursive {
 	    		.build();
 	    		
 		ProtoDBScanner scanner = new ProtoDBScanner(o3);
-		JoinResult result = Searcher.getJoinQuery(scanner, false);
+		JoinResult result = Searcher.getJoinQuery(scanner, false, true);
 		
 		String expected = "SELECT "
 				+ "A.[ID] AS A_ID, "
@@ -222,7 +223,7 @@ public class TestSearchRecursive {
 					TestDomain.ObjectThree.getDefaultInstance(), 
 					"bepa.testTwo.testOne.ss", 
 					"ThisIsATestOfObjectOne", 
-					false);
+					ProtoDBSearchOperator.Equals);
 			
 			// we should get one single result..
 			assertEquals(1, result.size());

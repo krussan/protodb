@@ -17,6 +17,7 @@ import se.qxx.protodb.ProtoDBScanner;
 import se.qxx.protodb.Searcher;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
+import se.qxx.protodb.model.ProtoDBSearchOperator;
 import se.qxx.protodb.test.TestDomain.ObjectTwo;
 import se.qxx.protodb.test.TestDomain.RepObjectOne;
 import se.qxx.protodb.test.TestDomain.SimpleTwo;
@@ -74,7 +75,7 @@ public class TestSearchRepeated {
 					TestDomain.RepObjectOne.getDefaultInstance(), 
 					"list_of_objects.title", 
 					"who_said_that", 
-					false);
+					ProtoDBSearchOperator.Equals);
 			
 			// we should get one single result..
 			assertEquals(1, result.size());
@@ -107,7 +108,7 @@ public class TestSearchRepeated {
 					.build();
 			
 			ProtoDBScanner scanner = new ProtoDBScanner(o1);
-			JoinResult result = Searcher.getJoinQuery(scanner, false);
+			JoinResult result = Searcher.getJoinQuery(scanner, false, true);
 
 			// the query of the repeated subobjects need to be populated separately
 			String expected = "SELECT DISTINCT "
@@ -128,6 +129,29 @@ public class TestSearchRepeated {
 	}
 	
 	@Test
+	public void TestShallowCopy() {
+		try {
+			List<TestDomain.RepObjectOne> result =
+				db.search(
+					TestDomain.RepObjectOne.getDefaultInstance(), 
+					"list_of_objects.title", 
+					"who_said_that", 
+					ProtoDBSearchOperator.Equals,
+					true);
+			
+			// we should get one single result..
+			assertEquals(1, result.size());
+			
+			// we should get three sub results
+			assertEquals(0, result.get(0).getListOfObjectsList().size());
+
+		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException  e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
+	}
+	
+	@Test
 	public void TestSearchNoDuplicates() {	
 		try {
 			List<TestDomain.RepObjectOne> result =
@@ -135,7 +159,7 @@ public class TestSearchRepeated {
 					TestDomain.RepObjectOne.getDefaultInstance(), 
 					"", 
 					"%", 
-					true);
+					ProtoDBSearchOperator.Like);
 			
 			// we should get two single result and not three as the join will create duplicates
 			// of the parent item. This is not wanted.
