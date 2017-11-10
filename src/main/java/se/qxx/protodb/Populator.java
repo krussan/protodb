@@ -104,7 +104,7 @@ public class Populator {
 		, Builder b
 		, ProtoDBScanner scanner			
 		, FieldDescriptor field
-	    , Connection conn) {
+	    , Connection conn) throws SQLException {
 		
 		Descriptor mt = field.getMessageType();
 		DynamicMessage mg = DynamicMessage.getDefaultInstance(mt);
@@ -119,17 +119,18 @@ public class Populator {
 					// get select statement for link table
 					// we could join this into the next query. but small steps at a time
 					
-					String sql = scanner.getLinkTableSelectStatement(other, field.getName());
+					String sql = scanner.getLinkTableSelectStatementIn(other, field.getName());
+					sql = String.format(sql, StringUtils.join(ids, ","));
 					Logger.log(sql);
 					
-					PreparedStatement prep = conn.prepareStatement(sql);
-					prep.setInt(1, id);
 					
+					PreparedStatement prep = conn.prepareStatement(sql);
 					ResultSet rs = prep.executeQuery();
 					
 					int c = 0;
 					while(rs.next()) {
 						// get sub objects
+						db.getByJoin(listOfObjects)
 						DynamicMessage otherMsg = db.get(rs.getInt("ID"), stripExcludedFields(field.getName(), excludedObjects), mg, conn);
 						b.addRepeatedField(field, otherMsg);
 						c++;
