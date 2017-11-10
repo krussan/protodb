@@ -1166,6 +1166,12 @@ public class ProtoDB {
 			
 			ResultSet rs = prep.executeQuery();
 
+			// the search might as well be a joined query over repeated objects
+			// if no many-many joins are made then we can get the results directly
+			// otherwise we need to do subqueries on the individual objects.
+			// since we are calling on the parent the subqueries should return all
+			// subobjects regardless of the search criteria (maybe this could be
+			// set as a parameter)
 			return joinClause.getResult(instance, rs);
 		}
 		catch (Exception e) {

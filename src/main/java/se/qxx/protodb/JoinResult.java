@@ -22,10 +22,20 @@ public class JoinResult {
 	private String joinClause = StringUtils.EMPTY;
 	private List<String> whereClauses = new ArrayList<String>();
 	private List<Object> whereParameters = new ArrayList<Object>();
+	private boolean hasComplexJoins = false; 
 	
-	public JoinResult(String joinClause, HashMap<String, String> aliases) {
+	public boolean hasComplexJoins() {
+		return hasComplexJoins;
+	}
+
+	public void setComplexJoins(boolean hasComplexJoins) {
+		this.hasComplexJoins = hasComplexJoins;
+	}
+
+	public JoinResult(String joinClause, HashMap<String, String> aliases, boolean hasComplexJoins) {
 		this.setAliases(aliases);
 		this.setJoinClause(joinClause);
+		this.setComplexJoins(hasComplexJoins);
 	}
 
 	public HashMap<String, String> getAliases() {
