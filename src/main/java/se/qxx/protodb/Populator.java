@@ -17,6 +17,8 @@ import com.google.protobuf.Descriptors.FieldDescriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
 import com.google.protobuf.Message.Builder;
 
+import se.qxx.protodb.model.ProtoDBSearchOperator;
+
 public class Populator {
 	
 	public static void populateBasicFields(int id, Builder b, ProtoDBScanner scanner, ResultSet rs) throws SQLException {
@@ -97,53 +99,63 @@ public class Populator {
 		return data;
 	}
 	
-	protected static void getLinkObjectJoin(
-			ProtoDB db
-		, List<Integer> ids
-	    , List<String> excludedObjects
-		, Builder b
-		, ProtoDBScanner scanner			
-		, FieldDescriptor field
-	    , Connection conn) throws SQLException {
-		
-		Descriptor mt = field.getMessageType();
-		DynamicMessage mg = DynamicMessage.getDefaultInstance(mt);
-		
-		if (mg instanceof MessageOrBuilder) {
-			if (!isExcludedField(field.getName(), excludedObjects)) {
-			
-				MessageOrBuilder b2 = (MessageOrBuilder)mg;
-				ProtoDBScanner other = new ProtoDBScanner(b2);
-			
-				if (field.isRepeated()) {
-					// get select statement for link table
-					// we could join this into the next query. but small steps at a time
-					
-					String sql = scanner.getLinkTableSelectStatementIn(other, field.getName());
-					sql = String.format(sql, StringUtils.join(ids, ","));
-					Logger.log(sql);
-					
-					
-					PreparedStatement prep = conn.prepareStatement(sql);
-					ResultSet rs = prep.executeQuery();
-					
-					int c = 0;
-					while(rs.next()) {
-						// get sub objects
-						db.getByJoin(listOfObjects)
-						DynamicMessage otherMsg = db.get(rs.getInt("ID"), stripExcludedFields(field.getName(), excludedObjects), mg, conn);
-						b.addRepeatedField(field, otherMsg);
-						c++;
-					}
-					
-					Logger.log(String.format("Number of records retreived :: %s", c));
-					
-					rs.close();
-				}
-			}
-		}
-		
-	}
+//	protected static <T extends Message> List<T> getLinkObjectJoin(
+//			ProtoDB db
+//		, List<Integer> ids
+//	    , List<String> excludedObjects
+//		, T instance			
+//		, FieldDescriptor field
+//	    , Connection conn) throws SQLException {
+//		
+//		ProtoDBScanner scanner = new ProtoDBScanner((MessageOrBuilder)instance);
+//		
+//		Descriptor mt = field.getMessageType();
+//		DynamicMessage mg = DynamicMessage.getDefaultInstance(mt);
+//		
+//		if (mg instanceof MessageOrBuilder) {
+//			if (!isExcludedField(field.getName(), excludedObjects)) {
+//			
+//				MessageOrBuilder b2 = (MessageOrBuilder)mg;
+//				ProtoDBScanner other = new ProtoDBScanner(b2);
+//			
+//				if (field.isRepeated()) {
+//					// get select statement for link table
+//					// we could join this into the next query. but small steps at a time
+//					
+//					String sql = scanner.getLinkTableSelectStatementIn(other, field.getName());
+//					sql = String.format(sql, StringUtils.join(ids, ","));
+//					Logger.log(sql);
+//					
+//					PreparedStatement prep = conn.prepareStatement(sql);
+//					ResultSet rs = prep.executeQuery();
+//					
+//					// query returns ID's of the sub-object.
+//					// create a list and use as a basis for the join query below
+//					// but we need to tie this 
+//					List<Integer> subIds = new ArrayList<Integer>();
+//					while(rs.next()) {
+//						subIds.add(rs.getInt(0));
+//					}
+//					
+//					List<T> result = db.search(mg, "ID", StringUtils.join(ids, ","), ProtoDBSearchOperator.In);
+//					
+//					int c = 0;
+//					while(rs.next()) {
+//						// get sub objects
+//						db.getByJoin(listOfObjects)
+//						DynamicMessage otherMsg = db.get(rs.getInt("ID"), stripExcludedFields(field.getName(), excludedObjects), mg, conn);
+//						b.addRepeatedField(field, otherMsg);
+//						c++;
+//					}
+//					
+//					Logger.log(String.format("Number of records retreived :: %s", c));
+//					
+//					rs.close();
+//				}
+//			}
+//		}
+//		
+//	}
 	
 	protected static void getLinkObject(ProtoDB db
 			, int id

@@ -14,10 +14,26 @@ import com.google.protobuf.Descriptors.FieldDescriptor;
 
 public class Searcher {
 	public static JoinResult getJoinQuery(ProtoDBScanner scanner, boolean getBlobs, boolean travelComplexLinks) {
+		return getJoinQuery(scanner, getBlobs, travelComplexLinks, null, StringUtils.EMPTY);
+	}
+	
+	public static JoinResult getJoinQuery(ProtoDBScanner scanner, boolean getBlobs, boolean travelComplexLinks, ProtoDBScanner other, String linkFieldName) {
 		HashMap<String, String> aliases = new HashMap<String, String>();
 		String currentAlias = "A";
 		aliases.put(StringUtils.EMPTY, "A");
 
+		String linkTableJoin = StringUtils.EMPTY;
+		String linkTableColumns = StringUtils.EMPTY;
+		
+		if (other != null && !StringUtils.isEmpty(linkFieldName)) {
+			// if a link object was specified then we need the link table
+			linkTableColumns = "L0." + other.getObjectName().toLowerCase() + "_ID AS __thisID, "
+					+  " L0._" + scanner.getObjectName().toLowerCase() + "_ID AS __otherID ";
+			
+			
+			linkTableJoin = other.getLinkTableName(scanner, linkFieldName) + " L0";
+		}
+		
 		ColumnResult columns = Searcher.getColumnListForJoin(scanner, aliases, currentAlias, StringUtils.EMPTY, getBlobs, travelComplexLinks);
 		
 		String joinList = Searcher.getJoinClause(null, scanner, StringUtils.EMPTY, aliases, new MutableInt(1), StringUtils.EMPTY, StringUtils.EMPTY, travelComplexLinks);
@@ -25,10 +41,13 @@ public class Searcher {
 		// If complex join set a distinct on the first object only
 		// This to do a simple search query. The result needs to be picked up by
 		// the get query.
-		String sql = String.format("SELECT %s%s FROM %s AS A %s"
+		String sql = String.format("SELECT %s%s FROM %s %s %s %s %s"
 				, columns.hasComplexJoins() ? "DISTINCT " : ""
 				, columns.hasComplexJoins() ? columns.getDistinctColumnList() : columns.getColumnListFinal()
-				, scanner.getObjectName()
+				, linkTableJoin
+				, StringUtils.isEmpty(linkTableJoin) ? "" : "LEFT JOIN"
+				, scanner.getObjectName() + " AS A "
+				, StringUtils.isEmpty(linkTableJoin) ? "" : " ON L0._" + scanner.getObjectName().toLowerCase() + "_ID = A.ID"
 				, joinList);
 		
 		return new JoinResult(sql, aliases, columns.hasComplexJoins());
@@ -111,7 +130,7 @@ public class Searcher {
 
 	public static ColumnResult getColumnListForJoin(ProtoDBScanner scanner, HashMap<String, String> aliases, String currentAlias, String parentHierarchy, boolean getBlobs, boolean travelComplexLinks) {
 		// the purpose of this is to create a sql query that joins all table together
-		// Each column returned should have a previs with the object identity followed by
+		// Each column returned should have a prefix with the object identity followed by
 		// underscore and the column name. I.e. Object_field. This to avoid conflict with
 		// each other on field names. All link tables and foreign key columns should be excluded.
 		

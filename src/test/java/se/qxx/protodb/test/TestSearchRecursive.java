@@ -197,7 +197,7 @@ public class TestSearchRecursive {
 				+ "ABBA.[bb] AS ABBA_bb, "
 				+ "ABBA.[ss] AS ABBA_ss "
 //				+ "ABBA.by AS ABBA_by "
-				+ "FROM ObjectThree AS A "
+				+ "FROM   ObjectThree AS A   "
 				+ "LEFT JOIN SimpleTest AS AA "
 				+ " ON A._apa_ID = AA.ID "
 				+ "LEFT JOIN ObjectTwo AS AB "

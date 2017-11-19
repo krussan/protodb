@@ -78,6 +78,13 @@ public class JoinResult {
 	private void setWhereParameters(List<Object> whereParameters) {
 		this.whereParameters = whereParameters;
 	}
+	
+	public void addLinkWhereClause(List<Integer> parentIDs, ProtoDBScanner other) {
+		String listOfIds = StringUtils.join(parentIDs, ",");
+		
+		this.getWhereClauses().add(String.format("L0." + other.getObjectName().toLowerCase() + "_ID IN (%s)", 
+				listOfIds));						
+	}
 
 	public void addWhereClause(String searchField, Object value, ProtoDBSearchOperator op) {
 		if (!StringUtils.isEmpty(searchField)) {
@@ -115,6 +122,17 @@ public class JoinResult {
 		}
 		
 		return prep;
+	}
+	
+	public <T extends Message> Map<int, List<T>> getResultLink(T instance, ResultSet rs) throws SQLException {
+		Map<int, List<T>> map = new HashMap<int, List<T>>();
+		
+		List<T> result = new ArrayList<T>();
+		while (rs.next()) {
+			result.add(getResult(instance, rs, StringUtils.EMPTY));
+		}
+		
+		return result;
 	}
 	
 	public <T extends Message> List<T> getResult(T instance, ResultSet rs) throws SQLException {

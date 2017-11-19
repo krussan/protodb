@@ -249,8 +249,8 @@ public class ProtoDB {
 		// setup all repeated fields as many-to-many relations
 		for(FieldDescriptor field : scanner.getRepeatedObjectFields()) {
 			if (field.getJavaType() == JavaType.MESSAGE) {
-				Descriptor mt = field.getMessageType();
-				DynamicMessage mg = DynamicMessage.getDefaultInstance(mt);
+				DynamicMessage mg = getInstanceFromField(field);
+				
 				if (mg instanceof MessageOrBuilder) {
 					MessageOrBuilder b2 = (MessageOrBuilder)mg;
 					
@@ -421,42 +421,72 @@ public class ProtoDB {
 	 * @param listOfObjects
 	 * @return
 	 */
-	public <T extends Message> List<T> getByJoin(List<T> listOfObjects) {
+	public <T extends Message> List<T> getByJoin(List<T> listOfObjects, boolean populateBlobs) throws ClassNotFoundException, SQLException {
 		
 		if (listOfObjects != null && listOfObjects.size() > 0) {
-			T instance = listOfObjects.get(0);
-			ProtoDBScanner scanner = new ProtoDBScanner(instance);
-
-			// populate list of sub objects
-			Populator.populateRepeatedObjectFields(this, id, excludedObjects, conn, b, scanner);
-
-			// populate list of basic types
-			Populator.populateRepeatedBasicFields(id, conn, b, scanner);			
 			
-			ResultSet rs = getResultSetForObject(id, conn, b, scanner);
+			Connection conn = null;
+			T msg = null;
 			
-			int rowcount = 0;
-			while(rs.next()) {
-				// populate object fields
-				Populator.populateObjectFields(this, conn, b, scanner, rs, excludedObjects);
+			try {
+				conn = this.initialize();
+			
+				T instance = listOfObjects.get(0);
+				ProtoDBScanner scanner = new ProtoDBScanner(instance);
+	
+				// get a list of all parent id's
+				List<Integer> ids = new ArrayList<Integer>();
+				for (T message : listOfObjects ) {
+					ids.add((int)message.getField(scanner.getIdField()));
+				}
 				
-				// populate blobs		
-				if (this.isPopulateBlobsActive())
-					Populator.populateBlobs(conn, b, scanner, rs);
+				// shallow copy exits. Loop through object fields
+				// and create a shallow copy for that field.
+				// map the results to the parent object
+				for (FieldDescriptor field : scanner.getRepeatedObjectFields()) {
+					DynamicMessage innerInstance = getInstanceFromField(field);
+					JoinResult joinResult = getLinkJoinResult(ids, scanner, field, populateBlobs);
 				
-				// populate basic fields			
-				Populator.populateBasicFields(id, b, scanner, rs);	
+					PreparedStatement prep = joinResult.getStatement(conn);
+					ResultSet rs = prep.executeQuery();
+					
+					joinResult.getResult(instance, rs);
+				}
+			
+			}
+			catch (Exception e) {
+				System.out.println("Exception in ProtoDB!");
+				e.printStackTrace();
 				
-				rowcount++;
+				throw e;
+			}		
+			finally {
+				this.disconnect(conn);
 			}
 			
-			if (rowcount>0)
-				return (T) b.build();
-			else
-				return null;
 		}
 		
-		return listOfObjects;
+		return null;
+			
+	}
+	
+	private <T extends Message> JoinResult getLinkJoinResult(List<Integer> parentIDs, ProtoDBScanner scanner, FieldDescriptor field, boolean populateBlobs) {
+		if (field.getJavaType() == JavaType.MESSAGE) {
+			DynamicMessage mg = getInstanceFromField(field);
+			
+			if (mg instanceof MessageOrBuilder) {
+
+				ProtoDBScanner other = new ProtoDBScanner(mg);
+				JoinResult joinResult = Searcher.getJoinQuery(other, populateBlobs, false, scanner, field.getName());
+				
+				joinResult.addLinkWhereClause(parentIDs, other);
+			}
+		}
+	}
+
+	private DynamicMessage getInstanceFromField(FieldDescriptor field) {
+		Descriptor mt = field.getMessageType();
+		return DynamicMessage.getDefaultInstance(mt);
 	}
 
 	/***
@@ -1259,7 +1289,7 @@ public class ProtoDB {
 			List<T> result = joinClause.getResult(instance, rs);
 			
 			if (joinClause.hasComplexJoins())
-				result = getByJoin(result);
+				result = getByJoin(result, false);
 
 			return result;
 		}

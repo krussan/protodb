@@ -310,7 +310,8 @@ public class ProtoDBScanner {
 	}
 
 	public String getLinkTableSelectStatementIn(ProtoDBScanner other, String fieldName) {
-		return " SELECT A._" + other.getObjectName().toLowerCase() + "_ID AS ID"
+		return " SELECT  A._" + this.getObjectName().toLowerCase() + "_ID AS thisID, "
+		    +  " A._" + other.getObjectName().toLowerCase() + "_ID AS ID"
 			+  " FROM " + this.getLinkTableName(other, fieldName) + " A"
 			+  " WHERE A._" + this.getObjectName().toLowerCase() + "_ID IN (%s)";
 	}

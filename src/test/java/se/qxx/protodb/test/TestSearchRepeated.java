@@ -114,7 +114,7 @@ public class TestSearchRepeated {
 			String expected = "SELECT DISTINCT "
 					+ "A.[ID] AS A_ID, "
 					+ "A.[happycamper] AS A_happycamper "
-					+ "FROM RepObjectOne AS A "
+					+ "FROM   RepObjectOne AS A   "
 					+ "LEFT JOIN RepObjectOneSimpleTwo_Listofobjects AS L1 "
 					+ " ON L1._repobjectone_ID = A.ID "
 					+ "LEFT JOIN SimpleTwo AS AA "
