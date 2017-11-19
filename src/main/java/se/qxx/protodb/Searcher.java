@@ -27,7 +27,7 @@ public class Searcher {
 		
 		if (other != null && !StringUtils.isEmpty(linkFieldName)) {
 			// if a link object was specified then we need the link table
-			linkTableColumns = "L0." + other.getObjectName().toLowerCase() + "_ID AS __thisID, "
+			linkTableColumns = "L0._" + other.getObjectName().toLowerCase() + "_ID AS __thisID, "
 					+  " L0._" + scanner.getObjectName().toLowerCase() + "_ID AS __otherID ";
 			
 			
@@ -41,8 +41,9 @@ public class Searcher {
 		// If complex join set a distinct on the first object only
 		// This to do a simple search query. The result needs to be picked up by
 		// the get query.
-		String sql = String.format("SELECT %s%s FROM %s %s %s %s %s"
+		String sql = String.format("SELECT %s%s%s FROM %s %s %s %s %s"
 				, columns.hasComplexJoins() ? "DISTINCT " : ""
+			    , StringUtils.isEmpty(linkTableColumns) ? "" : linkTableColumns + ", "
 				, columns.hasComplexJoins() ? columns.getDistinctColumnList() : columns.getColumnListFinal()
 				, linkTableJoin
 				, StringUtils.isEmpty(linkTableJoin) ? "" : "LEFT JOIN"

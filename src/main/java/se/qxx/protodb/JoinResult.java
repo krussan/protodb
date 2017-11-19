@@ -83,7 +83,7 @@ public class JoinResult {
 	public void addLinkWhereClause(List<Integer> parentIDs, ProtoDBScanner other) {
 		String listOfIds = StringUtils.join(parentIDs, ",");
 		
-		this.getWhereClauses().add(String.format("L0." + other.getObjectName().toLowerCase() + "_ID IN (%s)", 
+		this.getWhereClauses().add(String.format("L0._" + other.getObjectName().toLowerCase() + "_ID IN (%s)", 
 				listOfIds));						
 	}
 
