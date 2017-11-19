@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 
 import org.apache.commons.lang3.ArrayUtils;
@@ -450,7 +451,8 @@ public class ProtoDB {
 					PreparedStatement prep = joinResult.getStatement(conn);
 					ResultSet rs = prep.executeQuery();
 					
-					joinResult.getResult(instance, rs);
+					Map<Integer, List<T>> result = joinResult.getResultLink(instance, rs);
+					listOfObjects = updateParentObjects(scanner, field, listOfObjects, result);
 				}
 			
 			}
@@ -470,6 +472,27 @@ public class ProtoDB {
 			
 	}
 	
+	private <T extends Message,U extends Message> List<T> updateParentObjects(ProtoDBScanner parentScanner, FieldDescriptor field, List<T> listOfObjects, Map<Integer, List<U>> result) {
+		List<T> parents = new ArrayList<T>();
+		for (T obj : listOfObjects) {
+			int parentID = (int)((DynamicMessage) obj).getField(parentScanner.getIdField());
+			List<U> subObjects = result.get(parentID);
+			
+			Builder b = getBuilder((DynamicMessage)obj);
+			for (U sub : subObjects) {
+				b.addRepeatedField(field, sub);
+			}
+			
+			parents.add((T)b.build());
+		}
+		
+		return parents;
+	}
+	
+	private <T extends DynamicMessage> Builder getBuilder(T obj) {
+		return T.newBuilder(obj);
+	}
+
 	private <T extends Message> JoinResult getLinkJoinResult(List<Integer> parentIDs, ProtoDBScanner scanner, FieldDescriptor field, boolean populateBlobs) {
 		if (field.getJavaType() == JavaType.MESSAGE) {
 			DynamicMessage mg = getInstanceFromField(field);
@@ -480,8 +503,12 @@ public class ProtoDB {
 				JoinResult joinResult = Searcher.getJoinQuery(other, populateBlobs, false, scanner, field.getName());
 				
 				joinResult.addLinkWhereClause(parentIDs, other);
+				
+				return joinResult;
 			}
 		}
+		
+		return null;
 	}
 
 	private DynamicMessage getInstanceFromField(FieldDescriptor field) {

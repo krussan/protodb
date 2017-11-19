@@ -7,6 +7,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -124,15 +125,21 @@ public class JoinResult {
 		return prep;
 	}
 	
-	public <T extends Message> Map<int, List<T>> getResultLink(T instance, ResultSet rs) throws SQLException {
-		Map<int, List<T>> map = new HashMap<int, List<T>>();
+	public <T extends Message> Map<Integer, List<T>> getResultLink(T instance, ResultSet rs) throws SQLException {
+		Map<Integer, List<T>> map = new HashMap<Integer, List<T>>();
 		
-		List<T> result = new ArrayList<T>();
+		
 		while (rs.next()) {
-			result.add(getResult(instance, rs, StringUtils.EMPTY));
+			int parentID = rs.getInt("__thisID");
+			
+			if (!map.containsKey(parentID)) {
+				map.put(parentID, new ArrayList<T>()); 
+			}
+			
+			map.get(parentID).add(getResult(instance, rs, StringUtils.EMPTY));
 		}
 		
-		return result;
+		return map;
 	}
 	
 	public <T extends Message> List<T> getResult(T instance, ResultSet rs) throws SQLException {
