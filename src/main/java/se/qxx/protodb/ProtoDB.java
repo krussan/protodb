@@ -250,7 +250,7 @@ public class ProtoDB {
 		// setup all repeated fields as many-to-many relations
 		for(FieldDescriptor field : scanner.getRepeatedObjectFields()) {
 			if (field.getJavaType() == JavaType.MESSAGE) {
-				DynamicMessage mg = getInstanceFromField(field);
+				Message mg = getInstanceFromField(field);
 				
 				if (mg instanceof MessageOrBuilder) {
 					MessageOrBuilder b2 = (MessageOrBuilder)mg;
@@ -369,7 +369,7 @@ public class ProtoDB {
 	@SuppressWarnings("unchecked")
 	<T extends Message> T get(int id, List<String> excludedObjects, T instance, Connection conn) throws SQLException{
 		Builder b = instance.newBuilderForType();
-
+		
 		ProtoDBScanner scanner = new ProtoDBScanner(instance);
 		Logger.log(String.format("Populating object %s :: %s", scanner.getObjectName(), id));
 		
@@ -451,8 +451,8 @@ public class ProtoDB {
 					PreparedStatement prep = joinResult.getStatement(conn);
 					ResultSet rs = prep.executeQuery();
 					
-					Map<Integer, List<T>> result = joinResult.getResultLink(instance, rs);
-					listOfObjects = updateParentObjects(scanner, field, listOfObjects, result);
+					Map<Integer, List<DynamicMessage>> result = joinResult.getResultLink(innerInstance, rs);
+					return updateParentObjects(scanner, field, listOfObjects, result);
 				}
 			
 			}
@@ -472,15 +472,18 @@ public class ProtoDB {
 			
 	}
 	
-	private <T extends Message,U extends Message> List<T> updateParentObjects(ProtoDBScanner parentScanner, FieldDescriptor field, List<T> listOfObjects, Map<Integer, List<U>> result) {
+	private <T extends Message> List<T> updateParentObjects(ProtoDBScanner parentScanner, FieldDescriptor field, List<T> listOfObjects, Map<Integer, List<DynamicMessage>> result) {
 		List<T> parents = new ArrayList<T>();
 		for (T obj : listOfObjects) {
-			int parentID = (int)((DynamicMessage) obj).getField(parentScanner.getIdField());
-			List<U> subObjects = result.get(parentID);
+			int parentID = (int)obj.getField(parentScanner.getIdField());
+			List<DynamicMessage> subObjects = result.get(parentID);
 			
-			Builder b = getBuilder((DynamicMessage)obj);
-			for (U sub : subObjects) {
-				b.addRepeatedField(field, sub);
+			
+			Builder b = getBuilder(obj);
+			if (subObjects != null) {
+				for (DynamicMessage sub : subObjects) {
+					b.addRepeatedField(field, sub);
+				}
 			}
 			
 			parents.add((T)b.build());
@@ -489,13 +492,13 @@ public class ProtoDB {
 		return parents;
 	}
 	
-	private <T extends DynamicMessage> Builder getBuilder(T obj) {
-		return T.newBuilder(obj);
+	private <T extends Message> Builder getBuilder(T obj) {
+		return DynamicMessage.newBuilder(obj);
 	}
 
 	private <T extends Message> JoinResult getLinkJoinResult(List<Integer> parentIDs, ProtoDBScanner scanner, FieldDescriptor field, boolean populateBlobs) {
 		if (field.getJavaType() == JavaType.MESSAGE) {
-			DynamicMessage mg = getInstanceFromField(field);
+			Message mg = getInstanceFromField(field);
 			
 			if (mg instanceof MessageOrBuilder) {
 

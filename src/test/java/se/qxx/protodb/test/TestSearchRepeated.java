@@ -134,9 +134,9 @@ public class TestSearchRepeated {
 			List<TestDomain.RepObjectOne> result =
 				db.search(
 					TestDomain.RepObjectOne.getDefaultInstance(), 
-					"list_of_objects.title", 
-					"who_said_that", 
-					ProtoDBSearchOperator.Equals,
+					"", 
+					"%", 
+					ProtoDBSearchOperator.Like,
 					true);
 			
 			assertNotNull(result);

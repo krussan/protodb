@@ -128,7 +128,6 @@ public class JoinResult {
 	public <T extends Message> Map<Integer, List<T>> getResultLink(T instance, ResultSet rs) throws SQLException {
 		Map<Integer, List<T>> map = new HashMap<Integer, List<T>>();
 		
-		
 		while (rs.next()) {
 			int parentID = rs.getInt("__thisID");
 			
