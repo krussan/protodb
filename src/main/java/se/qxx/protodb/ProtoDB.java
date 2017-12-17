@@ -501,7 +501,7 @@ public class ProtoDB {
 				ProtoDBScanner other = new ProtoDBScanner(mg);
 				JoinResult joinResult = Searcher.getJoinQuery(other, populateBlobs, false, scanner, field.getName());
 				
-				joinResult.addLinkWhereClause(parentIDs, other);
+				joinResult.addLinkWhereClause(parentIDs, scanner);
 				
 				return joinResult;
 			}

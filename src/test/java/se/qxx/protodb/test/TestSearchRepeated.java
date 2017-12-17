@@ -81,7 +81,7 @@ public class TestSearchRepeated {
 			assertEquals(1, result.size());
 			
 			// we should get three sub results
-			assertEquals(3, result.get(0).getListOfObjectsList().size());
+			assertEquals(2, result.get(0).getListOfObjectsList().size());
 
 		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException  e) {
 			e.printStackTrace();
