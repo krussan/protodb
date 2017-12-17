@@ -142,7 +142,7 @@ public class TestSearchRepeated {
 			assertNotNull(result);
 			
 			// we should get one single result..
-			assertEquals(1, result.size());
+			assertEquals(2, result.size());
 			
 			// we should get three sub results
 			assertEquals(0, result.get(0).getListOfObjectsList().size());
