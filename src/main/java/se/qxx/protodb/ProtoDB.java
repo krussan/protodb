@@ -478,8 +478,8 @@ public class ProtoDB {
 			int parentID = (int)obj.getField(parentScanner.getIdField());
 			List<DynamicMessage> subObjects = result.get(parentID);
 			
+			Builder b = obj.toBuilder();
 			
-			Builder b = getBuilder(obj);
 			if (subObjects != null) {
 				for (DynamicMessage sub : subObjects) {
 					b.addRepeatedField(field, sub);
@@ -492,10 +492,6 @@ public class ProtoDB {
 		return parents;
 	}
 	
-	private <T extends Message> Builder getBuilder(T obj) {
-		return DynamicMessage.newBuilder(obj);
-	}
-
 	private <T extends Message> JoinResult getLinkJoinResult(List<Integer> parentIDs, ProtoDBScanner scanner, FieldDescriptor field, boolean populateBlobs) {
 		if (field.getJavaType() == JavaType.MESSAGE) {
 			Message mg = getInstanceFromField(field);
