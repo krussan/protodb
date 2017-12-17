@@ -1,7 +1,6 @@
 package se.qxx.protodb;
 
 import java.util.HashMap;
-import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.mutable.MutableInt;
@@ -192,11 +191,6 @@ public class Searcher {
 			}
 		}
 
-//		this.getBasicFields();
-//		this.getRepeatedBasicFields();
-//		this.getRepeatedObjectFields();
-//		this.getBlobFields()();
-		
 		return result;
 	}
 

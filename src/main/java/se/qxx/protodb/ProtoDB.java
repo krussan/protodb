@@ -6,18 +6,13 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 
-import org.apache.commons.lang3.ArrayUtils;
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -427,7 +422,6 @@ public class ProtoDB {
 		if (listOfObjects != null && listOfObjects.size() > 0) {
 			
 			Connection conn = null;
-			T msg = null;
 			
 			try {
 				conn = this.initialize();
@@ -472,6 +466,7 @@ public class ProtoDB {
 			
 	}
 	
+	@SuppressWarnings("unchecked")
 	private <T extends Message> List<T> updateParentObjects(ProtoDBScanner parentScanner, FieldDescriptor field, List<T> listOfObjects, Map<Integer, List<DynamicMessage>> result) {
 		List<T> parents = new ArrayList<T>();
 		for (T obj : listOfObjects) {

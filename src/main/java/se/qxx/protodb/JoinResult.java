@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
 
 import com.google.protobuf.Descriptors.FieldDescriptor;
 import com.google.protobuf.DynamicMessage;
@@ -68,18 +67,10 @@ public class JoinResult {
 		return whereClauses;
 	}
 
-	private void setWhereClauses(List<String> whereClauses) {
-		this.whereClauses = whereClauses;
-	}
-
 	private List<Object> getWhereParameters() {
 		return whereParameters;
 	}
 
-	private void setWhereParameters(List<Object> whereParameters) {
-		this.whereParameters = whereParameters;
-	}
-	
 	public void addLinkWhereClause(List<Integer> parentIDs, ProtoDBScanner other) {
 		String listOfIds = StringUtils.join(parentIDs, ",");
 		
@@ -173,8 +164,6 @@ public class JoinResult {
 			Populator.populateField(b, f, o);
 		}
 		
-		int ac = 0;
-		
 		for (FieldDescriptor f : scanner.getObjectFields()) {
 			DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
 			String hierarchy = String.format("%s.%s", parentHierarchy, f.getName());
@@ -182,7 +171,6 @@ public class JoinResult {
 			mg = getResult(mg, rs, hierarchy);
 			
 			b.setField(f, mg);
-			ac++;
 		}
 	
 		return (T) b.build();
