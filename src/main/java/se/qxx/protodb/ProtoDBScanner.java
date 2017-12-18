@@ -9,10 +9,17 @@ import java.util.HashMap;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.mutable.MutableInt;
 
+import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.EnumDescriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
+import com.google.protobuf.DynamicMessage;
 import com.google.protobuf.MessageOrBuilder;
+
+import se.qxx.protodb.model.ProtoField;
+import se.qxx.protodb.model.ProtoTable;
+
 import com.google.protobuf.Descriptors.FieldDescriptor;
 
 public class ProtoDBScanner {
@@ -37,9 +44,18 @@ public class ProtoDBScanner {
 	private HashMap<String, Integer> objectIDs = new HashMap<String,Integer>();
 	private HashMap<String, Integer> blobIDs = new HashMap<String,Integer>();
 
+	private HashMap<String, String> aliases = new HashMap<String, String>();
+	
 	public ProtoDBScanner(MessageOrBuilder b) {
 		this.setMessage(b);
 		this.scan(b);
+	}
+	
+	private ProtoTable init(MessageOrBuilder b) {
+		
+		ProtoTable t = new ProtoTable(b, "A");
+		
+		return t;
 	}
 	
 	private void scan(MessageOrBuilder b) {
@@ -292,7 +308,14 @@ public class ProtoDBScanner {
 			+  " FROM " + this.getLinkTableName(other, fieldName) + " A"
 			+  " WHERE A._" + this.getObjectName().toLowerCase() + "_ID = ?";
 	}
-	
+
+	public String getLinkTableSelectStatementIn(ProtoDBScanner other, String fieldName) {
+		return " SELECT  A._" + this.getObjectName().toLowerCase() + "_ID AS thisID, "
+		    +  " A._" + other.getObjectName().toLowerCase() + "_ID AS ID"
+			+  " FROM " + this.getLinkTableName(other, fieldName) + " A"
+			+  " WHERE A._" + this.getObjectName().toLowerCase() + "_ID IN (%s)";
+	}
+
 	public String getBasicLinkTableSelectStatement(FieldDescriptor field) {
 		return " SELECT value FROM " + this.getBasicLinkTableName(field)
 			+  " WHERE _" + this.getObjectName().toLowerCase() + "_ID = ?";
@@ -373,7 +396,7 @@ public class ProtoDBScanner {
 		return prep;
 	}
 
-	private void compileArgument(int i, PreparedStatement prep, JavaType jType, Object value) throws SQLException {
+	private static void compileArgument(int i, PreparedStatement prep, JavaType jType, Object value) throws SQLException {
 		if (jType == JavaType.BOOLEAN)
 			prep.setBoolean(i, (boolean)value);
 		else if (jType == JavaType.DOUBLE)
@@ -497,6 +520,6 @@ public class ProtoDBScanner {
 		Object o = this.getMessage().getField(this.getIdField());
 		return (int)o;
 	}
-
+	
 
 }
