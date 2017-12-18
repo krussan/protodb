@@ -494,7 +494,7 @@ public class ProtoDB {
 			if (mg instanceof MessageOrBuilder) {
 
 				ProtoDBScanner other = new ProtoDBScanner(mg);
-				JoinResult joinResult = Searcher.getJoinQuery(other, populateBlobs, false, scanner, field.getName());
+				JoinResult joinResult = Searcher.getJoinQuery(other, populateBlobs, false, scanner, field.getName(), -1, -1);
 				
 				joinResult.addLinkWhereClause(parentIDs, scanner);
 				
@@ -1279,6 +1279,10 @@ public class ProtoDB {
 		return search(instance, fieldName, searchFor, op, searchShallow, null, -1, -1);
 	}
 	
+	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, int numberOfResults, int offset) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
+		return search(instance, fieldName, searchFor, op, false, null, numberOfResults, offset);
+	}
+	
 	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, boolean searchShallow, List<String> excludedObjects) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
 		return search(instance, fieldName, searchFor, op, searchShallow, excludedObjects, -1, -1);
 	}
@@ -1294,7 +1298,7 @@ public class ProtoDB {
 			conn = this.initialize();
 
 			ProtoDBScanner scanner = new ProtoDBScanner(instance);
-			JoinResult joinClause = Searcher.getJoinQuery(scanner, populateBlobs, !searchShallow);
+			JoinResult joinClause = Searcher.getJoinQuery(scanner, populateBlobs, !searchShallow, numberOfResults, offset);
 			joinClause.addWhereClause(fieldName, searchFor, op);
 			
 			PreparedStatement prep = joinClause.getStatement(conn);

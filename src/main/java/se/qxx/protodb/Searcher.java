@@ -12,11 +12,17 @@ import se.qxx.protodb.model.ColumnResult;
 import com.google.protobuf.Descriptors.FieldDescriptor;
 
 public class Searcher {
+	
 	public static JoinResult getJoinQuery(ProtoDBScanner scanner, boolean getBlobs, boolean travelComplexLinks) {
-		return getJoinQuery(scanner, getBlobs, travelComplexLinks, null, StringUtils.EMPTY);
+		return getJoinQuery(scanner, getBlobs, travelComplexLinks, null, StringUtils.EMPTY, -1, -1);
 	}
 	
-	public static JoinResult getJoinQuery(ProtoDBScanner scanner, boolean getBlobs, boolean travelComplexLinks, ProtoDBScanner other, String linkFieldName) {
+	public static JoinResult getJoinQuery(ProtoDBScanner scanner, boolean getBlobs, boolean travelComplexLinks, int numberOfResults, int offset) {
+		return getJoinQuery(scanner, getBlobs, travelComplexLinks, null, StringUtils.EMPTY, numberOfResults, offset);
+	}
+	
+	
+	public static JoinResult getJoinQuery(ProtoDBScanner scanner, boolean getBlobs, boolean travelComplexLinks, ProtoDBScanner other, String linkFieldName, int numberOfResults, int offset) {
 		HashMap<String, String> aliases = new HashMap<String, String>();
 		String currentAlias = "A";
 		aliases.put(StringUtils.EMPTY, "A");
@@ -50,6 +56,13 @@ public class Searcher {
 				, StringUtils.isEmpty(linkTableJoin) ? "" : " ON L0._" + scanner.getObjectName().toLowerCase() + "_ID = A.ID"
 				, joinList);
 		
+		if (numberOfResults > 0) {
+			sql += String.format(" LIMIT %s ", numberOfResults);
+			if (offset > 0) {
+				sql += String.format("OFFSET %s", offset);
+			}
+		}
+			
 		return new JoinResult(sql, aliases, columns.hasComplexJoins());
 		 
 	}
