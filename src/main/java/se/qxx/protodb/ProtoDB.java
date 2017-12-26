@@ -1299,7 +1299,9 @@ public class ProtoDB {
 
 			ProtoDBScanner scanner = new ProtoDBScanner(instance);
 			JoinResult joinClause = Searcher.getJoinQuery(scanner, populateBlobs, !searchShallow, numberOfResults, offset);
-			joinClause.addWhereClause(fieldName, searchFor, op);
+			
+			// check if this is a repeated (or enum)
+			joinClause.addWhereClause(scanner, fieldName, searchFor, op);
 			
 			PreparedStatement prep = joinClause.getStatement(conn);
 			

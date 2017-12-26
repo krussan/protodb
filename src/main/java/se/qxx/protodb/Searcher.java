@@ -10,6 +10,7 @@ import com.google.protobuf.DynamicMessage;
 import se.qxx.protodb.model.ColumnResult;
 
 import com.google.protobuf.Descriptors.FieldDescriptor;
+import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
 
 public class Searcher {
 	
@@ -96,7 +97,23 @@ public class Searcher {
 		
 		return joinClause;		
 	}
+
+	private static String getJoinClauseEnum(String enumFieldName, HashMap<String, String> aliases, String parentHierarchy, String fieldHierarchy) {
+		String joinClause = StringUtils.EMPTY;
+		
+		joinClause += String.format("LEFT JOIN %s AS %s ", 
+			StringUtils.capitalize(enumFieldName), 
+			aliases.get(fieldHierarchy));
+		
+		joinClause += String.format(" ON %s._%s_ID = %s.ID ",
+			aliases.get(parentHierarchy),
+			enumFieldName,
+			aliases.get(fieldHierarchy));
 	
+		
+		return joinClause;
+	}
+
 	private static String getJoinClauseSimple(ProtoDBScanner parentScanner, ProtoDBScanner scanner, String parentFieldName, HashMap<String, String> aliases, String parentHierarchy, String fieldHierarchy) {
 		String joinClause = StringUtils.EMPTY;
 		
@@ -128,13 +145,19 @@ public class Searcher {
 			}
 		}
 		
-		for (FieldDescriptor f : scanner.getObjectFields()) { 
-			DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
-			ProtoDBScanner other = new ProtoDBScanner(mg);
+		for (FieldDescriptor f : scanner.getObjectFields()) {
 			String hierarchy = String.format("%s.%s", fieldHierarchy, f.getName());
 			
-			joinClause += getJoinClauseSimple(scanner, other, f.getName(), aliases, fieldHierarchy, hierarchy);
-			joinClause += getJoinClause(scanner, other, f.getName(), aliases, linkTableIterator, fieldHierarchy, hierarchy, travelComplexLinks);
+			if (f.getJavaType() == JavaType.MESSAGE) {
+				DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
+				ProtoDBScanner other = new ProtoDBScanner(mg);
+				
+				joinClause += getJoinClauseSimple(scanner, other, f.getName(), aliases, fieldHierarchy, hierarchy);
+				joinClause += getJoinClause(scanner, other, f.getName(), aliases, linkTableIterator, fieldHierarchy, hierarchy, travelComplexLinks);
+			}
+			else if (f.getJavaType() == JavaType.ENUM) {
+				joinClause += getJoinClauseEnum(f.getName(), aliases, fieldHierarchy, hierarchy);
+			}
 		}
 
 		return joinClause;
@@ -161,15 +184,20 @@ public class Searcher {
 		
 		for (FieldDescriptor f : scanner.getObjectFields()) {
 			String otherAlias = currentAlias + ((char)(65 + ac));
-			
-			DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
-
-			ProtoDBScanner other = new ProtoDBScanner(mg);
 			String hierarchy = String.format("%s.%s", parentHierarchy, f.getName());
 			aliases.put(hierarchy, otherAlias);
 
-			result.append(Searcher.getColumnListForJoin(other, aliases, otherAlias, hierarchy, getBlobs, travelComplexLinks));
-			
+			if (f.getJavaType() == JavaType.MESSAGE) {
+				DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
+	
+				ProtoDBScanner other = new ProtoDBScanner(mg);
+	
+				result.append(Searcher.getColumnListForJoin(other, aliases, otherAlias, hierarchy, getBlobs, travelComplexLinks));
+			}
+			else if (f.getJavaType() == JavaType.ENUM) {
+				// Adding default value column for enum type
+				result.append(String.format("%s.[value] AS %s_%s, ", otherAlias, currentAlias, f.getName()));
+			}
 			ac++;
 		}
 		

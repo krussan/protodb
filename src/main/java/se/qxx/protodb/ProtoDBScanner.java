@@ -520,6 +520,5 @@ public class ProtoDBScanner {
 		Object o = this.getMessage().getField(this.getIdField());
 		return (int)o;
 	}
-	
 
 }

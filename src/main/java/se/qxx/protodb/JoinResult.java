@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.protobuf.Descriptors.FieldDescriptor;
@@ -78,20 +79,33 @@ public class JoinResult {
 				listOfIds));						
 	}
 
-	public void addWhereClause(String searchField, Object value, ProtoDBSearchOperator op) {
+	public void addWhereClause(ProtoDBScanner scanner, String searchField, Object value, ProtoDBSearchOperator op) {
 		if (!StringUtils.isEmpty(searchField)) {
-			String key = "." + StringUtils.substringBeforeLast(searchField, ".");
-			String field = StringUtils.substringAfterLast(searchField, ".");
+		
+			boolean isRootField = !StringUtils.contains(searchField, ".");
+			
+			String alias = StringUtils.EMPTY;
+			String field = StringUtils.EMPTY;
+			
+			if (isRootField) {
+				alias = "A";
+				field = "A_" + searchField;
+			}
+			else {
+				String key = "." + StringUtils.substringBeforeLast(searchField, ".");
+				field = StringUtils.substringAfterLast(searchField, ".");
+				alias = this.getAliases().get(key);
+			}
 			
 			if (op == ProtoDBSearchOperator.In) {
 				this.getWhereClauses().add(String.format("%s.%s IN (%s)", 
-						this.getAliases().get(key),
+						alias,
 						field,
 						value));				
 			}
 			else {
 				this.getWhereClauses().add(String.format("%s.%s %s ?", 
-						this.getAliases().get(key),
+						alias,
 						field,
 						(op == ProtoDBSearchOperator.Like ? "LIKE" : "=")));
 				
