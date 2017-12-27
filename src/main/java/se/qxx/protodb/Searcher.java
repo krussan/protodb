@@ -56,15 +56,8 @@ public class Searcher {
 				, scanner.getObjectName() + " AS A "
 				, StringUtils.isEmpty(linkTableJoin) ? "" : " ON L0._" + scanner.getObjectName().toLowerCase() + "_ID = A.ID"
 				, joinList);
-		
-		if (numberOfResults > 0) {
-			sql += String.format(" LIMIT %s ", numberOfResults);
-			if (offset > 0) {
-				sql += String.format("OFFSET %s", offset);
-			}
-		}
 			
-		return new JoinResult(sql, aliases, columns.hasComplexJoins());
+		return new JoinResult(sql, aliases, columns.hasComplexJoins(), numberOfResults, offset);
 		 
 	}
 	

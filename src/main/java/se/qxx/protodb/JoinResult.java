@@ -28,8 +28,27 @@ public class JoinResult {
 	private String joinClause = StringUtils.EMPTY;
 	private List<String> whereClauses = new ArrayList<String>();
 	private List<Object> whereParameters = new ArrayList<Object>();
-	private boolean hasComplexJoins = false; 
+	private boolean hasComplexJoins = false;
+	int nrOfResults = 0;
+	int offset = 0;
 	
+	
+	public int getNrOfResults() {
+		return nrOfResults;
+	}
+
+	public void setNrOfResults(int nrOfResults) {
+		this.nrOfResults = nrOfResults;
+	}
+
+	public int getOffset() {
+		return offset;
+	}
+
+	public void setOffset(int offset) {
+		this.offset = offset;
+	}
+
 	public boolean hasComplexJoins() {
 		return hasComplexJoins;
 	}
@@ -38,10 +57,12 @@ public class JoinResult {
 		this.hasComplexJoins = hasComplexJoins;
 	}
 
-	public JoinResult(String joinClause, HashMap<String, String> aliases, boolean hasComplexJoins) {
+	public JoinResult(String joinClause, HashMap<String, String> aliases, boolean hasComplexJoins, int nrOfResults, int offset) {
 		this.setAliases(aliases);
 		this.setJoinClause(joinClause);
 		this.setComplexJoins(hasComplexJoins);
+		this.setNrOfResults(nrOfResults);
+		this.setOffset(offset);
 	}
 
 	public HashMap<String, String> getAliases() {
@@ -150,7 +171,16 @@ public class JoinResult {
 	}
 	
 	public String getSql() {
-		return String.format("%s %s",this.getJoinClause(), this.getWhereClause());
+		String sql = String.format("%s %s",this.getJoinClause(), this.getWhereClause());
+		
+		if (this.getNrOfResults() > 0) {
+			sql += String.format(" LIMIT %s ", this.getNrOfResults());
+			if (this.getOffset() > 0) {
+				sql += String.format("OFFSET %s", this.getOffset());
+			}
+		}
+		
+		return sql;
 	}
 	
 	public PreparedStatement getStatement(Connection conn) throws SQLException {
