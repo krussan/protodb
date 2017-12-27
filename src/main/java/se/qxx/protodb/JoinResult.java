@@ -12,11 +12,14 @@ import java.util.Map;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 
+import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor;
+import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
 import com.google.protobuf.DynamicMessage;
 import com.google.protobuf.Message;
 import com.google.protobuf.Message.Builder;
 
+import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
 import se.qxx.protodb.model.ProtoDBSearchOperator;
 
 public class JoinResult {
@@ -78,18 +81,49 @@ public class JoinResult {
 		this.getWhereClauses().add(String.format("L0._" + other.getObjectName().toLowerCase() + "_ID IN (%s)", 
 				listOfIds));						
 	}
+	
+	public FieldDescriptor getWhereField(ProtoDBScanner scanner, String searchField) throws SearchFieldNotFoundException {
+		// We need to get the last field in the sequence and check if that field is an enum field
+		boolean isRootField = !StringUtils.contains(searchField, ".");
+		
+		if (isRootField) {
+			FieldDescriptor f = scanner.getFieldByName(searchField);
+			if (f == null)
+				throw new SearchFieldNotFoundException(searchField, scanner.getObjectName());
+			
+			return f;
+			
+		} else {
+			String nextField = StringUtils.substringBefore(searchField, ".");
+			String tail = StringUtils.substringAfter(searchField, ".");
+			
+			FieldDescriptor nf = scanner.getFieldByName(nextField);
+			DynamicMessage obj = DynamicMessage.getDefaultInstance(nf.getMessageType());
+			ProtoDBScanner other = new ProtoDBScanner(obj);
+			
+			return getWhereField(other, tail);
 
-	public void addWhereClause(ProtoDBScanner scanner, String searchField, Object value, ProtoDBSearchOperator op) {
+		}
+	}
+	
+	public void addWhereClause(ProtoDBScanner scanner, String searchField, Object value, ProtoDBSearchOperator op) throws SearchFieldNotFoundException {
 		if (!StringUtils.isEmpty(searchField)) {
 		
 			boolean isRootField = !StringUtils.contains(searchField, ".");
+			FieldDescriptor whereField = getWhereField(scanner, searchField);
+			boolean isEnumField = whereField.getJavaType() == JavaType.ENUM;
 			
 			String alias = StringUtils.EMPTY;
 			String field = StringUtils.EMPTY;
 			
-			if (isRootField) {
+			if (isEnumField) {
+				String key = "." + searchField;
+				field = "value";
+				alias = this.getAliases().get(key);				
+			}
+			else if (isRootField) {
 				alias = "A";
-				field = "A_" + searchField;
+				field = searchField;
 			}
 			else {
 				String key = "." + StringUtils.substringBeforeLast(searchField, ".");

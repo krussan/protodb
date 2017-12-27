@@ -520,5 +520,14 @@ public class ProtoDBScanner {
 		Object o = this.getMessage().getField(this.getIdField());
 		return (int)o;
 	}
+	
+	public FieldDescriptor getFieldByName(String fieldName) {
+		for (FieldDescriptor field : this.getMessage().getDescriptorForType().getFields()) {
+			if (StringUtils.equalsIgnoreCase(field.getName(), fieldName))
+				return field;
+		}
+		
+		return null;
+	}
 
 }
