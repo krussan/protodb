@@ -213,12 +213,21 @@ public class JoinResult {
 		}
 		
 		for (FieldDescriptor f : scanner.getObjectFields()) {
-			DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
-			String hierarchy = String.format("%s.%s", parentHierarchy, f.getName());
-			
-			mg = getResult(mg, rs, hierarchy);
-			
-			b.setField(f, mg);
+			if (f.getJavaType() == JavaType.ENUM) {
+				String alias = this.getAliases().get(parentHierarchy);
+				String columnName = String.format("%s_%s", alias, f.getName());
+				String enumValue = rs.getString(columnName);
+				
+				Populator.populateField(b, f, enumValue);
+			}
+			else {
+				DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
+				String hierarchy = String.format("%s.%s", parentHierarchy, f.getName());
+				
+				mg = getResult(mg, rs, hierarchy);
+				
+				b.setField(f, mg);
+			}
 		}
 	
 		return (T) b.build();

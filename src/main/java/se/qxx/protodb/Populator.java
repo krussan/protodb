@@ -13,6 +13,7 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.DynamicMessage;
 import com.google.protobuf.MessageOrBuilder;
 import com.google.protobuf.Descriptors.Descriptor;
+import com.google.protobuf.Descriptors.EnumValueDescriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
 import com.google.protobuf.Message.Builder;
@@ -53,6 +54,10 @@ public class Populator {
 				b.setField(field, ((int)o) == 1 ? true : false);
 			else
 				b.setField(field, ((String)o).equals("Y") ? true : false);	
+		}
+		else if (field.getJavaType() == JavaType.ENUM) {
+			EnumValueDescriptor ev = field.getEnumType().findValueByName((String)o);
+			b.setField(field, ev);
 		}
 			
 		else

@@ -44,7 +44,7 @@ public class TestSearchEnum {
 				.build();
 
 		EnumOne o2 = EnumOne.newBuilder()
-				.setID(1)
+				.setID(2)
 				.setRating(Rating.PositiveMatch)
 				.setTitle("PositiveMatch")
 				.build();
