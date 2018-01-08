@@ -9,13 +9,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 
+import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor;
+import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
 import com.google.protobuf.DynamicMessage;
 import com.google.protobuf.Message;
 import com.google.protobuf.Message.Builder;
 
+import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
 import se.qxx.protodb.model.ProtoDBSearchOperator;
 
 public class JoinResult {
@@ -24,8 +28,27 @@ public class JoinResult {
 	private String joinClause = StringUtils.EMPTY;
 	private List<String> whereClauses = new ArrayList<String>();
 	private List<Object> whereParameters = new ArrayList<Object>();
-	private boolean hasComplexJoins = false; 
+	private boolean hasComplexJoins = false;
+	int nrOfResults = 0;
+	int offset = 0;
 	
+	
+	public int getNrOfResults() {
+		return nrOfResults;
+	}
+
+	public void setNrOfResults(int nrOfResults) {
+		this.nrOfResults = nrOfResults;
+	}
+
+	public int getOffset() {
+		return offset;
+	}
+
+	public void setOffset(int offset) {
+		this.offset = offset;
+	}
+
 	public boolean hasComplexJoins() {
 		return hasComplexJoins;
 	}
@@ -34,10 +57,12 @@ public class JoinResult {
 		this.hasComplexJoins = hasComplexJoins;
 	}
 
-	public JoinResult(String joinClause, HashMap<String, String> aliases, boolean hasComplexJoins) {
+	public JoinResult(String joinClause, HashMap<String, String> aliases, boolean hasComplexJoins, int nrOfResults, int offset) {
 		this.setAliases(aliases);
 		this.setJoinClause(joinClause);
 		this.setComplexJoins(hasComplexJoins);
+		this.setNrOfResults(nrOfResults);
+		this.setOffset(offset);
 	}
 
 	public HashMap<String, String> getAliases() {
@@ -77,21 +102,65 @@ public class JoinResult {
 		this.getWhereClauses().add(String.format("L0._" + other.getObjectName().toLowerCase() + "_ID IN (%s)", 
 				listOfIds));						
 	}
+	
+	public FieldDescriptor getWhereField(ProtoDBScanner scanner, String searchField) throws SearchFieldNotFoundException {
+		// We need to get the last field in the sequence and check if that field is an enum field
+		boolean isRootField = !StringUtils.contains(searchField, ".");
+		
+		if (isRootField) {
+			FieldDescriptor f = scanner.getFieldByName(searchField);
+			if (f == null)
+				throw new SearchFieldNotFoundException(searchField, scanner.getObjectName());
+			
+			return f;
+			
+		} else {
+			String nextField = StringUtils.substringBefore(searchField, ".");
+			String tail = StringUtils.substringAfter(searchField, ".");
+			
+			FieldDescriptor nf = scanner.getFieldByName(nextField);
+			DynamicMessage obj = DynamicMessage.getDefaultInstance(nf.getMessageType());
+			ProtoDBScanner other = new ProtoDBScanner(obj);
+			
+			return getWhereField(other, tail);
 
-	public void addWhereClause(String searchField, Object value, ProtoDBSearchOperator op) {
+		}
+	}
+	
+	public void addWhereClause(ProtoDBScanner scanner, String searchField, Object value, ProtoDBSearchOperator op) throws SearchFieldNotFoundException {
 		if (!StringUtils.isEmpty(searchField)) {
-			String key = "." + StringUtils.substringBeforeLast(searchField, ".");
-			String field = StringUtils.substringAfterLast(searchField, ".");
+		
+			boolean isRootField = !StringUtils.contains(searchField, ".");
+			FieldDescriptor whereField = getWhereField(scanner, searchField);
+			boolean isEnumField = whereField.getJavaType() == JavaType.ENUM;
+			
+			String alias = StringUtils.EMPTY;
+			String field = StringUtils.EMPTY;
+			
+			if (isEnumField) {
+				String key = "." + searchField;
+				field = "value";
+				alias = this.getAliases().get(key);				
+			}
+			else if (isRootField) {
+				alias = "A";
+				field = searchField;
+			}
+			else {
+				String key = "." + StringUtils.substringBeforeLast(searchField, ".");
+				field = StringUtils.substringAfterLast(searchField, ".");
+				alias = this.getAliases().get(key);
+			}
 			
 			if (op == ProtoDBSearchOperator.In) {
 				this.getWhereClauses().add(String.format("%s.%s IN (%s)", 
-						this.getAliases().get(key),
+						alias,
 						field,
 						value));				
 			}
 			else {
 				this.getWhereClauses().add(String.format("%s.%s %s ?", 
-						this.getAliases().get(key),
+						alias,
 						field,
 						(op == ProtoDBSearchOperator.Like ? "LIKE" : "=")));
 				
@@ -102,7 +171,16 @@ public class JoinResult {
 	}
 	
 	public String getSql() {
-		return String.format("%s %s",this.getJoinClause(), this.getWhereClause());
+		String sql = String.format("%s %s",this.getJoinClause(), this.getWhereClause());
+		
+		if (this.getNrOfResults() > 0) {
+			sql += String.format(" LIMIT %s ", this.getNrOfResults());
+			if (this.getOffset() > 0) {
+				sql += String.format("OFFSET %s", this.getOffset());
+			}
+		}
+		
+		return sql;
 	}
 	
 	public PreparedStatement getStatement(Connection conn) throws SQLException {
@@ -165,12 +243,21 @@ public class JoinResult {
 		}
 		
 		for (FieldDescriptor f : scanner.getObjectFields()) {
-			DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
-			String hierarchy = String.format("%s.%s", parentHierarchy, f.getName());
-			
-			mg = getResult(mg, rs, hierarchy);
-			
-			b.setField(f, mg);
+			if (f.getJavaType() == JavaType.ENUM) {
+				String alias = this.getAliases().get(parentHierarchy);
+				String columnName = String.format("%s_%s", alias, f.getName());
+				String enumValue = rs.getString(columnName);
+				
+				Populator.populateField(b, f, enumValue);
+			}
+			else {
+				DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
+				String hierarchy = String.format("%s.%s", parentHierarchy, f.getName());
+				
+				mg = getResult(mg, rs, hierarchy);
+				
+				b.setField(f, mg);
+			}
 		}
 	
 		return (T) b.build();

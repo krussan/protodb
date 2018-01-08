@@ -31,3 +31,5 @@ log*.txt
 protodb_search_test.db
 protodb_repeated_test.db
 protodb_limit_offset_test.db
+protodb_enum_test.db
+protodb_test.db
