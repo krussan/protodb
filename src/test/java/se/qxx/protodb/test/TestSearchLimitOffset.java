@@ -123,10 +123,10 @@ public class TestSearchLimitOffset {
 					+ " ON L1._repobjectone_ID = A.ID "
 					+ "LEFT JOIN SimpleTwo AS AA "
 					+ " ON L1._simpletwo_ID = AA.ID "
-					+ " LIMIT 10 "
+					+ "  LIMIT 10 "
 					+ "OFFSET 1";
 			
-			assertEquals(expected, result.getJoinClause());
+			assertEquals(expected, result.getSql());
 		}
 		catch (Exception e) {
 			e.printStackTrace();
