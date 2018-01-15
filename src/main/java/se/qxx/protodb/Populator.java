@@ -59,6 +59,9 @@ public class Populator {
 			EnumValueDescriptor ev = field.getEnumType().findValueByName((String)o);
 			b.setField(field, ev);
 		}
+		else if (field.getJavaType() == JavaType.BYTE_STRING) {
+			b.setField(field, ByteString.copyFrom((byte[])o));
+		}
 			
 		else
 			b.setField(field, o);

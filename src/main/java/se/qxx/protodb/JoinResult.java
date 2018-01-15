@@ -259,6 +259,14 @@ public class JoinResult {
 				b.setField(f, mg);
 			}
 		}
+		
+		for (FieldDescriptor f : scanner.getBlobFields()) {
+			String alias = this.getAliases().get(parentHierarchy);
+			String columnName = String.format("%s_%s", alias, f.getName());
+			byte[] byteData = rs.getBytes(columnName);
+			
+			Populator.populateField(b, f, byteData);			
+		}
 	
 		return (T) b.build();
 	}
