@@ -60,7 +60,8 @@ public class Populator {
 			b.setField(field, ev);
 		}
 		else if (field.getJavaType() == JavaType.BYTE_STRING) {
-			b.setField(field, ByteString.copyFrom((byte[])o));
+			if (o != null)
+				b.setField(field, ByteString.copyFrom((byte[])o));
 		}
 			
 		else
