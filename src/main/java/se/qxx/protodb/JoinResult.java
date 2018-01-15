@@ -194,7 +194,7 @@ public class JoinResult {
 		return prep;
 	}
 	
-	public <T extends Message> Map<Integer, List<T>> getResultLink(T instance, ResultSet rs) throws SQLException {
+	public <T extends Message> Map<Integer, List<T>> getResultLink(T instance, ResultSet rs, boolean getBlobs) throws SQLException {
 		Map<Integer, List<T>> map = new HashMap<Integer, List<T>>();
 		
 		while (rs.next()) {
@@ -204,23 +204,23 @@ public class JoinResult {
 				map.put(parentID, new ArrayList<T>()); 
 			}
 			
-			map.get(parentID).add(getResult(instance, rs, StringUtils.EMPTY));
+			map.get(parentID).add(getResult(instance, rs, StringUtils.EMPTY, getBlobs));
 		}
 		
 		return map;
 	}
 	
-	public <T extends Message> List<T> getResult(T instance, ResultSet rs) throws SQLException {
+	public <T extends Message> List<T> getResult(T instance, ResultSet rs, boolean getBlobs) throws SQLException {
 		List<T> result = new ArrayList<T>();
 		while (rs.next()) {
-			result.add(getResult(instance, rs, StringUtils.EMPTY));
+			result.add(getResult(instance, rs, StringUtils.EMPTY, getBlobs));
 		}
 		
 		return result;
 	}
 
 	@SuppressWarnings("unchecked")
-	private <T extends Message> T getResult(T instance, ResultSet rs, String parentHierarchy) throws SQLException {
+	private <T extends Message> T getResult(T instance, ResultSet rs, String parentHierarchy, boolean getBlobs) throws SQLException {
 		Builder b = instance.newBuilderForType();
 
 //		ProtoDBScanner scanner = new ProtoDBScanner(instance);
@@ -254,20 +254,23 @@ public class JoinResult {
 				DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
 				String hierarchy = String.format("%s.%s", parentHierarchy, f.getName());
 				
-				mg = getResult(mg, rs, hierarchy);
+				mg = getResult(mg, rs, hierarchy, getBlobs);
 				
 				b.setField(f, mg);
 			}
 		}
 		
-		for (FieldDescriptor f : scanner.getBlobFields()) {
-			String alias = this.getAliases().get(parentHierarchy);
-			String columnName = String.format("%s_%s", alias, f.getName());
-			byte[] byteData = rs.getBytes(columnName);
-			
-			Populator.populateField(b, f, byteData);			
+		if (getBlobs) {
+			for (FieldDescriptor f : scanner.getBlobFields()) {
+				String alias = this.getAliases().get(parentHierarchy);
+				String columnName = String.format("%s_%s", alias, f.getName());
+				
+				byte[] byteData = rs.getBytes(columnName);
+				
+				Populator.populateField(b, f, byteData);			
+			}
 		}
-	
+		
 		return (T) b.build();
 	}
 	
