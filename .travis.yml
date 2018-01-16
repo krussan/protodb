@@ -2,7 +2,7 @@ language: java
 sudo: true
 
 before_install:
-- ./install-protobuf.sh
+- ./ci/install-protobuf.sh
 
 cache:
   directories:
@@ -11,7 +11,7 @@ cache:
 before_deploy:
  - export RELEASE_PKG_FILE=$(find target/ -name '*.jar' -exec basename {} \;)
  - echo "Deploying $RELEASE_PKG_FILE to GitHub releases"
- - git-tag.sh
+ - ./ci/git-tag.sh
 
 deploy:
   skip_cleanup: true
@@ -27,6 +27,9 @@ deploy:
 
   condition: "[[ $TRAVIS_PULL_REQUEST == “false” ]] && [[ $TRAVIS_BRANCH == “master” ]]"
 
+after_deploy:
+  - ./ci/mvn-install.sh
+  
 branches:
   except:
     - /^*-v[0-9]/
