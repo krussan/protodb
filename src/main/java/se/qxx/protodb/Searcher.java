@@ -215,7 +215,20 @@ public class Searcher {
 			}
 			ac++;
 		}
-		
+
+		if (getBlobs) {
+			//TODO!
+			//Add hierarchy and join to Blob table. Return the blob data as a column value
+			for (FieldDescriptor f : scanner.getBlobFields()) {
+				String otherAlias = currentAlias + ((char)(65 + ac));
+				String hierarchy = String.format("%s.%s", parentHierarchy, f.getName());
+				aliases.put(hierarchy, otherAlias);
+
+				result.append(String.format("%s.[data] AS %s_%s, ", otherAlias, currentAlias, f.getName()));
+				ac++;	
+			}
+		}
+
 		// set the distinct column list if this is the first object
 		if (currentAlias == "A")
 			result.setDistinctColumnList();
@@ -238,18 +251,6 @@ public class Searcher {
 			}		
 		}
 		
-		if (getBlobs) {
-			//TODO!
-			//Add hierarchy and join to Blob table. Return the blob data as a column value
-			for (FieldDescriptor f : scanner.getBlobFields()) {
-				String otherAlias = currentAlias + ((char)(65 + ac));
-				String hierarchy = String.format("%s.%s", parentHierarchy, f.getName());
-				aliases.put(hierarchy, otherAlias);
-
-				result.append(String.format("%s.[data] AS %s_%s, ", otherAlias, currentAlias, f.getName()));
-				ac++;	
-			}
-		}
 
 		return result;
 	}
