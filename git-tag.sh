@@ -4,7 +4,7 @@ git config --global user.name "Travis CI"
 
 
 JARFILE=$(find target/ -name '*.jar' -exec basename {} \;)
-VERSION=`echo $JARFILE | sed 's/.jar//' | sed 's/[[:alpha:]|(|[:space:]|-]//g'`
+VERSION=v`echo $JARFILE | sed 's/.jar//' | sed 's/[[:alpha:]|(|[:space:]|-]//g'`
 
 echo "Version :: $VERSION"
 echo "TRAVIS_BRANCH :: $TRAVIS_BRANCH"
