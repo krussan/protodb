@@ -42,7 +42,7 @@ public class Searcher {
 		
 		ColumnResult columns = Searcher.getColumnListForJoin(scanner, aliases, currentAlias, StringUtils.EMPTY, getBlobs, travelComplexLinks);
 		
-		String joinList = Searcher.getJoinClause(null, scanner, StringUtils.EMPTY, aliases, new MutableInt(1), StringUtils.EMPTY, StringUtils.EMPTY, travelComplexLinks);
+		String joinList = Searcher.getJoinClause(null, scanner, StringUtils.EMPTY, aliases, new MutableInt(1), StringUtils.EMPTY, StringUtils.EMPTY, travelComplexLinks, getBlobs);
 		
 		// If complex join set a distinct on the first object only
 		// This to do a simple search query. The result needs to be picked up by
@@ -106,6 +106,21 @@ public class Searcher {
 		
 		return joinClause;
 	}
+	
+	private static String getJoinClauseBlob(String blobFieldName, HashMap<String, String> aliases, String parentHierarchy, String fieldHierarchy) {
+		String joinClause = StringUtils.EMPTY;
+		
+		joinClause += String.format("LEFT JOIN BlobData AS %s ",  
+			aliases.get(fieldHierarchy));
+		
+		joinClause += String.format(" ON %s._%s_ID = %s.ID ",
+			aliases.get(parentHierarchy),
+			blobFieldName,
+			aliases.get(fieldHierarchy));
+	
+		
+		return joinClause;
+	}
 
 	private static String getJoinClauseSimple(ProtoDBScanner parentScanner, ProtoDBScanner scanner, String parentFieldName, HashMap<String, String> aliases, String parentHierarchy, String fieldHierarchy) {
 		String joinClause = StringUtils.EMPTY;
@@ -124,7 +139,7 @@ public class Searcher {
 		return joinClause;
 	}
 	
-	private static String getJoinClause(ProtoDBScanner parentScanner, ProtoDBScanner scanner, String parentFieldName, HashMap<String, String> aliases, MutableInt linkTableIterator, String parentHierarchy, String fieldHierarchy, boolean travelComplexLinks) {
+	private static String getJoinClause(ProtoDBScanner parentScanner, ProtoDBScanner scanner, String parentFieldName, HashMap<String, String> aliases, MutableInt linkTableIterator, String parentHierarchy, String fieldHierarchy, boolean travelComplexLinks, boolean getBlobs) {
 		String joinClause = StringUtils.EMPTY;
 
 		if (travelComplexLinks) {
@@ -134,7 +149,7 @@ public class Searcher {
 				String hierarchy = String.format("%s.%s", fieldHierarchy, f.getName());
 				
 				joinClause += getJoinClauseRepeated(scanner, other, f.getName(), aliases, linkTableIterator, fieldHierarchy, hierarchy);
-				joinClause += getJoinClause(scanner, other, f.getName(), aliases, linkTableIterator, fieldHierarchy, hierarchy, travelComplexLinks);
+				joinClause += getJoinClause(scanner, other, f.getName(), aliases, linkTableIterator, fieldHierarchy, hierarchy, travelComplexLinks, getBlobs);
 			}
 		}
 		
@@ -146,10 +161,17 @@ public class Searcher {
 				ProtoDBScanner other = new ProtoDBScanner(mg);
 				
 				joinClause += getJoinClauseSimple(scanner, other, f.getName(), aliases, fieldHierarchy, hierarchy);
-				joinClause += getJoinClause(scanner, other, f.getName(), aliases, linkTableIterator, fieldHierarchy, hierarchy, travelComplexLinks);
+				joinClause += getJoinClause(scanner, other, f.getName(), aliases, linkTableIterator, fieldHierarchy, hierarchy, travelComplexLinks, getBlobs);
 			}
 			else if (f.getJavaType() == JavaType.ENUM) {
 				joinClause += getJoinClauseEnum(f.getName(), aliases, fieldHierarchy, hierarchy);
+			}
+		}
+
+		if (getBlobs) {
+			for (FieldDescriptor f : scanner.getBlobFields()) {
+				String hierarchy = String.format("%s.%s", fieldHierarchy, f.getName());
+				joinClause += getJoinClauseBlob(f.getName(), aliases, fieldHierarchy, hierarchy);
 			}
 		}
 
@@ -193,7 +215,20 @@ public class Searcher {
 			}
 			ac++;
 		}
-		
+
+		if (getBlobs) {
+			//TODO!
+			//Add hierarchy and join to Blob table. Return the blob data as a column value
+			for (FieldDescriptor f : scanner.getBlobFields()) {
+				String otherAlias = currentAlias + ((char)(65 + ac));
+				String hierarchy = String.format("%s.%s", parentHierarchy, f.getName());
+				aliases.put(hierarchy, otherAlias);
+
+				result.append(String.format("%s.[data] AS %s_%s, ", otherAlias, currentAlias, f.getName()));
+				ac++;	
+			}
+		}
+
 		// set the distinct column list if this is the first object
 		if (currentAlias == "A")
 			result.setDistinctColumnList();
@@ -216,14 +251,6 @@ public class Searcher {
 			}		
 		}
 		
-		if (getBlobs) {
-			//TODO!
-			for (FieldDescriptor f : scanner.getBlobFields()) {
-				String otherAlias = currentAlias + ((char)(65 + ac));
-				
-				ac++;	
-			}
-		}
 
 		return result;
 	}

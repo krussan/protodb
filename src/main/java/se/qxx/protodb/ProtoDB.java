@@ -445,7 +445,7 @@ public class ProtoDB {
 					PreparedStatement prep = joinResult.getStatement(conn);
 					ResultSet rs = prep.executeQuery();
 					
-					Map<Integer, List<DynamicMessage>> result = joinResult.getResultLink(innerInstance, rs);
+					Map<Integer, List<DynamicMessage>> result = joinResult.getResultLink(innerInstance, rs, this.isPopulateBlobsActive());
 					return updateParentObjects(scanner, field, listOfObjects, result);
 				}
 			
@@ -1313,7 +1313,7 @@ public class ProtoDB {
 			// since we are calling on the parent the subqueries should return all
 			// subobjects regardless of the search criteria (maybe this could be
 			// set as a parameter)
-			List<T> result = joinClause.getResult(instance, rs);
+			List<T> result = joinClause.getResult(instance, rs, this.isPopulateBlobsActive());
 			
 			if (joinClause.hasComplexJoins())
 				result = getByJoin(result, false);
