@@ -2,7 +2,7 @@
 JARFILE=$(find target/ -name '*.jar' -exec basename {} \;)
 
 if [[ $TRAVIS_PULL_REQUEST == “false” ]] && [[ $TRAVIS_BRANCH == “master” ]]; then
-  GIT_BASE=$TRAVIS_BUILD_DIR/..
+  GIT_BASE=$HOME
   MVN_REPO=$GIT_BASE/maven-repo
 
   git clone https://$GH_TOKEN@github.com/krussan/maven-repo $MVN_REPO
