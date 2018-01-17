@@ -26,6 +26,7 @@ target/*
 log*.txt
 .idea
 .metadata
+.mvn
 
 /target/
 protodb_search_test.db
