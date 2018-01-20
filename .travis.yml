@@ -8,6 +8,8 @@ cache:
 before_install:
  - unzip ci/protoc.zip -d ci
  - chmod 775 ci/*.sh
+ - if [ ! -d ~/.mvn ]; then mkdir ~/.mvn; fi
+ - cp ci/settings.xml ~/.mvn
 
 script:
  - ./ci/build.sh
