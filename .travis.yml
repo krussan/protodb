@@ -12,6 +12,8 @@ before_install:
  - cp ci/settings.xml ~/.mvn
  - ls -la ci
 
+install: true
+
 script: ci/build.sh
 
 before_deploy:
