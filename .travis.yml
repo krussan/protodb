@@ -8,6 +8,9 @@ cache:
 before_install:
  - cd ci && unzip protoc.zip
 
+script:
+ - ./ci/build.sh
+
 before_deploy:
  - export RELEASE_PKG_FILE=$(find target/ -name '*.jar' -exec basename {} \;)
  - echo "Deploying $RELEASE_PKG_FILE to GitHub releases"
