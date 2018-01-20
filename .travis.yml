@@ -6,8 +6,8 @@ cache:
     - $HOME/.m2
 
 before_install:
- - cd ci && unzip protoc.zip
- - cd ci && chmod 775 *.sh
+ - unzip ci/protoc.zip -d ci
+ - chmod 775 ci/*.sh
 
 script:
  - ./ci/build.sh
