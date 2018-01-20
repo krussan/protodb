@@ -3,7 +3,13 @@ echo Initiating build ...
 echo Checking version ...
 VERSION=`mvn org.apache.maven.plugins:maven-help-plugin:2.1.1:evaluate -Dexpression=project.version |grep -Ev '(^\[|Download\w+:)'`
 
+echo
+echo -----------------------------------------------------
 echo VERSION :: $VERSION
+echo TRAVIS_PULL_REQUEST :: $TRAVIS_PULL_REQUEST
+echo TRAVIS_BRANCH :: $TRAVIS_BRANCH
+echo -----------------------------------------------------
+echo
 
 if [[ "$TRAVIS_PULL_REQUEST" == "false" ]] && [[ "$TRAVIS_BRANCH" == "master" ]];then
    echo Packaging new release ...
