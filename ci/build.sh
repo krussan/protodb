@@ -14,7 +14,7 @@ echo
 if [[ "$TRAVIS_BRANCH" == "master" ]];then
    echo Checking that the resulting tag does not exist
 
-   if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+   if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
       echo ERROR! Tag $VERSION exist. Please modify pom and commit.
       exit 1
    fi
