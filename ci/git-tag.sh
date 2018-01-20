@@ -10,7 +10,7 @@ echo "Version :: $VERSION"
 echo "TRAVIS_BRANCH :: $TRAVIS_BRANCH"
 echo "TRAVIS_PULL_REQUEST :: $TRAVIS_PULL_REQUEST"
 
-if [[ $TRAVIS_PULL_REQUEST == “false” ]] && [[ $TRAVIS_BRANCH == “master” ]]; then
+if [[ "$TRAVIS_PULL_REQUEST" == "false" ]] && [[ "$TRAVIS_BRANCH" == "master" ]]; then
    git tag $VERSION -a -m "Version $VERSION"
    git push -q https://$GH_TOKEN@github.com/krussan/protodb --tags
 fi
