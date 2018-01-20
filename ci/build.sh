@@ -12,7 +12,7 @@ elif [[ "$TRAVIS_PULL_REQUEST" == "true" ]] && [[ "$TRAVIS_BRANCH" == "master" ]
    echo Pull request build.
    echo Checking that the resulting tag does not exist
    if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
-      echo "ERROR! Tag $VERSION exist. Please modify pom and commit.
+      echo ERROR! Tag $VERSION exist. Please modify pom and commit.
       exit 1
    fi
 else 
