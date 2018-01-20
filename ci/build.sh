@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 echo Initiating build ...
 
 if [[ "$TRAVIS_PULL_REQUEST" == "false" ]] && [[ "$TRAVIS_BRANCH" == "master" ]];then
