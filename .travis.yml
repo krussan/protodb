@@ -18,7 +18,8 @@ install: true
 script: ci/build.sh
 
 before_deploy:
- - export RELEASE_PKG_FILE=$(find target/ -name '*.jar' -exec basename {} \;)
+ - ls -la target
+ - export RELEASE_PKG_FILE=`find target/ -name '*.jar' -exec basename {} \;`
  - echo "Deploying $RELEASE_PKG_FILE to GitHub releases"
  - ./ci/git-tag.sh
 
@@ -33,8 +34,6 @@ deploy:
   on:
     tags: false
     branch: master
-
-  condition: "[[ $TRAVIS_PULL_REQUEST == “false” ]] && [[ $TRAVIS_BRANCH == “master” ]]"
 
 after_deploy:
   - ./ci/mvn-install.sh
