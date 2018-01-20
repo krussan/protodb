@@ -10,9 +10,9 @@ before_install:
  - chmod 775 ci/*.sh
  - if [ ! -d ~/.mvn ]; then mkdir ~/.mvn; fi
  - cp ci/settings.xml ~/.mvn
+ - ls -la ci
 
-script:
- - ./ci/build.sh
+script: ci/build.sh
 
 before_deploy:
  - export RELEASE_PKG_FILE=$(find target/ -name '*.jar' -exec basename {} \;)
