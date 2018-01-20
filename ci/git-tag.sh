@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 git config --global user.email "builds@travis-ci.com"
 git config --global user.name "Travis CI"
 
@@ -10,6 +10,7 @@ echo "TRAVIS_BRANCH :: $TRAVIS_BRANCH"
 echo "TRAVIS_PULL_REQUEST :: $TRAVIS_PULL_REQUEST"
 
 if [[ "$TRAVIS_PULL_REQUEST" == "false" ]] && [[ "$TRAVIS_BRANCH" == "master" ]];then
+   echo Tagging repository with version
    git tag $VERSION -a -m "Version $VERSION"
    git push -q https://$GH_TOKEN@github.com/krussan/protodb --tags
 fi
