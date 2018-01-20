@@ -1,8 +1,49 @@
 language: java
-sudo: true
-
-before_install:
-  - ./install-protobuf.sh
+sudo: false
 
 cache:
-  - $HOME/.m2
+  directories:
+    - $HOME/.m2
+
+before_install:
+ - export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/ci:$LD_LIBRARY_PATH
+ - unzip ci/protoc.zip -d ci
+ - chmod 775 ci/*.sh
+ - if [ ! -d ~/.m2 ]; then mkdir ~/.m2; fi
+ - cp ci/settings.xml ~/.m2
+ - ls -la ci
+
+install: true
+
+script: ci/build.sh
+
+before_deploy:
+ - export RELEASE_PKG_FILE=$(find target/ -name '*.jar' -exec basename {} \;)
+ - echo "Deploying $RELEASE_PKG_FILE to GitHub releases"
+ - ./ci/git-tag.sh
+
+deploy:
+  skip_cleanup: true
+  provider: releases
+  api_key:
+    secure: vHL4QV+9xH+8QSCk5pSEAA3we5ly9u0ZXYxHnWK4PmgK2rZQKCmZdWpiNa/96X6ZjJoXIoqn9xi1PPuarBqX0TnfewXScjMpteZ1WBxoVgXLDI4yXhjnHKJFmBussKcky9PhXc9RALVZOtLm+0NPAfJEU1WVm/CxgUwQYk0j8Ns0WI51rN17A+c4hwu7vNgj/fx6/8jZ/QW6tVsXQvHy8v0b84occ3muV68Tkz+ZsgPc8uOoLWJ0ZmWD+PZsEtRY3y0HrB/voNse0QQPpQDLkLKBNn0GNAohH4JE7DNJv5MPeQ+KCqNs8JMrnIZuKglnfTmnYPjE/csTzXgk+ZoBnmll+fvKtASn1zoIfSRTewy1BnOFZek4k01cKJc4/rmAlSf7iJYa2uwGkFds9cbOjRkcxu2MFs8gxKWdQmExYW4uDKczcBKmv9VZ8pXoSeG4qA+3kiqOVHeoaYBqpGFwZdGpB3QclnZHDEHN+kkZfapFe9RbZ5dYrjl1JMx191+ePbQTpukfmDC+tDtULm/hSkBcrolH62NNr0hy83MeVHAW7FM22ux4d6BBt+yYSo2mKHQeEE9Q2DFVavLrMWhgqeRhANqfJok1EEx+8SaWSwAQ6oHynzx+HFquXYSR15DjjJ89hYHnk43FFhtWM/cVDR4h9tZpANTIhtM58ARwtG4=
+  file_glob: true
+  file: "${RELEASE_PKG_FILE}"
+
+  on:
+    tags: false
+    branch: master
+
+  condition: "[[ $TRAVIS_PULL_REQUEST == “false” ]] && [[ $TRAVIS_BRANCH == “master” ]]"
+
+after_deploy:
+  - ./ci/mvn-install.sh
+  
+branches:
+  except:
+    - /^*-v[0-9]/
+
+env:
+  global:
+    secure: BX6qJgIHsvfdfrAyG+GfNWSpHoUXX70me9a/oHGGxGSxrnk9XpwMr3YPXagzFZCu/DMRgqwTAE5Wuypyf5/+m9ocPTondMbNGXbeIhAECY9NrJ3Z7kWUOl8Qxg+7t8E1i3COGYV3yqqMUir/FY+1DxIniiTMwHY1cs6PQs50vUVppmaB4mSxLLIuKOASzEZJY8/4iDxKJdilBG2RfLpd3IhN1Hd2cJeU4jNRoREqhwUB/QagQv6hDtDP19qi7IonuyeeZj73YIwjqHN9bD4zwNcOiNrAC4kgg3tNi/fuYHERbLsb9HGN++NoCez07pQYXsFyMcUkezTls89klEcRZAT8Hn6OFnE0qFLfjF3I5wLdXgNMYtA9H8yR4QEfJwvxeKF3HlP7KMoHYVQP4KlV2Usg3DID2AIhsvDsfvQH2P4nVwKqvvWCQtyD8Dxj4RU5XgZmZPQkjM6ZiwK1f7AHrW/IbIhXYJ2Jfo3fxVTYKSWCMgDJEGc4E0Tpk1DM8udKL7ox8GuOec0OaRVETpGu6lPHDbm48y3QgMtrUw5As5lrITugz0wr/AJKL33dtnrtx4gbvfmYvkjHo2nrBI9U7AYnIJCr9Ki6nmBTx1OWsE9Qb91JcOPoOPC/88SzBolBXmeYO88amBNduzpMaAlYiD+uPmqEk3K3o34w3ATWZuw=
+
