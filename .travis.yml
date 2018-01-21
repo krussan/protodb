@@ -5,6 +5,12 @@ cache:
   directories:
     - $HOME/.m2
 
+addons:
+  apt:
+    packages:
+      # Needed for `xmllint`.
+      - libxml2-utils
+
 before_install:
  - export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/ci:$LD_LIBRARY_PATH
  - unzip ci/protoc.zip -d ci
