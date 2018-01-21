@@ -29,7 +29,7 @@ deploy:
   api_key:
     secure: vHL4QV+9xH+8QSCk5pSEAA3we5ly9u0ZXYxHnWK4PmgK2rZQKCmZdWpiNa/96X6ZjJoXIoqn9xi1PPuarBqX0TnfewXScjMpteZ1WBxoVgXLDI4yXhjnHKJFmBussKcky9PhXc9RALVZOtLm+0NPAfJEU1WVm/CxgUwQYk0j8Ns0WI51rN17A+c4hwu7vNgj/fx6/8jZ/QW6tVsXQvHy8v0b84occ3muV68Tkz+ZsgPc8uOoLWJ0ZmWD+PZsEtRY3y0HrB/voNse0QQPpQDLkLKBNn0GNAohH4JE7DNJv5MPeQ+KCqNs8JMrnIZuKglnfTmnYPjE/csTzXgk+ZoBnmll+fvKtASn1zoIfSRTewy1BnOFZek4k01cKJc4/rmAlSf7iJYa2uwGkFds9cbOjRkcxu2MFs8gxKWdQmExYW4uDKczcBKmv9VZ8pXoSeG4qA+3kiqOVHeoaYBqpGFwZdGpB3QclnZHDEHN+kkZfapFe9RbZ5dYrjl1JMx191+ePbQTpukfmDC+tDtULm/hSkBcrolH62NNr0hy83MeVHAW7FM22ux4d6BBt+yYSo2mKHQeEE9Q2DFVavLrMWhgqeRhANqfJok1EEx+8SaWSwAQ6oHynzx+HFquXYSR15DjjJ89hYHnk43FFhtWM/cVDR4h9tZpANTIhtM58ARwtG4=
   file_glob: true
-  file: "${RELEASE_PKG_FILE}"
+  file: "target/${RELEASE_PKG_FILE}"
 
   on:
     tags: false
