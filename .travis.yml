@@ -26,6 +26,7 @@ script: ci/build.sh
 before_deploy:
  - ls -la target
  - export RELEASE_PKG_FILE=`find target/ -name '*.jar' -exec basename {} \;`
+ - export GIT_BASE=$HOME
  - echo "Deploying ${RELEASE_PKG_FILE} to GitHub releases"
  - ./ci/git-tag.sh
 
