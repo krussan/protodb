@@ -10,7 +10,8 @@ if [[ "$TRAVIS_PULL_REQUEST" == "false" ]] && [[ "$TRAVIS_BRANCH" == "master" ]]
   $MVN_REPO/mvn-install.sh ../pom.xml $JARFILE
     
   cd $MVN_REPO
-  git commit -a -m "Adding $JARFILE"
+  git add --all
+  git commit -m "Adding $JARFILE"
   git push
 
 fi
