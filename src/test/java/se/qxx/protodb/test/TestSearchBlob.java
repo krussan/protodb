@@ -16,6 +16,7 @@ import se.qxx.protodb.ProtoDB;
 import se.qxx.protodb.ProtoDBScanner;
 import se.qxx.protodb.Searcher;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
+import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
 import se.qxx.protodb.model.ProtoDBSearchOperator;
 import se.qxx.protodb.test.TestDomain.EnumOne;
@@ -78,7 +79,7 @@ public class TestSearchBlob {
 	}
 	
 	@Test
-	public void TestBlobPopulator() throws ClassNotFoundException, SQLException, SearchFieldNotFoundException {
+	public void TestBlobPopulator() throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
 		TestDomain.SimpleTest o1 = TestDomain.SimpleTest.getDefaultInstance();
 
 		List<TestDomain.SimpleTest> result = db.search(o1, "ss", "ThisIsATest", ProtoDBSearchOperator.Equals);

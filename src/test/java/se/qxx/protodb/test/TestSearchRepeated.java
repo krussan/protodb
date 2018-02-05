@@ -14,6 +14,7 @@ import se.qxx.protodb.ProtoDB;
 import se.qxx.protodb.ProtoDBScanner;
 import se.qxx.protodb.Searcher;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
+import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
 import se.qxx.protodb.model.ProtoDBSearchOperator;
 import se.qxx.protodb.test.TestDomain.RepObjectOne;
@@ -74,13 +75,14 @@ public class TestSearchRepeated {
 					"who_said_that", 
 					ProtoDBSearchOperator.Equals);
 			
+			
 			// we should get one single result..
 			assertEquals(1, result.size());
 			
 			// we should get three sub results
 			assertEquals(2, result.get(0).getListOfObjectsList().size());
 
-		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException  e) {
+		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
@@ -144,7 +146,7 @@ public class TestSearchRepeated {
 			// we should get three sub results
 			assertEquals(0, result.get(0).getListOfObjectsList().size());
 
-		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException  e) {
+		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException  e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
@@ -164,7 +166,7 @@ public class TestSearchRepeated {
 			// of the parent item. This is not wanted.
 			assertEquals(2, result.size());
 
-		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException  e) {
+		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}

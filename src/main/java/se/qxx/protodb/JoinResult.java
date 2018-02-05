@@ -1,5 +1,7 @@
 package se.qxx.protodb;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -15,10 +17,12 @@ import org.apache.commons.lang3.StringUtils;
 import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
+import com.google.protobuf.ByteString;
 import com.google.protobuf.DynamicMessage;
 import com.google.protobuf.Message;
 import com.google.protobuf.Message.Builder;
 
+import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
 import se.qxx.protodb.model.ProtoDBSearchOperator;
 
@@ -194,7 +198,7 @@ public class JoinResult {
 		return prep;
 	}
 	
-	public <T extends Message> Map<Integer, List<T>> getResultLink(T instance, ResultSet rs, boolean getBlobs) throws SQLException {
+	public <T extends Message> Map<Integer, List<T>> getResultLink(T instance, ResultSet rs, boolean getBlobs) throws SQLException, ProtoDBParserException {
 		Map<Integer, List<T>> map = new HashMap<Integer, List<T>>();
 		
 		while (rs.next()) {
@@ -210,7 +214,7 @@ public class JoinResult {
 		return map;
 	}
 	
-	public <T extends Message> List<T> getResult(T instance, ResultSet rs, boolean getBlobs) throws SQLException {
+	public <T extends Message> List<T> getResult(T instance, ResultSet rs, boolean getBlobs) throws SQLException, ProtoDBParserException {
 		List<T> result = new ArrayList<T>();
 		while (rs.next()) {
 			result.add(getResult(instance, rs, StringUtils.EMPTY, getBlobs));
@@ -220,9 +224,11 @@ public class JoinResult {
 	}
 
 	@SuppressWarnings("unchecked")
-	private <T extends Message> T getResult(T instance, ResultSet rs, String parentHierarchy, boolean getBlobs) throws SQLException {
-		Builder b = instance.newBuilderForType();
-
+	private <T extends Message> T getResult(T instance, ResultSet rs, String parentHierarchy, boolean getBlobs) throws SQLException, ProtoDBParserException {
+//		Builder b = instance.newBuilderForType();
+		
+		DynamicMessage.Builder b = DynamicMessage.newBuilder(instance.getDefaultInstanceForType());
+		
 //		ProtoDBScanner scanner = new ProtoDBScanner(instance);
 //		Log(String.format("Populating object %s :: %s", scanner.getObjectName(), id));
 //		
@@ -271,7 +277,23 @@ public class JoinResult {
 			}
 		}
 		
-		return (T) b.build();
+		// invoke parseFrom by reflection to cast this from dynamicMessage to the actual type
+		if (instance instanceof DynamicMessage)
+			return (T) b.build();
+		else
+			return (T) constructTargetMessage(instance, b);
+	}
+
+	private <T extends Message> Object constructTargetMessage(T instance, DynamicMessage.Builder b)
+			throws ProtoDBParserException {
+		try {
+			Method parseMethod = instance.getClass().getMethod("parseFrom", ByteString.class);
+			Object o = parseMethod.invoke(null, b.build().toByteString());
+			return o;			
+		}
+		catch (Exception e) {
+			throw new ProtoDBParserException(instance.getClass().getName(), e);
+		}
 	}
 	
 	

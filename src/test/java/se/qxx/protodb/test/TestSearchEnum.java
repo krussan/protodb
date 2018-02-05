@@ -14,6 +14,7 @@ import se.qxx.protodb.ProtoDB;
 import se.qxx.protodb.ProtoDBScanner;
 import se.qxx.protodb.Searcher;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
+import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
 import se.qxx.protodb.model.ProtoDBSearchOperator;
 import se.qxx.protodb.test.TestDomain.EnumOne;
@@ -69,7 +70,7 @@ public class TestSearchEnum {
 			// we should get three sub results
 			assertEquals(1, result.get(0).getID());
 
-		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException  e) {
+		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException  | ProtoDBParserException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}

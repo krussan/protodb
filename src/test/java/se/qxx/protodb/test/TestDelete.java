@@ -11,6 +11,7 @@ import org.junit.Test;
 
 import se.qxx.protodb.ProtoDB;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
+import se.qxx.protodb.exceptions.ProtoDBParserException;
 
 import com.google.protobuf.ByteString;
 
