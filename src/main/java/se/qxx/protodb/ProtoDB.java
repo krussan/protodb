@@ -17,6 +17,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 
+import se.qxx.protodb.backend.DatabaseBackend;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
@@ -34,22 +35,21 @@ import com.google.protobuf.Descriptors.EnumDescriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor;
 
 public class ProtoDB {
-	private String connectionString = "jdbc:sqlite:jukebox.db";
 	private boolean populateBlobs = true;
+	private DatabaseBackend databaseBackend;
 	
 	//---------------------------------------------------------------------------------
 	//----------------------------------------------------------------------  PROPS
 	//---------------------------------------------------------------------------------
-
-
-	private String getConnectionString() {
-		return connectionString;
-	}
 	
-	private void setConnectionString(String connectionString) {
-		this.connectionString = connectionString;
+	private DatabaseBackend getDatabaseBackend() {
+		return databaseBackend;
 	}
-	
+
+	private void setDatabaseBackend(DatabaseBackend databaseBackend) {
+		this.databaseBackend = databaseBackend;
+	}
+
 	public boolean isPopulateBlobsActive() {
 		return populateBlobs;
 	}
@@ -62,26 +62,14 @@ public class ProtoDB {
 	//------------------------------------------------------------------ CONSTRUCTORS
 	//---------------------------------------------------------------------------------
 	
-	protected ProtoDB() {
+	protected ProtoDB(DatabaseBackend backend, String logFilename) {
+		this.setDatabaseBackend(backend);
+		Logger.setLogfile(logFilename);
 	}
 	
-	public ProtoDB(String databaseFilename) {
-		this.setDatabase(databaseFilename);
-	}	
-
-	public ProtoDB(String databaseFilename, String logFilename) {
-		this.setDatabase(databaseFilename);
+	protected ProtoDB(String logFilename) {
 		Logger.setLogfile(logFilename);
 	}	
-
-//	protected List<String> getColumnList(Connection conn) throws SQLException {
-//		List<String> ret = this.getColumns();
-//		if (ret == null || ret.size() == 0)
-//			setupColumns(this.getTable(), conn);
-//		
-//		return this.getColumns();
-//	}
-
 
 	public List<Pair<String, String>> retreiveColumns(String table) throws SQLException, ClassNotFoundException {
 		List<Pair<String, String>> ret = new ArrayList<Pair<String, String>>();
@@ -133,16 +121,16 @@ public class ProtoDB {
 	//---------------------------------------------------------------------------------
 	
 	/***
-	 * Initializes a database connection (SQLite)
+	 * Initializes a database connection
 	 * @return
 	 * @throws ClassNotFoundException
 	 * @throws SQLException
 	 */
 	protected Connection initialize() throws ClassNotFoundException, SQLException {
-		Class.forName("org.sqlite.JDBC");
-	    return DriverManager.getConnection(this.getConnectionString());				
+		Class.forName(this.getDatabaseBackend().getDriver());
+	    return DriverManager.getConnection(this.getDatabaseBackend().getConnectionString());				
 	}
-	
+		
 	/***
 	 * Disconnects the database and the conneciton object
 	 * @param conn
@@ -153,14 +141,6 @@ public class ProtoDB {
 				conn.close();
 		} catch (SQLException e) {
 		}
-	}
-
-	/***
-	 * Internal function for setting the database connection string
-	 * @param databaseFilename
-	 */
-	private void setDatabase(String databaseFilename) {
-		this.setConnectionString(String.format("jdbc:sqlite:%s", databaseFilename));
 	}
 
 	//---------------------------------------------------------------------------------
@@ -188,7 +168,9 @@ public class ProtoDB {
 		}
 		catch (SQLException e) {			
 			try {
-				conn.rollback();
+				if (conn != null)
+					conn.rollback();
+				
 			} catch (SQLException sqlEx) {}
 
 			System.out.println("Exception in ProtoDB!");
@@ -217,8 +199,10 @@ public class ProtoDB {
 		for (FieldDescriptor field : scanner.getBasicFields()) {
 			if (field.getName().equalsIgnoreCase("ID") 
 					&& field.getJavaType() == JavaType.INT
-					&& field.isRequired())
+					&& field.isRequired()) {
 				idFieldFound = true;
+				break;
+			}
 		}
 		if (!idFieldFound)
 			throw new IDFieldNotFoundException(scanner.getObjectName());
@@ -281,9 +265,10 @@ public class ProtoDB {
 	private void setupDatabase(EnumDescriptor fieldName, Connection conn) throws SQLException {
 		String tableName = StringUtils.capitalize(fieldName.getName());
 		if (!tableExist(tableName, conn)) {
-			String sql = "CREATE TABLE " + tableName + "(" 
-					+ "ID INTEGER PRIMARY KEY AUTOINCREMENT,"
-					+ "value TEXT NOT NULL)";
+			String sql = String.format(
+				"CREATE TABLE %s(%s,value TEXT NOT NULL)"
+					, tableName
+					, this.getDatabaseBackend().getIdentityDefinition());
 
 			Logger.log(sql);
 			
@@ -574,7 +559,9 @@ public class ProtoDB {
 		}
 		catch (SQLException e) {			
 			try {
-				conn.rollback();
+				if (conn != null)
+					conn.rollback();
+
 			} catch (SQLException sqlEx) {}
 
 			System.out.println("Exception in ProtoDB!");
@@ -885,7 +872,9 @@ public class ProtoDB {
 		}
 		catch (SQLException e) {			
 			try {
-				conn.rollback();
+				if (conn != null)
+					conn.rollback();
+
 			} catch (SQLException sqlEx) {}
 			
 			throw e;
@@ -1361,17 +1350,7 @@ public class ProtoDB {
 	 * @throws SQLException
 	 */
 	private boolean tableExist(String tableName, Connection conn) throws SQLException {
-		PreparedStatement prep = conn.prepareStatement("SELECT COUNT(1) FROM sqlite_master WHERE type='table' AND name=?");
-		prep.setString(1, tableName);
-		
-		boolean b = false;
-		ResultSet rs = prep.executeQuery();
-		if (rs.next())
-			if (rs.getInt(1)==1)
-				b = true;
-		
-		return b;
-		
+		return this.getDatabaseBackend().tableExist(tableName, conn);
 	}
 	
 	public void executeNonQuery(String sql) throws Exception {
@@ -1384,7 +1363,9 @@ public class ProtoDB {
 		}
 		catch (SQLException | ClassNotFoundException e) {			
 			try {
-				conn.rollback();
+				if (conn != null)
+					conn.rollback();
+
 			} catch (SQLException sqlEx) {}
 
 			System.out.println("Exception in ProtoDB!");

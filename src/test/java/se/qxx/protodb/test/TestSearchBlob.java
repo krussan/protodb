@@ -4,17 +4,24 @@ import static org.junit.Assert.*;
 
 import java.io.File;
 import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 import com.google.protobuf.ByteString;
 
 import se.qxx.protodb.JoinResult;
 import se.qxx.protodb.ProtoDB;
+import se.qxx.protodb.ProtoDBFactory;
 import se.qxx.protodb.ProtoDBScanner;
 import se.qxx.protodb.Searcher;
+import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
@@ -24,21 +31,29 @@ import se.qxx.protodb.test.TestDomain.Rating;
 import se.qxx.protodb.test.TestDomain.RepObjectOne;
 import se.qxx.protodb.test.TestDomain.SimpleTwo;
 
+@RunWith(Parameterized.class)
 public class TestSearchBlob {
 	ProtoDB db = null;
 	
-	private final String DATABASE_FILE = "protodb_blob_test.db";
+	@Parameters
+    public static Collection<Object[]> data() {
+        return Arrays.asList(TestConstants.TEST_PARAMS);
+    }
+    
+    public TestSearchBlob(String driver, String connectionString) throws DatabaseNotSupportedException {
+    	db = ProtoDBFactory.getInstance(driver, connectionString);
+    	
+    	if (ProtoDBFactory.isSqlite(driver)) {
+    		File f = new File(connectionString);
+    			f.delete();
+    	}
 
+    }
+    
 	@Before
 	public void Setup() throws ClassNotFoundException, SQLException, IDFieldNotFoundException {
 		
-		File f = new File(DATABASE_FILE);
-		if (f.exists())
-			f.delete();
-		
-	    db = new ProtoDB(DATABASE_FILE);
-	    
-	    db.setupDatabase(TestDomain.SimpleTest.newBuilder());
+		db.setupDatabase(TestDomain.SimpleTest.newBuilder());
 
 	    TestDomain.SimpleTest t = TestDomain.SimpleTest.newBuilder()
 				.setID(1)

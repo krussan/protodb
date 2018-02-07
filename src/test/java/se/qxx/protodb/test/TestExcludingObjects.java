@@ -2,32 +2,53 @@ package se.qxx.protodb.test;
 
 import static org.junit.Assert.*;
 
+import java.io.File;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 import com.google.protobuf.ByteString;
 
 import se.qxx.protodb.ProtoDB;
+import se.qxx.protodb.ProtoDBFactory;
+import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
 import se.qxx.protodb.test.TestDomain.ObjectOne;
 import se.qxx.protodb.test.TestDomain.ObjectTwo;
 import se.qxx.protodb.test.TestDomain.SimpleTest;
 
+@RunWith(Parameterized.class)
 public class TestExcludingObjects {
 
 	ProtoDB db = null;
 
-	private final String DATABASE_FILE = "protodb_select_test.db";
+	@Parameters
+    public static Collection<Object[]> data() {
+        return Arrays.asList(TestConstants.TEST_PARAMS);
+    }
+    
+    public TestExcludingObjects(String driver, String connectionString) throws DatabaseNotSupportedException {
+    	db = ProtoDBFactory.getInstance(driver, connectionString);
+    	
+    	if (ProtoDBFactory.isSqlite(driver)) {
+    		File f = new File(connectionString);
+    			f.delete();
+    	}
+
+    }
+
 	
 	@Before
 	public void Setup() throws ClassNotFoundException, SQLException, IDFieldNotFoundException {		
-	    db = new ProtoDB(DATABASE_FILE);
-	    
 	    db.setupDatabase(TestDomain.ObjectTwo.newBuilder());
 	    
 	    ObjectTwo o2 = db.get(1, TestDomain.ObjectTwo.getDefaultInstance());

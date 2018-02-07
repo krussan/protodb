@@ -2,22 +2,34 @@ package se.qxx.protodb.test;
 
 import static org.junit.Assert.*;
 
+import java.io.File;
 import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.Collection;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 import se.qxx.protodb.ProtoDB;
+import se.qxx.protodb.ProtoDBFactory;
+import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
 
+@RunWith(Parameterized.class)
 public class TestSelect {
 	ProtoDB db = null;
 	
-	private final String DATABASE_FILE = "protodb_select_test.db";
-	
-	@Before
-	public void Setup() {		
-	    db = new ProtoDB(DATABASE_FILE);
-	}
+	@Parameters
+    public static Collection<Object[]> data() {
+        return Arrays.asList(TestConstants.TEST_PARAMS);
+    }
+    
+    public TestSelect(String driver, String connectionString) throws DatabaseNotSupportedException {
+    	db = ProtoDBFactory.getInstance(driver, connectionString);
+    }	
+
 	
 	@Test
 	public void TestSimple() {	

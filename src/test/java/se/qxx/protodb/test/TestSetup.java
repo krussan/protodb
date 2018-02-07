@@ -4,22 +4,42 @@ import static org.junit.Assert.*;
 
 import java.io.File;
 import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 import se.qxx.protodb.ProtoDB;
+import se.qxx.protodb.ProtoDBFactory;
+import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 import se.qxx.protodb.test.TestDomain.Rating;
 
+@RunWith(Parameterized.class)
 public class TestSetup {
-
 	ProtoDB db = null;
 	
-	private final String DATABASE_FILE = "protodb_test.db";
+	@Parameters
+    public static Collection<Object[]> data() {
+        return Arrays.asList(TestConstants.TEST_PARAMS);
+    }
+    
+    public TestSetup(String driver, String connectionString) throws DatabaseNotSupportedException {
+    	db = ProtoDBFactory.getInstance(driver, connectionString);
+    	
+    	if (ProtoDBFactory.isSqlite(driver)) {
+    		File f = new File(connectionString);
+    			f.delete();
+    	}    	
+    }	
+	
 	private final String[] SIMPLE_FIELD_NAMES = {"ID", "_by_ID", "dd", "ff", "is", "il", "bb", "ss"};
 	private final String[] SIMPLE_FIELD_TYPES = {"INTEGER", "INTEGER", "DOUBLE", "FLOAT", "INTEGER", "BIGINT", "BOOLEAN", "TEXT"};
 
@@ -62,10 +82,7 @@ public class TestSetup {
 	@Before
 	public void Setup() {
 		
-		File f = new File(DATABASE_FILE);
-		f.delete();
 		
-	    db = new ProtoDB(DATABASE_FILE);
 	}
 	
 
