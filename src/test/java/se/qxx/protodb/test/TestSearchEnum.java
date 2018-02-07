@@ -38,13 +38,19 @@ public class TestSearchEnum {
         return Arrays.asList(TestConstants.TEST_PARAMS);
     }
     
-    public TestSearchEnum(String driver, String connectionString) throws DatabaseNotSupportedException {
+    public TestSearchEnum(String driver, String connectionString) throws DatabaseNotSupportedException, ClassNotFoundException, SQLException {
     	db = ProtoDBFactory.getInstance(driver, connectionString);
     	
     	if (ProtoDBFactory.isSqlite(driver)) {
     		File f = new File(connectionString);
     			f.delete();
     	}
+    	
+    	
+    	if (ProtoDBFactory.isMySql(driver)) {
+    		db.dropAllTables();
+    	}
+
 
     }
     

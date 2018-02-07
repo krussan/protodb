@@ -28,14 +28,18 @@ public class TestSearch {
         return Arrays.asList(TestConstants.TEST_PARAMS);
     }
     
-    public TestSearch(String driver, String connectionString) throws DatabaseNotSupportedException {
+    public TestSearch(String driver, String connectionString) throws DatabaseNotSupportedException, ClassNotFoundException, SQLException {
     	db = ProtoDBFactory.getInstance(driver, connectionString);
     	
     	if (ProtoDBFactory.isSqlite(driver)) {
     		File f = new File(connectionString);
     			f.delete();
     	}
-
+    	
+    	
+    	if (ProtoDBFactory.isMySql(driver)) {
+    		db.dropAllTables();
+    	}
     }
 	
 

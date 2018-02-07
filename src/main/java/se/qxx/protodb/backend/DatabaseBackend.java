@@ -56,6 +56,19 @@ public abstract class DatabaseBackend {
 			return false;
 	}
 	
+	public List<String> getAllTables(Connection conn) throws SQLException {
+		DatabaseMetaData meta = conn.getMetaData();
+		ResultSet rs = meta.getTables(null, null, "%", null);
+		List<String> result = new ArrayList<String>();
+		
+		while (rs.next()) {
+			result.add(rs.getString("TABLE_NAME"));
+		}
+		
+		return result;
+		
+	}
+	
 	
 
 	public abstract String getIdentityDefinition();

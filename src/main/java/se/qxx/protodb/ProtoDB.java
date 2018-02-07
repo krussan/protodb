@@ -30,6 +30,7 @@ import com.google.protobuf.DynamicMessage;
 import com.google.protobuf.Message;
 import com.google.protobuf.Message.Builder;
 import com.google.protobuf.MessageOrBuilder;
+import com.mysql.jdbc.DatabaseMetaData;
 import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.EnumDescriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor;
@@ -382,7 +383,7 @@ public class ProtoDB {
 		ResultSet rs = getResultSetForObject(id, conn, b, scanner);
 		
 		int rowcount = 0;
-		while(rs.next()) {
+ 		while(rs.next()) {
 			// populate object fields
 			Populator.populateObjectFields(this, conn, b, scanner, rs, excludedObjects);
 			
@@ -1354,6 +1355,42 @@ public class ProtoDB {
 	 */
 	private boolean tableExist(String tableName, Connection conn) throws SQLException {
 		return this.getDatabaseBackend().tableExist(tableName, conn);
+	}
+	
+	public void dropAllTables() throws SQLException, ClassNotFoundException {
+		Connection conn = null;
+
+		try {
+			conn = this.initialize();
+			
+			List<String> tables = this.getDatabaseBackend().getAllTables(conn);
+			
+			for (String t : tables) {
+				PreparedStatement prep = 
+					conn.prepareStatement(
+						String.format("DROP TABLE %s%s%s", 
+							this.getDatabaseBackend().getStartBracket(),
+							t,
+							this.getDatabaseBackend().getEndBracket()));
+				
+				prep.execute();				
+			}
+		}
+		catch (SQLException | ClassNotFoundException e) {			
+			try {
+				if (conn != null)
+					conn.rollback();
+
+			} catch (SQLException sqlEx) {}
+
+			System.out.println("Exception in ProtoDB!");
+			e.printStackTrace();
+
+			throw e;
+		}		
+		finally {
+			this.disconnect(conn);
+		}
 	}
 	
 	public void executeNonQuery(String sql) throws Exception {

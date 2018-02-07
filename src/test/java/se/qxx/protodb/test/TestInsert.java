@@ -29,12 +29,17 @@ public class TestInsert {
         return Arrays.asList(TestConstants.TEST_PARAMS);
     }
     
-    public TestInsert(String driver, String connectionString) throws DatabaseNotSupportedException {
+    public TestInsert(String driver, String connectionString) throws DatabaseNotSupportedException, ClassNotFoundException, SQLException {
     	db = ProtoDBFactory.getInstance(driver, connectionString);
     	
     	if (ProtoDBFactory.isSqlite(driver)) {
     		File f = new File(connectionString);
     			f.delete();
+    	}
+
+    	
+    	if (ProtoDBFactory.isMySql(driver)) {
+    		db.dropAllTables();
     	}
 
     }

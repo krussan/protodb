@@ -36,12 +36,17 @@ public class TestExcludingObjects {
         return Arrays.asList(TestConstants.TEST_PARAMS);
     }
     
-    public TestExcludingObjects(String driver, String connectionString) throws DatabaseNotSupportedException {
+    public TestExcludingObjects(String driver, String connectionString) throws DatabaseNotSupportedException, ClassNotFoundException, SQLException {
     	db = ProtoDBFactory.getInstance(driver, connectionString);
     	
     	if (ProtoDBFactory.isSqlite(driver)) {
     		File f = new File(connectionString);
     			f.delete();
+    	}
+
+    	
+    	if (ProtoDBFactory.isMySql(driver)) {
+    		db.dropAllTables();
     	}
 
     }

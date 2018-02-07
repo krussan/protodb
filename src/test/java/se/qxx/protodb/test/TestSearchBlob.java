@@ -40,12 +40,17 @@ public class TestSearchBlob {
         return Arrays.asList(TestConstants.TEST_PARAMS);
     }
     
-    public TestSearchBlob(String driver, String connectionString) throws DatabaseNotSupportedException {
+    public TestSearchBlob(String driver, String connectionString) throws DatabaseNotSupportedException, ClassNotFoundException, SQLException {
     	db = ProtoDBFactory.getInstance(driver, connectionString);
     	
     	if (ProtoDBFactory.isSqlite(driver)) {
     		File f = new File(connectionString);
     			f.delete();
+    	}
+
+    	
+    	if (ProtoDBFactory.isMySql(driver)) {
+    		db.dropAllTables();
     	}
 
     }

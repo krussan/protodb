@@ -31,13 +31,19 @@ public class TestSetup {
         return Arrays.asList(TestConstants.TEST_PARAMS);
     }
     
-    public TestSetup(String driver, String connectionString) throws DatabaseNotSupportedException {
+    public TestSetup(String driver, String connectionString) throws DatabaseNotSupportedException, ClassNotFoundException, SQLException {
     	db = ProtoDBFactory.getInstance(driver, connectionString);
     	
     	if (ProtoDBFactory.isSqlite(driver)) {
     		File f = new File(connectionString);
     			f.delete();
-    	}    	
+    	} 
+    	
+    	
+    	if (ProtoDBFactory.isMySql(driver)) {
+    		db.dropAllTables();
+    	}
+
     }	
 	
 	private final String[] SIMPLE_FIELD_NAMES = {"ID", "_by_ID", "dd", "ff", "is", "il", "bb", "ss"};
