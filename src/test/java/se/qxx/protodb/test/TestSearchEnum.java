@@ -95,7 +95,7 @@ public class TestSearchEnum {
 	public void TestSearchEnumSql() {
 		EnumOne o1 = EnumOne.getDefaultInstance();
 		
-		ProtoDBScanner scanner = new ProtoDBScanner(o1);
+		ProtoDBScanner scanner = new ProtoDBScanner(o1, db.getDatabaseBackend());
 		JoinResult result = Searcher.getJoinQuery(scanner, false, true);
 		
 		String expected = "SELECT "

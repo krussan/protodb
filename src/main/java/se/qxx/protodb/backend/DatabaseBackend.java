@@ -23,6 +23,14 @@ public abstract class DatabaseBackend {
 	public void setConnectionString(String connectionString) {
 		this.connectionString = connectionString;
 	}
+
+	public String getStartBracket() {
+		return "[";
+	}
+	
+	public String getEndBracket() {
+		return "]";
+	}
 	
 	public List<ColumnDefinition> getColumns(Connection conn) throws SQLException {
 		List<ColumnDefinition> list = new ArrayList<ColumnDefinition>();
@@ -40,11 +48,17 @@ public abstract class DatabaseBackend {
 
 	public boolean tableExist(String tableName, Connection conn) throws SQLException {
 		DatabaseMetaData meta = conn.getMetaData();
-		ResultSet res = meta.getTables(null, null, tableName, new String[] {"TABLE"});
-		if (res.getFetchSize() > 0)
+		ResultSet res = meta.getTables(null, null, tableName, null);
+		
+		if (res.next())
 			return true;
 		else
 			return false;
 	}
+	
+	
+
 	public abstract String getIdentityDefinition();
+
+	public abstract int getIdentityValue(Connection conn) throws SQLException;
 }

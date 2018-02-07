@@ -23,7 +23,15 @@ public class Searcher {
 	}
 	
 	
-	public static JoinResult getJoinQuery(ProtoDBScanner scanner, boolean getBlobs, boolean travelComplexLinks, ProtoDBScanner other, String linkFieldName, int numberOfResults, int offset) {
+	public static JoinResult getJoinQuery(
+			ProtoDBScanner scanner, 
+			boolean getBlobs, 
+			boolean travelComplexLinks, 
+			ProtoDBScanner other, 
+			String linkFieldName, 
+			int numberOfResults, 
+			int offset) {
+		
 		HashMap<String, String> aliases = new HashMap<String, String>();
 		String currentAlias = "A";
 		aliases.put(StringUtils.EMPTY, "A");
@@ -57,7 +65,7 @@ public class Searcher {
 				, StringUtils.isEmpty(linkTableJoin) ? "" : " ON L0._" + scanner.getObjectName().toLowerCase() + "_ID = A.ID"
 				, joinList);
 			
-		return new JoinResult(sql, aliases, columns.hasComplexJoins(), numberOfResults, offset);
+		return new JoinResult(sql, aliases, columns.hasComplexJoins(), numberOfResults, offset, scanner.getBackend());
 		 
 	}
 	
@@ -145,7 +153,7 @@ public class Searcher {
 		if (travelComplexLinks) {
 			for (FieldDescriptor f : scanner.getRepeatedObjectFields()) {
 				DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
-				ProtoDBScanner other = new ProtoDBScanner(mg);
+				ProtoDBScanner other = new ProtoDBScanner(mg, parentScanner.getBackend());
 				String hierarchy = String.format("%s.%s", fieldHierarchy, f.getName());
 				
 				joinClause += getJoinClauseRepeated(scanner, other, f.getName(), aliases, linkTableIterator, fieldHierarchy, hierarchy);
@@ -158,7 +166,7 @@ public class Searcher {
 			
 			if (f.getJavaType() == JavaType.MESSAGE) {
 				DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
-				ProtoDBScanner other = new ProtoDBScanner(mg);
+				ProtoDBScanner other = new ProtoDBScanner(mg, parentScanner.getBackend());
 				
 				joinClause += getJoinClauseSimple(scanner, other, f.getName(), aliases, fieldHierarchy, hierarchy);
 				joinClause += getJoinClause(scanner, other, f.getName(), aliases, linkTableIterator, fieldHierarchy, hierarchy, travelComplexLinks, getBlobs);
@@ -205,7 +213,7 @@ public class Searcher {
 			if (f.getJavaType() == JavaType.MESSAGE) {
 				DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
 	
-				ProtoDBScanner other = new ProtoDBScanner(mg);
+				ProtoDBScanner other = new ProtoDBScanner(mg, scanner.getBackend());
 	
 				result.append(Searcher.getColumnListForJoin(other, aliases, otherAlias, hierarchy, getBlobs, travelComplexLinks));
 			}
@@ -240,7 +248,7 @@ public class Searcher {
 				
 				DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
 	
-				ProtoDBScanner other = new ProtoDBScanner(mg);
+				ProtoDBScanner other = new ProtoDBScanner(mg, scanner.getBackend());
 				String hierarchy = String.format("%s.%s", parentHierarchy, f.getName());
 				aliases.put(hierarchy, otherAlias);
 	

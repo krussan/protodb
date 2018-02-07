@@ -180,7 +180,7 @@ public class TestSearchRecursive {
 	    		.setID(5)
 	    		.build();
 	    		
-		ProtoDBScanner scanner = new ProtoDBScanner(o3);
+		ProtoDBScanner scanner = new ProtoDBScanner(o3, db.getDatabaseBackend());
 		JoinResult result = Searcher.getJoinQuery(scanner, false, true);
 		
 		String expected = "SELECT "

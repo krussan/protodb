@@ -121,7 +121,7 @@ public class TestSearchLimitOffset {
 							.build())
 					.build();
 			
-			ProtoDBScanner scanner = new ProtoDBScanner(o1);
+			ProtoDBScanner scanner = new ProtoDBScanner(o1, db.getDatabaseBackend());
 			JoinResult result = Searcher.getJoinQuery(scanner, false, true, 10, 1);
 
 			// the query of the repeated subobjects need to be populated separately

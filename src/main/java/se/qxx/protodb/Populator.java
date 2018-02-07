@@ -18,6 +18,7 @@ import com.google.protobuf.Descriptors.FieldDescriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
 import com.google.protobuf.Message.Builder;
 
+import se.qxx.protodb.backend.DatabaseBackend;
 import se.qxx.protodb.model.ProtoDBSearchOperator;
 
 public class Populator {
@@ -182,7 +183,7 @@ public class Populator {
 			if (!isExcludedField(field.getName(), excludedObjects)) {
 			
 				MessageOrBuilder b2 = (MessageOrBuilder)mg;
-				ProtoDBScanner other = new ProtoDBScanner(b2);
+				ProtoDBScanner other = new ProtoDBScanner(b2, scanner.getBackend());
 			
 				if (field.isRepeated()) {
 					// get select statement for link table
@@ -210,7 +211,13 @@ public class Populator {
 		}
 	}
 
-	public static void populateRepeatedObjectFields(ProtoDB db, int id, List<String> excludedObjects, Connection conn, Builder b, ProtoDBScanner scanner)
+	public static void populateRepeatedObjectFields(
+			ProtoDB db, 
+			int id, 
+			List<String> excludedObjects, 
+			Connection conn, 
+			Builder b, 
+			ProtoDBScanner scanner)
 			throws SQLException {
 		
 		for (FieldDescriptor field : scanner.getRepeatedObjectFields()) {

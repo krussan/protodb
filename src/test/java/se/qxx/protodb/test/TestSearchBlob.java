@@ -74,7 +74,7 @@ public class TestSearchBlob {
 	public void TestBlobSql() {
 		TestDomain.SimpleTest o1 = TestDomain.SimpleTest.getDefaultInstance();
 		
-		ProtoDBScanner scanner = new ProtoDBScanner(o1);
+		ProtoDBScanner scanner = new ProtoDBScanner(o1, db.getDatabaseBackend());
 		JoinResult result = Searcher.getJoinQuery(scanner, true, true);
 		
 		String expected = "SELECT "
