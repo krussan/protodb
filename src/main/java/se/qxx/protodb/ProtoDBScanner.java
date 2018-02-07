@@ -31,7 +31,6 @@ public class ProtoDBScanner {
 	private List<String> objectFieldTargets = new ArrayList<String>();
 
 	private List<FieldDescriptor> repeatedObjectFields = new ArrayList<FieldDescriptor>();
-//	private List<String> repeatedObjectFieldTargets = new ArrayList<String>();
 	
 	private List<FieldDescriptor> basicFields = new ArrayList<FieldDescriptor>();
 	private List<FieldDescriptor> repeatedBasicFields = new ArrayList<FieldDescriptor>();
@@ -64,8 +63,6 @@ public class ProtoDBScanner {
 
 		List<FieldDescriptor> fields = b.getDescriptorForType().getFields();
 		for(FieldDescriptor field : fields) {
-//			Object o = b.getField(field);
-//			ProtoDBScanner dbInternal = null;
 			JavaType jType = field.getJavaType();
 			
 			if (field.getName().equalsIgnoreCase("ID"))
@@ -73,10 +70,11 @@ public class ProtoDBScanner {
 			
 			if (field.isRepeated())
 			{
-				if (jType == JavaType.MESSAGE) 
+				if (jType == JavaType.MESSAGE 
+//						|| jType == JavaType.BYTE_STRING
+					) 
 					this.addRepeatedObjectField(field);		
 				else if (jType == JavaType.ENUM) {
-//					EnumValueDescriptor target = (EnumValueDescriptor)this.getMessage().getField(field);
 					this.addRepeatedObjectField(field);
 				}
 				else {

@@ -7,6 +7,8 @@ import org.apache.commons.lang3.mutable.MutableInt;
 
 import com.google.protobuf.DynamicMessage;
 
+import se.qxx.protodb.exceptions.IDFieldNotFoundException;
+import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.model.ColumnResult;
 
 import com.google.protobuf.Descriptors.FieldDescriptor;
@@ -91,6 +93,36 @@ public class Searcher {
 		return joinClause;		
 	}
 
+	private static String getJoinClauseRepeatedBlob(ProtoDBScanner parentScanner, ProtoDBScanner scanner, String parentFieldName, HashMap<String, String> aliases, MutableInt linkTableIterator, String parentHierarchy, String fieldHierarchy) {
+		
+		String joinClause = StringUtils.EMPTY;
+					
+		if (parentScanner != null) {
+			joinClause += String.format("LEFT JOIN %s AS L%s ", 
+					parentScanner.getLinkTableName(scanner, parentFieldName), 
+					linkTableIterator);
+			
+			joinClause += String.format(" ON L%s._%s_ID = %s.ID ", 
+					linkTableIterator, 
+					parentScanner.getObjectName().toLowerCase(), 
+					aliases.get(parentHierarchy));
+			
+			joinClause += String.format("LEFT JOIN %s AS %s ", 
+					scanner.getObjectName(), 
+					aliases.get(fieldHierarchy));
+			
+			joinClause += String.format(" ON L%s._%s_ID = %s.ID ", 
+					linkTableIterator, 
+					scanner.getObjectName().toLowerCase(), 
+					aliases.get(fieldHierarchy));
+			
+			linkTableIterator.increment();
+		}
+		
+		
+		return joinClause;		
+	}
+
 	private static String getJoinClauseEnum(String enumFieldName, HashMap<String, String> aliases, String parentHierarchy, String fieldHierarchy) {
 		String joinClause = StringUtils.EMPTY;
 		
@@ -144,12 +176,17 @@ public class Searcher {
 
 		if (travelComplexLinks) {
 			for (FieldDescriptor f : scanner.getRepeatedObjectFields()) {
-				DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
-				ProtoDBScanner other = new ProtoDBScanner(mg);
-				String hierarchy = String.format("%s.%s", fieldHierarchy, f.getName());
-				
-				joinClause += getJoinClauseRepeated(scanner, other, f.getName(), aliases, linkTableIterator, fieldHierarchy, hierarchy);
-				joinClause += getJoinClause(scanner, other, f.getName(), aliases, linkTableIterator, fieldHierarchy, hierarchy, travelComplexLinks, getBlobs);
+				if (getBlobs && f.getJavaType() == JavaType.BYTE_STRING) {
+					
+				}
+				else {
+					DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
+					ProtoDBScanner other = new ProtoDBScanner(mg);
+					String hierarchy = String.format("%s.%s", fieldHierarchy, f.getName());
+					
+					joinClause += getJoinClauseRepeated(scanner, other, f.getName(), aliases, linkTableIterator, fieldHierarchy, hierarchy);
+					joinClause += getJoinClause(scanner, other, f.getName(), aliases, linkTableIterator, fieldHierarchy, hierarchy, travelComplexLinks, getBlobs);
+				}
 			}
 		}
 		
@@ -238,16 +275,21 @@ public class Searcher {
 			for (FieldDescriptor f : scanner.getRepeatedObjectFields()) {
 				String otherAlias = currentAlias + ((char)(65 + ac));
 				
-				DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
-	
-				ProtoDBScanner other = new ProtoDBScanner(mg);
-				String hierarchy = String.format("%s.%s", parentHierarchy, f.getName());
-				aliases.put(hierarchy, otherAlias);
-	
-				// parentHierarchy, fieldname
-				result.append(Searcher.getColumnListForJoin(other, aliases, otherAlias, hierarchy, getBlobs, travelComplexLinks));
-				
-				ac++;
+				if (getBlobs && f.getJavaType() == JavaType.BYTE_STRING) {
+					System.out.println("Repeated BLOBS!!");
+				}
+				else {
+					DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
+		
+					ProtoDBScanner other = new ProtoDBScanner(mg);
+					String hierarchy = String.format("%s.%s", parentHierarchy, f.getName());
+					aliases.put(hierarchy, otherAlias);
+		
+					// parentHierarchy, fieldname
+					result.append(Searcher.getColumnListForJoin(other, aliases, otherAlias, hierarchy, getBlobs, travelComplexLinks));
+					
+					ac++;
+				}
 			}		
 		}
 		
