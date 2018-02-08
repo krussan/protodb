@@ -25,16 +25,18 @@ public class TestSearch {
 	
 	@Parameters
     public static Collection<Object[]> data() {
-        return Arrays.asList(TestConstants.TEST_PARAMS);
+    	Object[][] params = TestConstants.TEST_PARAMS;
+    	params[0][1] = "protodb_select_test.db";
+        return Arrays.asList(params);
     }
     
     public TestSearch(String driver, String connectionString) throws DatabaseNotSupportedException, ClassNotFoundException, SQLException {
     	db = ProtoDBFactory.getInstance(driver, connectionString);
     	
-    	if (ProtoDBFactory.isSqlite(driver)) {
-    		File f = new File(connectionString);
-    			f.delete();
-    	}
+//    	if (ProtoDBFactory.isSqlite(driver)) {
+//    		File f = new File(connectionString);
+//    			f.delete();
+//    	}
     	
     	
     	if (ProtoDBFactory.isMySql(driver)) {

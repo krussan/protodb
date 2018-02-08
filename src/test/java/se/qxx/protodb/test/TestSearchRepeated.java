@@ -130,14 +130,18 @@ public class TestSearchRepeated {
 			JoinResult result = Searcher.getJoinQuery(scanner, false, true);
 
 			// the query of the repeated subobjects need to be populated separately
-			String expected = "SELECT DISTINCT "
-					+ "A.[ID] AS A_ID, "
-					+ "A.[happycamper] AS A_happycamper "
+			String expected =
+				String.format(
+					"SELECT DISTINCT "
+					+ "A.%1$sID%2$s AS A_ID, "
+					+ "A.%1$shappycamper%2$s AS A_happycamper "
 					+ "FROM   RepObjectOne AS A   "
 					+ "LEFT JOIN RepObjectOneSimpleTwo_Listofobjects AS L1 "
 					+ " ON L1._repobjectone_ID = A.ID "
 					+ "LEFT JOIN SimpleTwo AS AA "
-					+ " ON L1._simpletwo_ID = AA.ID ";
+					+ " ON L1._simpletwo_ID = AA.ID ",
+					db.getDatabaseBackend().getStartBracket(),
+					db.getDatabaseBackend().getEndBracket());
 			
 			assertEquals(expected, result.getJoinClause());
 		}
