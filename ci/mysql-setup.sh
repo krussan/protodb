@@ -8,18 +8,21 @@ SCRIPT_DIR=$4
 
 for f in $SCRIPT_DIR/*.sql; do 
   echo "Processing $f file.."; 
-  FULLPATH=$(realpath $f | sed "s/\//\\\\\//gi")
+  DIRNAME=$(dirname $f)
   FILENAME=$(basename "$f")
+  FULLPATH=$(cd "$DIRNAME"; pwd)/$FILENAME
   NAME="${FILENAME%.*}"
 
-  echo "DROP TABLE $NAME" | mysql -u $DBUSER --password=$DBPWD -D $DB
-  mysql -u $DBUSER --password=$DBPWD -D $DB < $f
+  mysql -u $DBUSER --password=$DBPWD -D $DB -e "DROP TABLE IF EXISTS $NAME"
+  mysql -u $DBUSER --password=$DBPWD -D $DB < $FULLPATH
 done
 
 for f in $SCRIPT_DIR/*.csv; do 
   echo "Importing $f file.."; 
-  FULLPATH=$(realpath $f | sed "s/\//\\\\\//gi")
+  DIRNAME=$(dirname $f)
   FILENAME=$(basename "$f")
+  FULLPATH=$(cd "$DIRNAME"; pwd)/$FILENAME
+  FULLPATH=$(echo $FULLPATH | sed "s/\//\\\\\//gi")
   NAME="${FILENAME%.*}"
 
    sed "s/__FILE__/$FULLPATH/gi" $SCRIPT_DIR/import.script | \
