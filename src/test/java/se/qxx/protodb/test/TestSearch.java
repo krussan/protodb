@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.apache.commons.lang3.StringUtils;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -20,14 +21,12 @@ import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
 
 @RunWith(Parameterized.class)
-public class TestSearch {
+public class TestSearch extends TestBase {
 	ProtoDB db = null;
 	
 	@Parameters
-    public static Collection<Object[]> data() {
-    	Object[][] params = TestConstants.TEST_PARAMS;
-    	params[0][1] = "protodb_select_test.db";
-        return Arrays.asList(params);
+	public static Collection<Object[]> data() {
+		return getParams("selectParamsFile");
     }
     
     public TestSearch(String driver, String connectionString) throws DatabaseNotSupportedException, ClassNotFoundException, SQLException {

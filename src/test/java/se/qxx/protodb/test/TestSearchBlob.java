@@ -32,12 +32,12 @@ import se.qxx.protodb.test.TestDomain.RepObjectOne;
 import se.qxx.protodb.test.TestDomain.SimpleTwo;
 
 @RunWith(Parameterized.class)
-public class TestSearchBlob {
+public class TestSearchBlob extends TestBase{
 	ProtoDB db = null;
 	
 	@Parameters
     public static Collection<Object[]> data() {
-        return Arrays.asList(TestConstants.TEST_PARAMS);
+    	return getParams();
     }
     
     public TestSearchBlob(String driver, String connectionString) throws DatabaseNotSupportedException, ClassNotFoundException, SQLException {

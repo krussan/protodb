@@ -29,12 +29,12 @@ import se.qxx.protodb.model.ProtoDBSearchOperator;
 import se.qxx.protodb.test.TestDomain.ObjectTwo;
 
 @RunWith(Parameterized.class)
-public class TestSearchRecursive {
+public class TestSearchRecursive extends TestBase {
 	ProtoDB db = null;
 	
 	@Parameters
     public static Collection<Object[]> data() {
-        return Arrays.asList(TestConstants.TEST_PARAMS);
+    	return getParams();
     }
     
     public TestSearchRecursive(String driver, String connectionString) throws DatabaseNotSupportedException, ClassNotFoundException, SQLException {

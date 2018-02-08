@@ -26,12 +26,12 @@ import se.qxx.protodb.exceptions.ProtoDBParserException;
 import com.google.protobuf.ByteString;
 
 @RunWith(Parameterized.class)
-public class TestDelete {
+public class TestDelete extends TestBase {
 	ProtoDB db = null;
 	
 	@Parameters
     public static Collection<Object[]> data() {
-        return Arrays.asList(TestConstants.TEST_PARAMS_MYSQL);
+        return getParams();
     }
     
     public TestDelete(String driver, String connectionString) throws DatabaseNotSupportedException, ClassNotFoundException, SQLException {

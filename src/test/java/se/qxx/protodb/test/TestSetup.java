@@ -25,12 +25,12 @@ import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 import se.qxx.protodb.test.TestDomain.Rating;
 
 @RunWith(Parameterized.class)
-public class TestSetup {
+public class TestSetup extends TestBase {
 	ProtoDB db = null;
 	
 	@Parameters
     public static Collection<Object[]> data() {
-        return Arrays.asList(TestConstants.TEST_PARAMS);
+    	return getParams();
     }
     
     public TestSetup(String driver, String connectionString) throws DatabaseNotSupportedException, ClassNotFoundException, SQLException {

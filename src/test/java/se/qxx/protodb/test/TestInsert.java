@@ -21,12 +21,12 @@ import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 import com.google.protobuf.ByteString;
 
 @RunWith(Parameterized.class)
-public class TestInsert {
+public class TestInsert extends TestBase {
 	ProtoDB db = null;
 	
 	@Parameters
     public static Collection<Object[]> data() {
-        return Arrays.asList(TestConstants.TEST_PARAMS);
+    	return getParams();
     }
     
     public TestInsert(String driver, String connectionString) throws DatabaseNotSupportedException, ClassNotFoundException, SQLException {

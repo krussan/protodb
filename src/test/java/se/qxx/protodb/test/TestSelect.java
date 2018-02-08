@@ -18,12 +18,12 @@ import se.qxx.protodb.ProtoDBFactory;
 import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
 
 @RunWith(Parameterized.class)
-public class TestSelect {
+public class TestSelect extends TestBase {
 	ProtoDB db = null;
 	
 	@Parameters
     public static Collection<Object[]> data() {
-        return Arrays.asList(TestConstants.TEST_PARAMS);
+    	return getParams("selectParamsFile");
     }
     
     public TestSelect(String driver, String connectionString) throws DatabaseNotSupportedException {

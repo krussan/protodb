@@ -27,13 +27,13 @@ import se.qxx.protodb.test.TestDomain.ObjectTwo;
 import se.qxx.protodb.test.TestDomain.SimpleTest;
 
 @RunWith(Parameterized.class)
-public class TestExcludingObjects {
+public class TestExcludingObjects extends TestBase {
 
 	ProtoDB db = null;
 
 	@Parameters
     public static Collection<Object[]> data() {
-        return Arrays.asList(TestConstants.TEST_PARAMS);
+    	return getParams();
     }
     
     public TestExcludingObjects(String driver, String connectionString) throws DatabaseNotSupportedException, ClassNotFoundException, SQLException {
