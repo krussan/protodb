@@ -11,6 +11,9 @@ addons:
       # Needed for `xmllint`.
       - libxml2-utils
 
+services:
+  - mysql      
+      
 before_install:
  - export LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/ci:$LD_LIBRARY_PATH
  - unzip ci/protoc.zip -d ci
@@ -18,6 +21,8 @@ before_install:
  - if [ ! -d ~/.m2 ]; then mkdir ~/.m2; fi
  - cp ci/settings.xml ~/.m2
  - ls -la ci
+ - ci/mysql-init.sh
+ - ci/mysql-setup.sh protodb protodb protodb_select $TRAVIS_BUILD_DIR/ci/mysql
 
 install: true
 
