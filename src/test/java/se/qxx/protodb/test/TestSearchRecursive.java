@@ -188,36 +188,38 @@ public class TestSearchRecursive {
 		ProtoDBScanner scanner = new ProtoDBScanner(o3, db.getDatabaseBackend());
 		JoinResult result = Searcher.getJoinQuery(scanner, false, true);
 		
-		String expected = "SELECT "
-				+ "A.[ID] AS A_ID, "
-				+ "AA.[ID] AS AA_ID, "
-				+ "AA.[dd] AS AA_dd, "
+		String expected =
+			String.format(
+				"SELECT "
+				+ "A.%1$sID%2$s AS A_ID, "
+				+ "AA.%1$sID%2$s AS AA_ID, "
+				+ "AA.%1$sdd%2$s AS AA_dd, "
 				
-				+ "AA.[ff] AS AA_ff, "
-				+ "AA.[is] AS AA_is, "
-				+ "AA.[il] AS AA_il, "
-				+ "AA.[bb] AS AA_bb, "
-				+ "AA.[ss] AS AA_ss, "
+				+ "AA.%1$sff%2$s AS AA_ff, "
+				+ "AA.%1$sis%2$s AS AA_is, "
+				+ "AA.%1$sil%2$s AS AA_il, "
+				+ "AA.%1$sbb%2$s AS AA_bb, "
+				+ "AA.%1$sss%2$s AS AA_ss, "
 				//+ "AA.by AS AA_by, "
-				+ "AB.[ID] AS AB_ID, "
-				+ "AB.[otis] AS AB_otis, "
-				+ "ABA.[ID] AS ABA_ID, "
-				+ "ABA.[dd] AS ABA_dd, "
-				+ "ABA.[ff] AS ABA_ff, "
-				+ "ABA.[is] AS ABA_is, "
-				+ "ABA.[il] AS ABA_il, "
-				+ "ABA.[bb] AS ABA_bb, "
-				+ "ABA.[ss] AS ABA_ss, "
+				+ "AB.%1$sID%2$s AS AB_ID, "
+				+ "AB.%1$sotis%2$s AS AB_otis, "
+				+ "ABA.%1$sID%2$s AS ABA_ID, "
+				+ "ABA.%1$sdd%2$s AS ABA_dd, "
+				+ "ABA.%1$sff%2$s AS ABA_ff, "
+				+ "ABA.%1$sis%2$s AS ABA_is, "
+				+ "ABA.%1$sil%2$s AS ABA_il, "
+				+ "ABA.%1$sbb%2$s AS ABA_bb, "
+				+ "ABA.%1$sss%2$s AS ABA_ss, "
 //				+ "ABA.by AS ABA_by, "
-				+ "ABB.[ID] AS ABB_ID, "
-				+ "ABB.[oois] AS ABB_oois, "
-				+ "ABBA.[ID] AS ABBA_ID, "
-				+ "ABBA.[dd] AS ABBA_dd, "
-				+ "ABBA.[ff] AS ABBA_ff, "
-				+ "ABBA.[is] AS ABBA_is, "
-				+ "ABBA.[il] AS ABBA_il, "
-				+ "ABBA.[bb] AS ABBA_bb, "
-				+ "ABBA.[ss] AS ABBA_ss "
+				+ "ABB.%1$sID%2$s AS ABB_ID, "
+				+ "ABB.%1$soois%2$s AS ABB_oois, "
+				+ "ABBA.%1$sID%2$s AS ABBA_ID, "
+				+ "ABBA.%1$sdd%2$s AS ABBA_dd, "
+				+ "ABBA.%1$sff%2$s AS ABBA_ff, "
+				+ "ABBA.%1$sis%2$s AS ABBA_is, "
+				+ "ABBA.%1$sil%2$s AS ABBA_il, "
+				+ "ABBA.%1$sbb%2$s AS ABBA_bb, "
+				+ "ABBA.%1$sss%2$s AS ABBA_ss "
 //				+ "ABBA.by AS ABBA_by "
 				+ "FROM   ObjectThree AS A   "
 				+ "LEFT JOIN SimpleTest AS AA "
@@ -229,7 +231,9 @@ public class TestSearchRecursive {
 				+ "LEFT JOIN ObjectOne AS ABB "
 				+ " ON AB._testtwo_ID = ABB.ID "
 				+ "LEFT JOIN SimpleTest AS ABBA "
-				+ " ON ABB._testone_ID = ABBA.ID ";
+				+ " ON ABB._testone_ID = ABBA.ID ",
+				db.getDatabaseBackend().getStartBracket(),
+				db.getDatabaseBackend().getEndBracket());
 				
 				
 				assertEquals(expected, result.getJoinClause());

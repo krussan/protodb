@@ -38,8 +38,16 @@ public class Populator {
 	}
 
 	public static void populateField(Builder b, FieldDescriptor field, Object o) {
-		if (field.getJavaType() == JavaType.FLOAT)
-			b.setField(field, ((Double)o).floatValue());
+		if (field.getJavaType() == JavaType.DOUBLE)
+			if (o instanceof Double)
+				b.setField(field, (double)o);
+			else
+				b.setField(field, (float)o);
+		else if (field.getJavaType() == JavaType.FLOAT)
+			if (o instanceof Double)
+				b.setField(field, ((Double)o).floatValue());
+			else
+				b.setField(field, (float)o);
 		else if (field.getJavaType() == JavaType.INT)
 			if (o instanceof Long)
 				b.setField(field, ((Long)o).intValue()); 
@@ -53,6 +61,8 @@ public class Populator {
 		else if (field.getJavaType() == JavaType.BOOLEAN ) {
 			if (o instanceof Integer) 
 				b.setField(field, ((int)o) == 1 ? true : false);
+			else if (o instanceof Boolean)
+				b.setField(field, (boolean)o);
 			else
 				b.setField(field, ((String)o).equals("Y") ? true : false);	
 		}

@@ -51,7 +51,7 @@ public class TestInsert {
 				.setBb(false)
 				.setBy(ByteString.copyFrom(new byte[] {5,8,6}))
 				.setDd(1467802579378.62352352)
-				.setFf((float) 555444333.213)
+				.setFf((float) 5554.213)
 				.setIl(999999998)
 				.setIs(999999998)
 				.setSs("ThisIsATest")
@@ -69,8 +69,8 @@ public class TestInsert {
 			TestDomain.SimpleTest st = db.get(tt.getID(), TestDomain.SimpleTest.getDefaultInstance());
 			
 			assertEquals(t.getBb(), st.getBb());
-			assertEquals(t.getDd(), st.getDd(), 0.0);
-			assertEquals(t.getFf(), st.getFf(), 0.0);
+			assertEquals(t.getDd(), st.getDd(), 0.005);
+			assertEquals(t.getFf(), st.getFf(), 0.005);
 			assertEquals(t.getIl(), st.getIl());
 			assertEquals(t.getIs(), st.getIs());
 			assertNotEquals(t.getSs(), st.getSs());
@@ -132,7 +132,7 @@ public class TestInsert {
 						.setBb(false)
 						.setBy(ByteString.copyFrom(new byte[] {5,8,6}))
 						.setDd(1467802579378.62352352)
-						.setFf((float) 555444333.213)
+						.setFf((float) 5554.213)
 						.setIl(999999998)
 						.setIs(999999998)
 						.setSs("ThisIsATestOfObjectOne")
@@ -153,8 +153,8 @@ public class TestInsert {
 			assertEquals(t.getOois(), oo.getOois());
 			
 			assertEquals(tt.getBb(), st.getBb());
-			assertEquals(tt.getDd(), st.getDd(), 0.0);
-			assertEquals(tt.getFf(), st.getFf(), 0.0);
+			assertEquals(tt.getDd(), st.getDd(), 0.005);
+			assertEquals(tt.getFf(), st.getFf(), 0.005);
 			assertEquals(tt.getIl(), st.getIl());
 			assertEquals(tt.getIs(), st.getIs());
 			assertEquals(tt.getSs(), st.getSs());
@@ -184,7 +184,7 @@ public class TestInsert {
 				.setBb(false)
 				.setBy(ByteString.copyFrom(new byte[] {5,8,6}))
 				.setDd(1467802579378.62352352)
-				.setFf((float) 555444333.213)
+				.setFf((float) 5554.213)
 				.setIl(999999998)
 				.setIs(999999998)
 				.setSs("ThisIsATest")
@@ -207,9 +207,10 @@ public class TestInsert {
 		
 			TestDomain.SimpleTest st = db.get(t2.getID(), TestDomain.SimpleTest.getDefaultInstance());
 			
+			
 			assertEquals(t.getBb(), st.getBb());
-			assertEquals(t.getDd(), st.getDd(), 0.0);
-			assertEquals(t.getFf(), st.getFf(), 0.0);
+			assertEquals(t.getDd(), st.getDd(), 0.005);
+			assertEquals(t.getFf(), st.getFf(), 0.005);
 			assertEquals(t.getIl(), st.getIl());
 			assertEquals(t.getIs(), st.getIs());
 			assertNotEquals(t.getSs(), st.getSs());

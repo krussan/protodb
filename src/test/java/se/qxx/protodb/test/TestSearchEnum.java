@@ -104,13 +104,17 @@ public class TestSearchEnum {
 		ProtoDBScanner scanner = new ProtoDBScanner(o1, db.getDatabaseBackend());
 		JoinResult result = Searcher.getJoinQuery(scanner, false, true);
 		
-		String expected = "SELECT "
-				+ "A.[ID] AS A_ID, "
-				+ "A.[title] AS A_title, "
-				+ "AA.[value] AS A_rating "
+		String expected =
+			String.format(
+				"SELECT "
+				+ "A.%1$sID%2$s AS A_ID, "
+				+ "A.%1$stitle%2$s AS A_title, "
+				+ "AA.%1$svalue%2$s AS A_rating "
 				+ "FROM   EnumOne AS A   "
 				+ "LEFT JOIN Rating AS AA "
-				+ " ON A._rating_ID = AA.ID ";
+				+ " ON A._rating_ID = AA.ID ",
+				db.getDatabaseBackend().getStartBracket(),
+				db.getDatabaseBackend().getEndBracket());
 		
 		assertEquals(expected, result.getJoinClause());
 	}

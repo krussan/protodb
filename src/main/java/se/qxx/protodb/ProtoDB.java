@@ -17,6 +17,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 
+import se.qxx.protodb.backend.ColumnDefinition;
 import se.qxx.protodb.backend.DatabaseBackend;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 import se.qxx.protodb.exceptions.ProtoDBParserException;
@@ -72,23 +73,13 @@ public class ProtoDB {
 		Logger.setLogfile(logFilename);
 	}	
 
-	public List<Pair<String, String>> retreiveColumns(String table) throws SQLException, ClassNotFoundException {
-		List<Pair<String, String>> ret = new ArrayList<Pair<String, String>>();
-		
+	public List<ColumnDefinition> retreiveColumns(String table) throws SQLException, ClassNotFoundException {
+		List<ColumnDefinition> result = new ArrayList<ColumnDefinition>();
 		Connection conn = null;
-		ResultSet rs =null;
 		try {
 			conn = this.initialize();
 			
-			rs = retreiveColumns(table, conn);		
-			
-			while(rs.next()) {
-				String fieldName = rs.getString("name");
-				String fieldType = rs.getString("type");
-
-				Pair<String,String> p = new MutablePair<String, String>(fieldName, fieldType);
-				ret.add(p);
-			}
+			result = this.getDatabaseBackend().getColumns(table, conn);
 		}
 		catch (Exception e) {
 			System.out.println("Exception in ProtoDB!");
@@ -100,7 +91,7 @@ public class ProtoDB {
 			this.disconnect(conn);
 		}
 		
-		return ret;
+		return result;
 	}
 	
 	/***
@@ -773,7 +764,10 @@ public class ProtoDB {
 	}
 	
 	private int saveEnum(FieldDescriptor field, String value, Connection conn) throws SQLException {
-		PreparedStatement prep = conn.prepareStatement("SELECT ID FROM " + field.getName() + " WHERE value = ?");
+		PreparedStatement prep = conn.prepareStatement(
+			String.format("SELECT ID FROM %s WHERE value = ?", 
+				StringUtils.capitalize(field.getName())));
+		
 		prep.setString(1, value);
 		ResultSet rs = prep.executeQuery();
 		

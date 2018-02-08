@@ -1,6 +1,7 @@
 package se.qxx.protodb.backend;
 
 import java.sql.Connection;
+import java.sql.JDBCType;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -9,6 +10,8 @@ import java.util.List;
 public class MysqlBackend extends DatabaseBackend {
 	
 	public MysqlBackend(String connectionString) {
+		this.addTypeMap(JDBCType.FLOAT, "REAL");
+		
 		this.setDriver(Drivers.MYSQL);
 		this.setConnectionString(connectionString);
 	}

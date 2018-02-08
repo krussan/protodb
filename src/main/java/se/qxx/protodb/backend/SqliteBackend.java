@@ -1,6 +1,7 @@
 package se.qxx.protodb.backend;
 
 import java.sql.Connection;
+import java.sql.JDBCType;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -11,6 +12,13 @@ public class SqliteBackend extends DatabaseBackend {
 	public static final String DRIVER = "org.sqlite.JDBC";
 	
 	public SqliteBackend(String databaseFilename) {
+		this.addTypeMap(JDBCType.DOUBLE, "FLOAT");
+		this.addTypeMap(JDBCType.BIGINT, "INTEGER");
+		this.addTypeMap(JDBCType.BIT, "INTEGER");
+		this.addTypeMap(JDBCType.LONGVARCHAR, "VARCHAR");
+		this.addTypeMap(JDBCType.LONGVARBINARY, "VARCHAR");
+		//this.addTypeMap(JDBCType.FLOAT, "REAL");
+		
 		this.setDriver(DRIVER);
 		this.setConnectionString(
 				String.format("jdbc:sqlite:%s", databaseFilename));

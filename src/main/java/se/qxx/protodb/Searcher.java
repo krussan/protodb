@@ -153,7 +153,7 @@ public class Searcher {
 		if (travelComplexLinks) {
 			for (FieldDescriptor f : scanner.getRepeatedObjectFields()) {
 				DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
-				ProtoDBScanner other = new ProtoDBScanner(mg, parentScanner.getBackend());
+				ProtoDBScanner other = new ProtoDBScanner(mg, scanner.getBackend());
 				String hierarchy = String.format("%s.%s", fieldHierarchy, f.getName());
 				
 				joinClause += getJoinClauseRepeated(scanner, other, f.getName(), aliases, linkTableIterator, fieldHierarchy, hierarchy);
@@ -166,7 +166,7 @@ public class Searcher {
 			
 			if (f.getJavaType() == JavaType.MESSAGE) {
 				DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
-				ProtoDBScanner other = new ProtoDBScanner(mg, parentScanner.getBackend());
+				ProtoDBScanner other = new ProtoDBScanner(mg, scanner.getBackend());
 				
 				joinClause += getJoinClauseSimple(scanner, other, f.getName(), aliases, fieldHierarchy, hierarchy);
 				joinClause += getJoinClause(scanner, other, f.getName(), aliases, linkTableIterator, fieldHierarchy, hierarchy, travelComplexLinks, getBlobs);
@@ -200,7 +200,13 @@ public class Searcher {
 		result.setHasComplexJoins(scanner.getRepeatedObjectFields().size() > 0 && travelComplexLinks);
 		
 		for (FieldDescriptor b : scanner.getBasicFields()) {
-			result.append(String.format("%s.[%s] AS %s_%s, ", currentAlias, b.getName(), currentAlias, b.getName())); 
+			result.append(String.format("%s.%s%s%s AS %s_%s, ", 
+				currentAlias,
+				scanner.getBackend().getStartBracket(),
+				b.getName(),
+				scanner.getBackend().getEndBracket(),
+				currentAlias, 
+				b.getName())); 
 		}
 		
 		int ac = 0;
@@ -219,7 +225,12 @@ public class Searcher {
 			}
 			else if (f.getJavaType() == JavaType.ENUM) {
 				// Adding default value column for enum type
-				result.append(String.format("%s.[value] AS %s_%s, ", otherAlias, currentAlias, f.getName()));
+				result.append(String.format("%s.%svalue%s AS %s_%s, ", 
+					otherAlias,
+					scanner.getBackend().getStartBracket(),
+					scanner.getBackend().getEndBracket(),
+					currentAlias, 
+					f.getName()));
 			}
 			ac++;
 		}
@@ -232,7 +243,13 @@ public class Searcher {
 				String hierarchy = String.format("%s.%s", parentHierarchy, f.getName());
 				aliases.put(hierarchy, otherAlias);
 
-				result.append(String.format("%s.[data] AS %s_%s, ", otherAlias, currentAlias, f.getName()));
+				result.append(String.format("%s.%sdata%S AS %s_%s, ", 
+					otherAlias,
+					scanner.getBackend().getStartBracket(),
+					scanner.getBackend().getEndBracket(),
+					currentAlias, 
+					f.getName()));
+				
 				ac++;	
 			}
 		}

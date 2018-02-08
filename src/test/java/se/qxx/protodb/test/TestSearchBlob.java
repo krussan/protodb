@@ -82,18 +82,22 @@ public class TestSearchBlob {
 		ProtoDBScanner scanner = new ProtoDBScanner(o1, db.getDatabaseBackend());
 		JoinResult result = Searcher.getJoinQuery(scanner, true, true);
 		
-		String expected = "SELECT "
-				+ "A.[ID] AS A_ID, "
-				+ "A.[dd] AS A_dd, "
-				+ "A.[ff] AS A_ff, "
-				+ "A.[is] AS A_is, "
-				+ "A.[il] AS A_il, "
-				+ "A.[bb] AS A_bb, "
-				+ "A.[ss] AS A_ss, "
-				+ "AA.[data] AS A_by "
+		String expected = 
+			String.format(
+				"SELECT "
+				+ "A.%1$sID%2$s AS A_ID, "
+				+ "A.%1$sdd%2$s AS A_dd, "
+				+ "A.%1$sff%2$s AS A_ff, "
+				+ "A.%1$sis%2$s AS A_is, "
+				+ "A.%1$sil%2$s AS A_il, "
+				+ "A.%1$sbb%2$s AS A_bb, "
+				+ "A.%1$sss%2$s AS A_ss, "
+				+ "AA.%1$sdata%2$s AS A_by "
 				+ "FROM   SimpleTest AS A   "
 				+ "LEFT JOIN BlobData AS AA "
-				+ " ON A._by_ID = AA.ID ";
+				+ " ON A._by_ID = AA.ID ",
+				db.getDatabaseBackend().getStartBracket(),
+				db.getDatabaseBackend().getEndBracket());
 		
 		assertEquals(expected, result.getJoinClause());
 	}

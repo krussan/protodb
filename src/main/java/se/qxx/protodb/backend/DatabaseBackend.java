@@ -2,14 +2,18 @@ package se.qxx.protodb.backend;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.JDBCType;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public abstract class DatabaseBackend {
 	private String driver;
 	private String connectionString;
+	private Map<JDBCType, String> typeMap = new HashMap<JDBCType, String>();
 	
 	public String getDriver() {
 		return driver;
@@ -32,13 +36,15 @@ public abstract class DatabaseBackend {
 		return "]";
 	}
 	
-	public List<ColumnDefinition> getColumns(Connection conn) throws SQLException {
+	public List<ColumnDefinition> getColumns(String tableName, Connection conn) throws SQLException {
 		List<ColumnDefinition> list = new ArrayList<ColumnDefinition>();
 		DatabaseMetaData metadata = conn.getMetaData();
-	    ResultSet resultSet = metadata.getColumns(null, null, "users", null);
+	    ResultSet resultSet = metadata.getColumns(null, null, tableName, null);
 	    while (resultSet.next()) {
 	    	String name = resultSet.getString("COLUMN_NAME");
-    		String type = resultSet.getString("TYPE_NAME");
+	    	int jType = resultSet.getInt("DATA_TYPE");
+    		String type = JDBCType.valueOf(jType).getName(); 
+    				//resultSet.getString("DATA_TYPE");
     		list.add(new ColumnDefinition(name, type));
 //    		int size = resultSet.getInt("COLUMN_SIZE");
 	    }
@@ -68,10 +74,24 @@ public abstract class DatabaseBackend {
 		return result;
 		
 	}
-	
-	
 
 	public abstract String getIdentityDefinition();
 
 	public abstract int getIdentityValue(Connection conn) throws SQLException;
+	
+	public String getTypeMap(JDBCType type) {
+		if (typeMap.containsKey(type))
+			return typeMap.get(type);
+		else
+			return type.getName();
+	}
+	
+	public void addTypeMap(JDBCType type, String typeName) {
+		typeMap.put(type, typeName);
+	}
+	
+	//getTypeMap
+	//DOUBLE -> FLOAT
+	//FLOAT -> REAL
+	//INTEGER -> INTEGER (not in map)
 }

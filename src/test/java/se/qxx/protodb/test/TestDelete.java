@@ -31,7 +31,7 @@ public class TestDelete {
 	
 	@Parameters
     public static Collection<Object[]> data() {
-        return Arrays.asList(TestConstants.TEST_PARAMS);
+        return Arrays.asList(TestConstants.TEST_PARAMS_MYSQL);
     }
     
     public TestDelete(String driver, String connectionString) throws DatabaseNotSupportedException, ClassNotFoundException, SQLException {
