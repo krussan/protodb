@@ -27,7 +27,7 @@ for f in $SCRIPT_DIR/*.csv; do
 
    sed "s/__FILE__/$FULLPATH/gi" $SCRIPT_DIR/import.script | \
       sed "s/__TABLE__/$NAME/gi" | \
-      mysql -u $DBUSER --password=$DBPWD -D $DB 
+      mysql -u $DBUSER --password=$DBPWD -D $DB --local-infile=1
 done
 
 
