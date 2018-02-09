@@ -33,7 +33,7 @@ public class TestExcludingObjects extends TestBase {
 
 	@Parameters
     public static Collection<Object[]> data() {
-    	return getParams();
+    	return getParams("testParamsFile");
     }
     
     public TestExcludingObjects(String driver, String connectionString) throws DatabaseNotSupportedException, ClassNotFoundException, SQLException {

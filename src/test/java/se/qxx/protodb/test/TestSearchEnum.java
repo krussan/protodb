@@ -35,7 +35,7 @@ public class TestSearchEnum extends TestBase {
 	
 	@Parameters
     public static Collection<Object[]> data() {
-    	return getParams();
+    	return getParams("testParamsFile");
     }
     
     public TestSearchEnum(String driver, String connectionString) throws DatabaseNotSupportedException, ClassNotFoundException, SQLException {

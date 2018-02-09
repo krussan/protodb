@@ -30,7 +30,7 @@ public class TestSetup extends TestBase {
 	
 	@Parameters
     public static Collection<Object[]> data() {
-    	return getParams();
+    	return getParams("testParamsFile");
     }
     
     public TestSetup(String driver, String connectionString) throws DatabaseNotSupportedException, ClassNotFoundException, SQLException {

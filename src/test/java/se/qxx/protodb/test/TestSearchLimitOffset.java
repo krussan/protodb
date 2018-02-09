@@ -33,7 +33,7 @@ public class TestSearchLimitOffset extends TestBase {
 	
 	@Parameters
     public static Collection<Object[]> data() {
-    	return getParams();
+    	return getParams("testParamsFile");
     }
     
     public TestSearchLimitOffset(String driver, String connectionString) throws DatabaseNotSupportedException, ClassNotFoundException, SQLException {

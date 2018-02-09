@@ -33,7 +33,7 @@ public class TestSearchRepeated extends TestBase {
 	
 	@Parameters
     public static Collection<Object[]> data() {
-    	return getParams();
+    	return getParams("testParamsFile");
     }
     
     public TestSearchRepeated(String driver, String connectionString) throws DatabaseNotSupportedException, ClassNotFoundException, SQLException {

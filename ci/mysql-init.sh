@@ -11,3 +11,8 @@ cat << HERE > $TRAVIS_BUILD_DIR/selectTestParams.csv
 org.sqlite.JDBC;protodb_select_test.db
 com.mysql.jdbc.Driver;jdbc:mysql://localhost/protodb_select?user=protodb&password=protodb&connectTimeout=1500
 HERE
+
+cat << HERE > $TRAVIS_BUILD_DIR/testParams.csv
+org.sqlite.JDBC;protodb_test.db
+com.mysql.jdbc.Driver;jdbc:mysql://localhost/protodb?user=protodb&password=protodb&connectTimeout=1500
+HERE

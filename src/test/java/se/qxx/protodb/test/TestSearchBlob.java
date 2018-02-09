@@ -37,7 +37,7 @@ public class TestSearchBlob extends TestBase{
 	
 	@Parameters
     public static Collection<Object[]> data() {
-    	return getParams();
+    	return getParams("testParamsFile");
     }
     
     public TestSearchBlob(String driver, String connectionString) throws DatabaseNotSupportedException, ClassNotFoundException, SQLException {
