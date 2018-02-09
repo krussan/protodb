@@ -22,7 +22,7 @@ before_install:
  - cp ci/settings.xml ~/.m2
  - ls -la ci
  - ci/mysql-init.sh
- - ci/mysql-setup.sh protodb protodb protodb_select $TRAVIS_BUILD_DIR/ci/mysql
+ - ci/mysql-setup.sh protodb protodb protodb_select $TRAVIS_BUILD_DIR/ci/mysql localhost
 
 install: true
 
