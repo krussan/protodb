@@ -7,7 +7,7 @@ mysql -u root -e "GRANT ALL PRIVILEGES ON protodb_select.* TO protodb"
 mysql -u root -e "GRANT FILE ON *.* TO protodb"
 chmod 666 $TRAVIS_BUILD_DIR/ci/mysql/*
 
-echo <<HERE
+cat << HERE > $TRAVIS_BUILD_DIR/selectTestParams.csv
 org.sqlite.JDBC;protodb_select_test.db
 com.mysql.jdbc.Driver;jdbc:mysql://localhost/protodb_select?user=protodb&password=protodb&connectTimeout=1500
->>HERE > $TRAVIS_BUILD_DIR/selectTestParams.csv
+HERE
