@@ -55,6 +55,7 @@ public class TestExcludingObjects extends TestBase {
 	@Before
 	public void Setup() throws ClassNotFoundException, SQLException, IDFieldNotFoundException {		
 	    db.setupDatabase(TestDomain.ObjectTwo.newBuilder());
+	    db.setupDatabase(TestDomain.RepObjectOne.newBuilder());
 	    
 	    ObjectTwo o2 = db.get(1, TestDomain.ObjectTwo.getDefaultInstance());
 	    
@@ -94,9 +95,29 @@ public class TestExcludingObjects extends TestBase {
 	    			.build();
 	    	
 	    	db.save(o2);
-	    		
-	    		
 	    }
+	    
+	    TestDomain.SimpleTwo t1 = TestDomain.SimpleTwo.newBuilder()
+	    	.setID(-1)
+	    	.setTitle("thisIsATitle")
+	    	.setDirector("madeByThisDirector")
+	    	.build();
+	    
+	    TestDomain.SimpleTwo t2 = TestDomain.SimpleTwo.newBuilder()
+	    		.setID(-1)
+		    	.setTitle("thisIsAlsoATitle")
+		    	.setDirector("madeByAnotherDirector")
+		    	.build();
+	    
+	    TestDomain.RepObjectOne r1 = TestDomain.RepObjectOne.newBuilder()
+	    		.setID(-1)
+	    		.setHappycamper(3)
+	    		.addListOfObjects(t1)
+	    		.addListOfObjects(t2)
+	    		.build();
+	    
+	    db.save(r1);
+	    
 	}
 	
 	@Test
@@ -108,8 +129,8 @@ public class TestExcludingObjects extends TestBase {
 			List<TestDomain.ObjectOne> result =
 				db.find(
 					TestDomain.ObjectOne.getDefaultInstance(), 
-					"testOne.bb", 
-					true, 
+					"testOne.ss", 
+					"ThisIsATestOfObjectOne", 
 					false,
 					excludedObjects);
 			
