@@ -7,21 +7,19 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 
+import se.qxx.protodb.DBType;
+
 public class SqliteBackend extends DatabaseBackend {
 
-	public static final String DRIVER = "org.sqlite.JDBC";
-	
-	public SqliteBackend(String databaseFilename) {
+
+	public SqliteBackend(String driver, String connectionString) {
+		super(driver, connectionString);
+		
 		this.addTypeMap(JDBCType.DOUBLE, "FLOAT");
 		this.addTypeMap(JDBCType.BIGINT, "INTEGER");
 		this.addTypeMap(JDBCType.BIT, "INTEGER");
 		this.addTypeMap(JDBCType.LONGVARCHAR, "VARCHAR");
 		this.addTypeMap(JDBCType.LONGVARBINARY, "VARCHAR");
-		//this.addTypeMap(JDBCType.FLOAT, "REAL");
-		
-		this.setDriver(DRIVER);
-		this.setConnectionString(
-				String.format("jdbc:sqlite:%s", databaseFilename));
 	}
 
 	@Override
@@ -38,5 +36,10 @@ public class SqliteBackend extends DatabaseBackend {
 			return rs.getInt(1);
 		else
 			return -1;
+	}
+	
+	@Override
+	public DBType getDBType() {
+		return DBType.Sqlite;
 	}
 }

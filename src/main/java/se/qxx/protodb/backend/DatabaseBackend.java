@@ -10,10 +10,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import se.qxx.protodb.DBType;
+
 public abstract class DatabaseBackend {
 	private String driver;
 	private String connectionString;
 	private Map<JDBCType, String> typeMap = new HashMap<JDBCType, String>();
+	
+	public DatabaseBackend(String driver, String connectionString) {
+		this.setDriver(driver);
+		this.setConnectionString(connectionString);
+	}
 	
 	public String getDriver() {
 		return driver;
@@ -78,6 +85,8 @@ public abstract class DatabaseBackend {
 	public abstract String getIdentityDefinition();
 
 	public abstract int getIdentityValue(Connection conn) throws SQLException;
+	
+	public abstract DBType getDBType();
 	
 	public String getTypeMap(JDBCType type) {
 		if (typeMap.containsKey(type))

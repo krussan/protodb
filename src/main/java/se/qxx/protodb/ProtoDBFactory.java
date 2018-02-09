@@ -1,6 +1,13 @@
 package se.qxx.protodb;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+
 import org.apache.commons.lang3.StringUtils;
+
+import java.sql.DatabaseMetaData;
 
 import se.qxx.protodb.backend.Drivers;
 import se.qxx.protodb.backend.MysqlBackend;
@@ -8,61 +15,64 @@ import se.qxx.protodb.backend.SqliteBackend;
 import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
 
 public class ProtoDBFactory {
-
-	public static ProtoDB getMysqlInstance(String host, String user, String password, String database) {
-		return getMysqlInstance(host, user, password, database, "");
-			
-	}
-	
-	public static ProtoDB getMysqlInstance(String host, String user, String password, String database, String logFilename) {
-		return new ProtoDB(
-				new MysqlBackend(host, user, password, database),
-				logFilename);
-			
-	}
-	
-	public static ProtoDB getSqliteInstance(String databaseFilename) {
-		return new ProtoDB(
-				new SqliteBackend(databaseFilename),
-			"");
-	}
 	
 	public static ProtoDB getInstance(String driver, String connectionString) throws DatabaseNotSupportedException {
-		String overriddenConnectionString = getOverriddenConnectionString(driver, connectionString);
-		if (isMySql(driver))
+		return getInstance(driver, connectionString, "");
+	}
+
+	public static ProtoDB getInstance(String driver, String connectionString, String logFilename) throws DatabaseNotSupportedException {
+		DBType type = getDatabaseType(driver, connectionString);
+
+		if (type == DBType.Mysql)
 			return new ProtoDB(
-					new MysqlBackend(connectionString), "");
+					new MysqlBackend(driver, connectionString), logFilename);
 		
-		if (isSqlite(driver))
+		if (type == DBType.Sqlite)
 			return new ProtoDB(
-				new SqliteBackend(connectionString), "");
-			
+				new SqliteBackend(driver, connectionString), logFilename);
 
 		throw new DatabaseNotSupportedException();
 
 	}
 	
-	private static String getOverriddenConnectionString(String driver, String connectionString) {
-		String property = "connectionString";
-		String result = connectionString;
-		if (isMySql(driver))
-			property = "mysqlConnectionString";
-		
-		if (isSqlite(driver))
-			property = "sqliteConnectionString";
-		
-		String propValue = System.getProperty(property);
-		if (!StringUtils.isEmpty(propValue))
-			return propValue;
-		
-		return result;
-	}
-	
-	public static boolean isMySql(String driver) {
-		return StringUtils.equalsIgnoreCase(driver, Drivers.MYSQL);
+	public static DBType getDatabaseType(String driver, String connectionString) {
+		try {
+			String productName = getDatabaseProductName(driver, connectionString);
+			
+			if (StringUtils.containsIgnoreCase(productName, "mysql"))
+				return DBType.Mysql;
+			else if (StringUtils.containsIgnoreCase(productName, "sqlite"))
+				return DBType.Sqlite;
+			else
+				return DBType.Unsupported;
+			
+		} catch (ClassNotFoundException | SQLException e) {
+			// TODO Auto-generated catch block
+			return DBType.Unsupported;
+		}
 	}
 	
 	public static boolean isSqlite(String driver) {
 		return StringUtils.equalsIgnoreCase(driver, Drivers.SQLITE);
+	}
+	
+	public static String getDatabaseProductName(String driver, String connectionString) throws ClassNotFoundException, SQLException {
+		Connection conn = null;
+
+		try {
+			Class.forName(driver);
+		    conn = DriverManager.getConnection(connectionString);
+
+		    DatabaseMetaData metaData = conn.getMetaData();
+		    return metaData.getDatabaseProductName();
+		    
+		}
+		finally {
+			try {
+				if (conn != null)
+					conn.close();
+			} catch (SQLException e) {
+			}
+		}
 	}
 }

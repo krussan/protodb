@@ -1412,4 +1412,8 @@ public class ProtoDB {
 		}
 	}
 	
+	public DBType getDBType() {
+		return this.getDatabaseBackend().getDBType();
+	}
+	
 }

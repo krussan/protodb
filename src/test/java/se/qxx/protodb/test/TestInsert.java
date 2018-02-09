@@ -32,17 +32,8 @@ public class TestInsert extends TestBase {
     public TestInsert(String driver, String connectionString) throws DatabaseNotSupportedException, ClassNotFoundException, SQLException {
     	db = ProtoDBFactory.getInstance(driver, connectionString);
     	
-    	if (ProtoDBFactory.isSqlite(driver)) {
-    		File f = new File(connectionString);
-    			f.delete();
-    	}
-
-    	
-    	if (ProtoDBFactory.isMySql(driver)) {
-    		db.dropAllTables();
-    	}
-
-    }
+    	clearDatabase(db, connectionString);
+	}
 	
 	@Test
 	public void TestSimple() {		

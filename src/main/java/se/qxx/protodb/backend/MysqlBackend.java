@@ -7,23 +7,14 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 
+import se.qxx.protodb.DBType;
+
 public class MysqlBackend extends DatabaseBackend {
 	
-	public MysqlBackend(String connectionString) {
-		this.addTypeMap(JDBCType.FLOAT, "REAL");
+	public MysqlBackend(String driver, String connectionString) {
+		super(driver, connectionString);
 		
-		this.setDriver(Drivers.MYSQL);
-		this.setConnectionString(connectionString);
-	}
-	
-	public MysqlBackend(String host, String user, String password, String database) {
-		this.setDriver(Drivers.MYSQL);
-		this.setConnectionString(
-				String.format("jdbc:mysql://%s/%s?user=%s&password=%s",
-						host,
-						user,
-						password,
-						database));
+		this.addTypeMap(JDBCType.FLOAT, "REAL");
 	}
 	
 	@Override
@@ -50,5 +41,10 @@ public class MysqlBackend extends DatabaseBackend {
 			return rs.getInt(1);
 		else
 			return -1;
+	}
+
+	@Override
+	public DBType getDBType() {
+		return DBType.Mysql;
 	}
 }

@@ -16,9 +16,11 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 import org.junit.runner.RunWith;
 
+import se.qxx.protodb.DBType;
 import se.qxx.protodb.ProtoDB;
 import se.qxx.protodb.ProtoDBFactory;
 import se.qxx.protodb.backend.Drivers;
+import se.qxx.protodb.backend.MysqlBackend;
 import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 import se.qxx.protodb.exceptions.ProtoDBParserException;
@@ -37,15 +39,8 @@ public class TestDelete extends TestBase {
     public TestDelete(String driver, String connectionString) throws DatabaseNotSupportedException, ClassNotFoundException, SQLException {
     	db = ProtoDBFactory.getInstance(driver, connectionString);
     	
-    	if (ProtoDBFactory.isSqlite(driver)) {
-    		File f = new File(connectionString);
-    			f.delete();
-    	}
+    	clearDatabase(db, connectionString);
     	
-    	if (ProtoDBFactory.isMySql(driver)) {
-    		db.dropAllTables();
-    	}
-
     }
     
 	
