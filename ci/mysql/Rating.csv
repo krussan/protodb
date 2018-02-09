@@ -1,0 +1,6 @@
+ID;value;
+1;NotMatched;
+2;ProbableMatch;
+3;PositiveMatch;
+4;ExactMatch;
+5;SubsExist;

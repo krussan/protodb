@@ -4,17 +4,24 @@ import static org.junit.Assert.*;
 
 import java.io.File;
 import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 import com.google.protobuf.ByteString;
 
 import se.qxx.protodb.JoinResult;
 import se.qxx.protodb.ProtoDB;
+import se.qxx.protodb.ProtoDBFactory;
 import se.qxx.protodb.ProtoDBScanner;
 import se.qxx.protodb.Searcher;
+import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
@@ -24,21 +31,25 @@ import se.qxx.protodb.test.TestDomain.Rating;
 import se.qxx.protodb.test.TestDomain.RepObjectOne;
 import se.qxx.protodb.test.TestDomain.SimpleTwo;
 
-public class TestSearchBlob {
+@RunWith(Parameterized.class)
+public class TestSearchBlob extends TestBase{
 	ProtoDB db = null;
 	
-	private final String DATABASE_FILE = "protodb_blob_test.db";
-
+	@Parameters
+    public static Collection<Object[]> data() {
+    	return getParams("testParamsFile");
+    }
+    
+    public TestSearchBlob(String driver, String connectionString) throws DatabaseNotSupportedException, ClassNotFoundException, SQLException {
+    	db = ProtoDBFactory.getInstance(driver, connectionString);
+    	
+    	clearDatabase(db, connectionString);
+    }
+    
 	@Before
 	public void Setup() throws ClassNotFoundException, SQLException, IDFieldNotFoundException {
 		
-		File f = new File(DATABASE_FILE);
-		if (f.exists())
-			f.delete();
-		
-	    db = new ProtoDB(DATABASE_FILE);
-	    
-	    db.setupDatabase(TestDomain.SimpleTest.newBuilder());
+		db.setupDatabase(TestDomain.SimpleTest.newBuilder());
 
 	    TestDomain.SimpleTest t = TestDomain.SimpleTest.newBuilder()
 				.setID(1)
@@ -59,21 +70,25 @@ public class TestSearchBlob {
 	public void TestBlobSql() {
 		TestDomain.SimpleTest o1 = TestDomain.SimpleTest.getDefaultInstance();
 		
-		ProtoDBScanner scanner = new ProtoDBScanner(o1);
+		ProtoDBScanner scanner = new ProtoDBScanner(o1, db.getDatabaseBackend());
 		JoinResult result = Searcher.getJoinQuery(scanner, true, true);
 		
-		String expected = "SELECT "
-				+ "A.[ID] AS A_ID, "
-				+ "A.[dd] AS A_dd, "
-				+ "A.[ff] AS A_ff, "
-				+ "A.[is] AS A_is, "
-				+ "A.[il] AS A_il, "
-				+ "A.[bb] AS A_bb, "
-				+ "A.[ss] AS A_ss, "
-				+ "AA.[data] AS A_by "
+		String expected = 
+			String.format(
+				"SELECT "
+				+ "A.%1$sID%2$s AS A_ID, "
+				+ "A.%1$sdd%2$s AS A_dd, "
+				+ "A.%1$sff%2$s AS A_ff, "
+				+ "A.%1$sis%2$s AS A_is, "
+				+ "A.%1$sil%2$s AS A_il, "
+				+ "A.%1$sbb%2$s AS A_bb, "
+				+ "A.%1$sss%2$s AS A_ss, "
+				+ "AA.%1$sdata%2$s AS A_by "
 				+ "FROM   SimpleTest AS A   "
 				+ "LEFT JOIN BlobData AS AA "
-				+ " ON A._by_ID = AA.ID ";
+				+ " ON A._by_ID = AA.ID ",
+				db.getDatabaseBackend().getStartBracket(),
+				db.getDatabaseBackend().getEndBracket());
 		
 		assertEquals(expected, result.getJoinClause());
 	}

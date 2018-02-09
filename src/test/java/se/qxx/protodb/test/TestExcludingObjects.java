@@ -2,33 +2,51 @@ package se.qxx.protodb.test;
 
 import static org.junit.Assert.*;
 
+import java.io.File;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 import com.google.protobuf.ByteString;
 
 import se.qxx.protodb.ProtoDB;
+import se.qxx.protodb.ProtoDBFactory;
+import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
 import se.qxx.protodb.test.TestDomain.ObjectOne;
 import se.qxx.protodb.test.TestDomain.ObjectTwo;
 import se.qxx.protodb.test.TestDomain.SimpleTest;
 
-public class TestExcludingObjects {
+@RunWith(Parameterized.class)
+public class TestExcludingObjects extends TestBase {
 
 	ProtoDB db = null;
 
-	private final String DATABASE_FILE = "protodb_select_test.db";
+	@Parameters
+    public static Collection<Object[]> data() {
+    	return getParams("testParamsFile");
+    }
+    
+    public TestExcludingObjects(String driver, String connectionString) throws DatabaseNotSupportedException, ClassNotFoundException, SQLException {
+    	db = ProtoDBFactory.getInstance(driver, connectionString);
+    	
+    	clearDatabase(db, connectionString);
+    }
+
 	
 	@Before
 	public void Setup() throws ClassNotFoundException, SQLException, IDFieldNotFoundException {		
-	    db = new ProtoDB(DATABASE_FILE);
-	    
 	    db.setupDatabase(TestDomain.ObjectTwo.newBuilder());
+	    db.setupDatabase(TestDomain.RepObjectOne.newBuilder());
 	    
 	    ObjectTwo o2 = db.get(1, TestDomain.ObjectTwo.getDefaultInstance());
 	    
@@ -68,9 +86,29 @@ public class TestExcludingObjects {
 	    			.build();
 	    	
 	    	db.save(o2);
-	    		
-	    		
 	    }
+	    
+	    TestDomain.SimpleTwo t1 = TestDomain.SimpleTwo.newBuilder()
+	    	.setID(-1)
+	    	.setTitle("thisIsATitle")
+	    	.setDirector("madeByThisDirector")
+	    	.build();
+	    
+	    TestDomain.SimpleTwo t2 = TestDomain.SimpleTwo.newBuilder()
+	    		.setID(-1)
+		    	.setTitle("thisIsAlsoATitle")
+		    	.setDirector("madeByAnotherDirector")
+		    	.build();
+	    
+	    TestDomain.RepObjectOne r1 = TestDomain.RepObjectOne.newBuilder()
+	    		.setID(-1)
+	    		.setHappycamper(3)
+	    		.addListOfObjects(t1)
+	    		.addListOfObjects(t2)
+	    		.build();
+	    
+	    db.save(r1);
+	    
 	}
 	
 	@Test
@@ -82,8 +120,8 @@ public class TestExcludingObjects {
 			List<TestDomain.ObjectOne> result =
 				db.find(
 					TestDomain.ObjectOne.getDefaultInstance(), 
-					"testOne.bb", 
-					true, 
+					"testOne.ss", 
+					"ThisIsATestOfObjectOne", 
 					false,
 					excludedObjects);
 			
