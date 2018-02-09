@@ -22,9 +22,9 @@ fi
 
 if [[ "$TRAVIS_PULL_REQUEST" == "false" ]] && [[ "$TRAVIS_BRANCH" == "master" ]];then
    echo Packaging new release ...
-   mvn clean package -B -DargLine="-DselectParamsFile=selectTestParams.csv -DtestParamsFile=testParams.csv"
+   mvn clean package -B 
 else 
    echo Running test ...
-   mvn test -B -DargLine="-DselectParamsFile=selectTestParams.csv -DtestParamsFile=testParams.csv"
+   mvn test -B 
 fi
 
