@@ -23,7 +23,7 @@ public class TestSelect extends TestBase {
 	
 	@Parameters
     public static Collection<Object[]> data() {
-    	return getParams("testParamsFile");
+    	return getParams("selectParamsFile");
     }
     
     public TestSelect(String driver, String connectionString) throws DatabaseNotSupportedException {
