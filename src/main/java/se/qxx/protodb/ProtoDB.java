@@ -1416,4 +1416,8 @@ public class ProtoDB {
 		return this.getDatabaseBackend().getDBType();
 	}
 	
+	public Connection getConnection() throws SQLException, ClassNotFoundException {
+		Class.forName(this.getDatabaseBackend().getDriver());
+	    return DriverManager.getConnection(this.getDatabaseBackend().getConnectionString());
+	}
 }
