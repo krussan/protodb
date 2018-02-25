@@ -333,7 +333,18 @@ public class ProtoDBScanner {
 		return " SELECT value FROM " + this.getBasicLinkTableName(field)
 			+  " WHERE _" + this.getObjectName().toLowerCase() + "_ID = ?";
 	}	
-	
+
+	public String getBasicLinkTableSelectStatementIn(FieldDescriptor field, List<Integer> ids) {
+		return String.format(
+				" SELECT %s_%s_ID%s, %1$svalue%3$s FROM %s WHERE %1$s_%2$s_ID%3$s IN (%s)"
+			, this.getBackend().getStartBracket()
+			, this.getObjectName().toLowerCase()
+			, this.getBackend().getEndBracket()
+			, this.getBasicLinkTableName(field)
+			, StringUtils.join(ids, ","));
+			
+	}	
+
 
 	public String getBasicLinkInsertStatement(FieldDescriptor field) {
 		return String.format("INSERT INTO %s ("
@@ -362,6 +373,8 @@ public class ProtoDBScanner {
 			type = "INTEGER";
 		else if (jType == JavaType.LONG)
 			type = "BIGINT";
+		else if (jType == JavaType.BYTE_STRING)
+			type = "BLOB";
 		else
 			type ="TEXT";
 		

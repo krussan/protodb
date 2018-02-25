@@ -4,17 +4,23 @@ import static org.junit.Assert.*;
 
 import java.io.File;
 import java.sql.SQLException;
+import java.util.Collection;
 import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 import com.google.protobuf.ByteString;
 
 import se.qxx.protodb.JoinResult;
 import se.qxx.protodb.ProtoDB;
+import se.qxx.protodb.ProtoDBFactory;
 import se.qxx.protodb.ProtoDBScanner;
 import se.qxx.protodb.Searcher;
+import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
@@ -23,20 +29,23 @@ import se.qxx.protodb.test.TestDomain.ObjectFour;
 import se.qxx.protodb.test.TestDomain.RepObjectOne;
 import se.qxx.protodb.test.TestDomain.SimpleTwo;
 
-public class TestSearchRepeatedBlobs {
+@RunWith(Parameterized.class)
+public class TestSearchRepeatedBlobs extends TestBase {
 	ProtoDB db = null;
 	
-	private final String DATABASE_FILE = "protodb_repeated_blobs_test.db";
-
+	@Parameters
+    public static Collection<Object[]> data() {
+    	return getParams("testParamsFile");
+    }
+    
+    public TestSearchRepeatedBlobs(String driver, String connectionString) throws DatabaseNotSupportedException, ClassNotFoundException, SQLException {
+    	db = ProtoDBFactory.getInstance(driver, connectionString);
+    	
+    	clearDatabase(db, connectionString);
+	}	
+    
 	@Before
 	public void Setup() throws ClassNotFoundException, SQLException, IDFieldNotFoundException {
-		
-		File f = new File(DATABASE_FILE);
-		if (f.exists())
-			f.delete();
-		
-	    db = new ProtoDB(DATABASE_FILE);
-	    
 	    db.setupDatabase(TestDomain.ObjectFour.newBuilder());
 		
 	    ObjectFour o1 = ObjectFour.newBuilder()

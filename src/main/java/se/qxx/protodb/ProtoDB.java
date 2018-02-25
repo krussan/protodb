@@ -8,6 +8,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -442,8 +443,12 @@ public class ProtoDB {
 					PreparedStatement prep = joinResult.getStatement(conn);
 					ResultSet rs = prep.executeQuery();
 					
-					Map<Integer, List<DynamicMessage>> result = joinResult.getResultLink(innerInstance, rs, this.isPopulateBlobsActive());
+					Map<Integer, List<Object>> result = joinResult.getResultLink(innerInstance, rs, this.isPopulateBlobsActive());
 					return updateParentObjects(scanner, field, listOfObjects, result);
+				}
+				
+				for (FieldDescriptor field : scanner.getRepeatedBasicFields()) {
+					updateRepeatedBasicObjects(scanner, field, listOfObjects, ids, conn);
 				}
 			
 			}
@@ -463,17 +468,39 @@ public class ProtoDB {
 			
 	}
 	
+	private <T extends Message> void updateRepeatedBasicObjects(ProtoDBScanner scanner, FieldDescriptor field, List<T> listOfObjects, List<Integer> ids, Connection conn) throws SQLException {
+		String sql = scanner.getBasicLinkTableSelectStatementIn(field, ids);
+		
+		PreparedStatement prep = conn.prepareStatement(sql);
+		ResultSet rs = prep.executeQuery();
+		
+		Map<Integer, List<Object>> map = new HashMap<Integer, List<Object>>();
+		
+		while (rs.next()) {
+			int parentID = rs.getInt(0);
+			
+			if (!map.containsKey(parentID)) {
+				map.put(parentID, new ArrayList<Object>()); 
+			}
+			
+			map.get(parentID).add(rs.getObject("value"));
+		}		
+
+		updateParentObjects(scanner, field, listOfObjects, map);
+	}
+	
+	
 	@SuppressWarnings("unchecked")
-	private <T extends Message> List<T> updateParentObjects(ProtoDBScanner parentScanner, FieldDescriptor field, List<T> listOfObjects, Map<Integer, List<DynamicMessage>> result) {
+	private <T extends Message> List<T> updateParentObjects(ProtoDBScanner parentScanner, FieldDescriptor field, List<T> listOfObjects, Map<Integer, List<Object>> result) {
 		List<T> parents = new ArrayList<T>();
 		for (T obj : listOfObjects) {
 			int parentID = (int)obj.getField(parentScanner.getIdField());
-			List<DynamicMessage> subObjects = result.get(parentID);
+			List<Object> subObjects = result.get(parentID);
 			
 			Builder b = obj.toBuilder();
 			
 			if (subObjects != null) {
-				for (DynamicMessage sub : subObjects) {
+				for (Object sub : subObjects) {
 					b.addRepeatedField(field, sub);
 				}
 			}
@@ -501,7 +528,11 @@ public class ProtoDB {
 		
 		return null;
 	}
-
+	
+	private void updateRepeatedBasicFields() {
+		
+	}
+	
 	private DynamicMessage getInstanceFromField(FieldDescriptor field) {
 		Descriptor mt = field.getMessageType();
 		return DynamicMessage.getDefaultInstance(mt);

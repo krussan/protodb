@@ -210,14 +210,14 @@ public class JoinResult {
 		return prep;
 	}
 	
-	public <T extends Message> Map<Integer, List<T>> getResultLink(T instance, ResultSet rs, boolean getBlobs) throws SQLException, ProtoDBParserException {
-		Map<Integer, List<T>> map = new HashMap<Integer, List<T>>();
+	public <T extends Message> Map<Integer, List<Object>> getResultLink(T instance, ResultSet rs, boolean getBlobs) throws SQLException, ProtoDBParserException {
+		Map<Integer, List<Object>> map = new HashMap<Integer, List<Object>>();
 		
 		while (rs.next()) {
 			int parentID = rs.getInt("__thisID");
 			
 			if (!map.containsKey(parentID)) {
-				map.put(parentID, new ArrayList<T>()); 
+				map.put(parentID, new ArrayList<Object>()); 
 			}
 			
 			map.get(parentID).add(getResult(instance, rs, StringUtils.EMPTY, getBlobs));
@@ -225,7 +225,7 @@ public class JoinResult {
 		
 		return map;
 	}
-	
+		
 	public <T extends Message> List<T> getResult(T instance, ResultSet rs, boolean getBlobs) throws SQLException, ProtoDBParserException {
 		List<T> result = new ArrayList<T>();
 		while (rs.next()) {
