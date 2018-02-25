@@ -17,6 +17,7 @@ import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
 import com.google.protobuf.DynamicMessage;
 import com.google.protobuf.MessageOrBuilder;
 
+import se.qxx.protodb.backend.DatabaseBackend;
 import se.qxx.protodb.model.ProtoField;
 import se.qxx.protodb.model.ProtoTable;
 
@@ -26,6 +27,7 @@ public class ProtoDBScanner {
 
 	String objectName;
 	private MessageOrBuilder message = null;
+	private DatabaseBackend backend = null;
 	
 	private List<FieldDescriptor> objectFields = new ArrayList<FieldDescriptor>();
 	private List<String> objectFieldTargets = new ArrayList<String>();
@@ -45,8 +47,10 @@ public class ProtoDBScanner {
 
 	private HashMap<String, String> aliases = new HashMap<String, String>();
 	
-	public ProtoDBScanner(MessageOrBuilder b) {
+
+	public ProtoDBScanner(MessageOrBuilder b, DatabaseBackend backend) {
 		this.setMessage(b);
+		this.setBackend(backend);
 		this.scan(b);
 	}
 	
@@ -85,7 +89,7 @@ public class ProtoDBScanner {
 			else {
 				if (jType == JavaType.MESSAGE) {
 					MessageOrBuilder target = (MessageOrBuilder)this.getMessage().getField(field);
-					ProtoDBScanner dbInternal = new ProtoDBScanner(target);			
+					ProtoDBScanner dbInternal = new ProtoDBScanner(target, this.getBackend());			
 					
 					this.addObjectField(field);
 					this.addObjectFieldTarget(dbInternal.getObjectName());
@@ -145,20 +149,31 @@ public class ProtoDBScanner {
 	protected List<String> getQuotedColumns() {
 		List<String> cols = new ArrayList<String>();
 		for (FieldDescriptor field : this.getObjectFields()) {
-			cols.add(String.format("[%s]", getObjectFieldName(field)));
+			cols.add(
+				getQuotedColumn(
+					getObjectFieldName(field)));
 		}
 		
 		for (FieldDescriptor field : this.getBlobFields()) {
-			cols.add(String.format("[%s]", getObjectFieldName(field)));
+			cols.add(
+				getQuotedColumn(
+					getObjectFieldName(field)));
 		}
 		
 		for (FieldDescriptor field : this.getBasicFields()) {
 			String fieldName = field.getName();
 			if (!fieldName.equalsIgnoreCase("ID"))
-				cols.add(String.format("[%s]", fieldName));
+				cols.add(getQuotedColumn(fieldName));
 		}
 		
 		return cols;
+	}
+	
+	private String getQuotedColumn(String columnName) {
+		return String.format("%s%s%s", 
+				this.getBackend().getStartBracket(), 
+				columnName,
+				this.getBackend().getEndBracket());
 	}
 	
 	public String getLinkTableInsertStatement(ProtoDBScanner other, String fieldName) {
@@ -190,7 +205,7 @@ public class ProtoDBScanner {
 		return "DELETE FROM " + this.getObjectName() + " WHERE ID = ?";
 	}
 	
-	public String getCreateStatement() {
+	public String getCreateStatement(DatabaseBackend backend) {
 		String sql = String.format("CREATE TABLE %s ", this.getObjectName());
 		List<String> cols = new ArrayList<String>();
 		
@@ -198,29 +213,29 @@ public class ProtoDBScanner {
 			FieldDescriptor field = this.getObjectFields().get(i);
 			String target = this.getObjectFieldTargets().get(i);
 			
-			cols.add(String.format("[%s] INTEGER %s REFERENCES %s (ID)",
-					getObjectFieldName(field), 
+			cols.add(String.format("%s INTEGER %s REFERENCES %s (ID)",
+					getQuotedColumn(getObjectFieldName(field)), 
 					field.isOptional() ? "NULL" : "NOT NULL",
 					target));
 		}
 		
 		for (FieldDescriptor field : this.getBlobFields()) {
-			cols.add(String.format("[%s] INTEGER %s REFERENCES BlobData (ID)",
-					getObjectFieldName(field), 
+			cols.add(String.format("%s INTEGER %s REFERENCES BlobData (ID)",
+					getQuotedColumn(getObjectFieldName(field)), 
 					field.isOptional() ? "NULL" : "NOT NULL"));
 		}
 		
 		for(FieldDescriptor field : this.getBasicFields()) {
 			if (!field.getName().equalsIgnoreCase("ID"))
-				cols.add(String.format("[%s] %s %s", 
-					getBasicFieldName(field), 
+				cols.add(String.format("%s %s %s", 
+					getQuotedColumn(getBasicFieldName(field)), 
 					getDBType(field), 
 					field.isOptional() ? "NULL" : "NOT NULL"));
 		}
 		
 		
-		sql += "(ID INTEGER PRIMARY KEY AUTOINCREMENT, " + StringUtils.join(cols, ",") + ")";
-		;
+		sql += String.format("(%s, %s)", backend.getIdentityDefinition(), StringUtils.join(cols, ","));
+		
 		return sql;
 	}
 	
@@ -505,6 +520,15 @@ public class ProtoDBScanner {
 	private void setMessage(MessageOrBuilder message) {
 		this.message = message;
 	}
+	
+	public DatabaseBackend getBackend() {
+		return backend;
+	}
+
+	public void setBackend(DatabaseBackend backend) {
+		this.backend = backend;
+	}
+
 
 	public FieldDescriptor getIdField() {
 		return idField;

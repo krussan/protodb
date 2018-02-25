@@ -5,29 +5,35 @@ import static org.junit.Assert.*;
 import java.io.File;
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.Collection;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 import se.qxx.protodb.ProtoDB;
+import se.qxx.protodb.ProtoDBFactory;
+import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 
 import com.google.protobuf.ByteString;
 
-public class TestInsert {
+@RunWith(Parameterized.class)
+public class TestInsert extends TestBase {
 	ProtoDB db = null;
 	
-	private final String DATABASE_FILE = "protodb_test.db";
-	
-	@Before
-	public void Setup() {
-		
-		File f = new File(DATABASE_FILE);
-		f.delete();
-		
-	    db = new ProtoDB(DATABASE_FILE);
+	@Parameters
+    public static Collection<Object[]> data() {
+    	return getParams("testParamsFile");
+    }
+    
+    public TestInsert(String driver, String connectionString) throws DatabaseNotSupportedException, ClassNotFoundException, SQLException {
+    	db = ProtoDBFactory.getInstance(driver, connectionString);
+    	
+    	clearDatabase(db, connectionString);
 	}
-	
 	
 	@Test
 	public void TestSimple() {		
@@ -36,7 +42,7 @@ public class TestInsert {
 				.setBb(false)
 				.setBy(ByteString.copyFrom(new byte[] {5,8,6}))
 				.setDd(1467802579378.62352352)
-				.setFf((float) 555444333.213)
+				.setFf((float) 5554.213)
 				.setIl(999999998)
 				.setIs(999999998)
 				.setSs("ThisIsATest")
@@ -54,8 +60,8 @@ public class TestInsert {
 			TestDomain.SimpleTest st = db.get(tt.getID(), TestDomain.SimpleTest.getDefaultInstance());
 			
 			assertEquals(t.getBb(), st.getBb());
-			assertEquals(t.getDd(), st.getDd(), 0.0);
-			assertEquals(t.getFf(), st.getFf(), 0.0);
+			assertEquals(t.getDd(), st.getDd(), 0.005);
+			assertEquals(t.getFf(), st.getFf(), 0.005);
 			assertEquals(t.getIl(), st.getIl());
 			assertEquals(t.getIs(), st.getIs());
 			assertNotEquals(t.getSs(), st.getSs());
@@ -117,7 +123,7 @@ public class TestInsert {
 						.setBb(false)
 						.setBy(ByteString.copyFrom(new byte[] {5,8,6}))
 						.setDd(1467802579378.62352352)
-						.setFf((float) 555444333.213)
+						.setFf((float) 5554.213)
 						.setIl(999999998)
 						.setIs(999999998)
 						.setSs("ThisIsATestOfObjectOne")
@@ -138,8 +144,8 @@ public class TestInsert {
 			assertEquals(t.getOois(), oo.getOois());
 			
 			assertEquals(tt.getBb(), st.getBb());
-			assertEquals(tt.getDd(), st.getDd(), 0.0);
-			assertEquals(tt.getFf(), st.getFf(), 0.0);
+			assertEquals(tt.getDd(), st.getDd(), 0.005);
+			assertEquals(tt.getFf(), st.getFf(), 0.005);
 			assertEquals(tt.getIl(), st.getIl());
 			assertEquals(tt.getIs(), st.getIs());
 			assertEquals(tt.getSs(), st.getSs());
@@ -169,7 +175,7 @@ public class TestInsert {
 				.setBb(false)
 				.setBy(ByteString.copyFrom(new byte[] {5,8,6}))
 				.setDd(1467802579378.62352352)
-				.setFf((float) 555444333.213)
+				.setFf((float) 5554.213)
 				.setIl(999999998)
 				.setIs(999999998)
 				.setSs("ThisIsATest")
@@ -192,9 +198,10 @@ public class TestInsert {
 		
 			TestDomain.SimpleTest st = db.get(t2.getID(), TestDomain.SimpleTest.getDefaultInstance());
 			
+			
 			assertEquals(t.getBb(), st.getBb());
-			assertEquals(t.getDd(), st.getDd(), 0.0);
-			assertEquals(t.getFf(), st.getFf(), 0.0);
+			assertEquals(t.getDd(), st.getDd(), 0.005);
+			assertEquals(t.getFf(), st.getFf(), 0.005);
 			assertEquals(t.getIl(), st.getIl());
 			assertEquals(t.getIs(), st.getIs());
 			assertNotEquals(t.getSs(), st.getSs());

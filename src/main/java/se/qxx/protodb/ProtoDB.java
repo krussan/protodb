@@ -17,6 +17,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 
+import se.qxx.protodb.backend.ColumnDefinition;
+import se.qxx.protodb.backend.DatabaseBackend;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
@@ -29,27 +31,27 @@ import com.google.protobuf.DynamicMessage;
 import com.google.protobuf.Message;
 import com.google.protobuf.Message.Builder;
 import com.google.protobuf.MessageOrBuilder;
+import com.mysql.jdbc.DatabaseMetaData;
 import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.EnumDescriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor;
 
 public class ProtoDB {
-	private String connectionString = "jdbc:sqlite:jukebox.db";
 	private boolean populateBlobs = true;
+	private DatabaseBackend databaseBackend;
 	
 	//---------------------------------------------------------------------------------
 	//----------------------------------------------------------------------  PROPS
 	//---------------------------------------------------------------------------------
-
-
-	private String getConnectionString() {
-		return connectionString;
-	}
 	
-	private void setConnectionString(String connectionString) {
-		this.connectionString = connectionString;
+	public DatabaseBackend getDatabaseBackend() {
+		return databaseBackend;
 	}
-	
+
+	public void setDatabaseBackend(DatabaseBackend databaseBackend) {
+		this.databaseBackend = databaseBackend;
+	}
+
 	public boolean isPopulateBlobsActive() {
 		return populateBlobs;
 	}
@@ -62,44 +64,22 @@ public class ProtoDB {
 	//------------------------------------------------------------------ CONSTRUCTORS
 	//---------------------------------------------------------------------------------
 	
-	protected ProtoDB() {
+	protected ProtoDB(DatabaseBackend backend, String logFilename) {
+		this.setDatabaseBackend(backend);
+		Logger.setLogfile(logFilename);
 	}
 	
-	public ProtoDB(String databaseFilename) {
-		this.setDatabase(databaseFilename);
-	}	
-
-	public ProtoDB(String databaseFilename, String logFilename) {
-		this.setDatabase(databaseFilename);
+	protected ProtoDB(String logFilename) {
 		Logger.setLogfile(logFilename);
 	}	
 
-//	protected List<String> getColumnList(Connection conn) throws SQLException {
-//		List<String> ret = this.getColumns();
-//		if (ret == null || ret.size() == 0)
-//			setupColumns(this.getTable(), conn);
-//		
-//		return this.getColumns();
-//	}
-
-
-	public List<Pair<String, String>> retreiveColumns(String table) throws SQLException, ClassNotFoundException {
-		List<Pair<String, String>> ret = new ArrayList<Pair<String, String>>();
-		
+	public List<ColumnDefinition> retreiveColumns(String table) throws SQLException, ClassNotFoundException {
+		List<ColumnDefinition> result = new ArrayList<ColumnDefinition>();
 		Connection conn = null;
-		ResultSet rs =null;
 		try {
 			conn = this.initialize();
 			
-			rs = retreiveColumns(table, conn);		
-			
-			while(rs.next()) {
-				String fieldName = rs.getString("name");
-				String fieldType = rs.getString("type");
-
-				Pair<String,String> p = new MutablePair<String, String>(fieldName, fieldType);
-				ret.add(p);
-			}
+			result = this.getDatabaseBackend().getColumns(table, conn);
 		}
 		catch (Exception e) {
 			System.out.println("Exception in ProtoDB!");
@@ -111,7 +91,7 @@ public class ProtoDB {
 			this.disconnect(conn);
 		}
 		
-		return ret;
+		return result;
 	}
 	
 	/***
@@ -133,16 +113,16 @@ public class ProtoDB {
 	//---------------------------------------------------------------------------------
 	
 	/***
-	 * Initializes a database connection (SQLite)
+	 * Initializes a database connection
 	 * @return
 	 * @throws ClassNotFoundException
 	 * @throws SQLException
 	 */
 	protected Connection initialize() throws ClassNotFoundException, SQLException {
-		Class.forName("org.sqlite.JDBC");
-	    return DriverManager.getConnection(this.getConnectionString());				
+		Class.forName(this.getDatabaseBackend().getDriver());
+	    return DriverManager.getConnection(this.getDatabaseBackend().getConnectionString());				
 	}
-	
+		
 	/***
 	 * Disconnects the database and the conneciton object
 	 * @param conn
@@ -153,14 +133,6 @@ public class ProtoDB {
 				conn.close();
 		} catch (SQLException e) {
 		}
-	}
-
-	/***
-	 * Internal function for setting the database connection string
-	 * @param databaseFilename
-	 */
-	private void setDatabase(String databaseFilename) {
-		this.setConnectionString(String.format("jdbc:sqlite:%s", databaseFilename));
 	}
 
 	//---------------------------------------------------------------------------------
@@ -188,7 +160,9 @@ public class ProtoDB {
 		}
 		catch (SQLException e) {			
 			try {
-				conn.rollback();
+				if (conn != null)
+					conn.rollback();
+				
 			} catch (SQLException sqlEx) {}
 
 			System.out.println("Exception in ProtoDB!");
@@ -210,29 +184,15 @@ public class ProtoDB {
 	 * @throws UnexpectedException 
 	 */
 	private void setupDatabase(MessageOrBuilder b, Connection conn) throws SQLException, IDFieldNotFoundException {
-		ProtoDBScanner scanner = new ProtoDBScanner(b);
+		ProtoDBScanner scanner = new ProtoDBScanner(b, this.getDatabaseBackend());
 		
 		// check fields for ID field - this has to be present
-		Boolean idFieldFound = false;
-		for (FieldDescriptor field : scanner.getBasicFields()) {
-			if (field.getName().equalsIgnoreCase("ID") 
-					&& field.getJavaType() == JavaType.INT
-					&& field.isRequired())
-				idFieldFound = true;
-		}
-		if (!idFieldFound)
+		
+		if (!idFieldExists(scanner))
 			throw new IDFieldNotFoundException(scanner.getObjectName());
 		
 		// setup all sub objects
-		for(FieldDescriptor field : scanner.getObjectFields()) {
-			if (!field.isRepeated()) {
-				if (field.getJavaType() == JavaType.MESSAGE)
-					setupDatabase((MessageOrBuilder)b.getField(field), conn);
-				else if (field.getJavaType() == JavaType.ENUM){
-					setupDatabase(field.getEnumType(), conn);
-				}
-			}
-		}
+		setupSubObjects(b, conn, scanner);
 		
 		// setup blob data if blobs exist
 		if (scanner.getBlobFields().size() > 0)
@@ -240,10 +200,21 @@ public class ProtoDB {
 			
 		// setup this object
 		if (!tableExist(scanner.getObjectName(), conn)) {
-			executeStatement(scanner.getCreateStatement(), conn);
+			executeStatement(
+					scanner.getCreateStatement(this.getDatabaseBackend()), 
+					conn);
 		}
 		
 		// setup all repeated fields as many-to-many relations
+		setupRepeatedObjects(conn, scanner);
+		
+		for (FieldDescriptor field : scanner.getRepeatedBasicFields()) {
+			executeStatement(scanner.getBasicLinkCreateStatement(field), conn);
+		}
+
+	}
+
+	private void setupRepeatedObjects(Connection conn, ProtoDBScanner scanner) throws SQLException, IDFieldNotFoundException {
 		for(FieldDescriptor field : scanner.getRepeatedObjectFields()) {
 			if (field.getJavaType() == JavaType.MESSAGE) {
 				Message mg = getInstanceFromField(field);
@@ -255,7 +226,7 @@ public class ProtoDB {
 					setupDatabase(b2, conn);
 					
 					// create link table
-					ProtoDBScanner other = new ProtoDBScanner(b2);
+					ProtoDBScanner other = new ProtoDBScanner(b2, this.getDatabaseBackend());
 					if (!tableExist(scanner.getLinkTableName(other, field.getName()), conn))
 						executeStatement(scanner.getLinkCreateStatement(other, field.getName()), conn);
 				}
@@ -271,19 +242,41 @@ public class ProtoDB {
 				}
 			}
 		}
-		
-		for (FieldDescriptor field : scanner.getRepeatedBasicFields()) {
-			executeStatement(scanner.getBasicLinkCreateStatement(field), conn);
-		}
+	}
 
+	private void setupSubObjects(MessageOrBuilder b, Connection conn, ProtoDBScanner scanner)
+			throws SQLException, IDFieldNotFoundException {
+		for(FieldDescriptor field : scanner.getObjectFields()) {
+			if (!field.isRepeated()) {
+				if (field.getJavaType() == JavaType.MESSAGE)
+					setupDatabase((MessageOrBuilder)b.getField(field), conn);
+				else if (field.getJavaType() == JavaType.ENUM){
+					setupDatabase(field.getEnumType(), conn);
+				}
+			}
+		}
+	}
+
+	private Boolean idFieldExists(ProtoDBScanner scanner) {
+		Boolean idFieldFound = false;
+		for (FieldDescriptor field : scanner.getBasicFields()) {
+			if (field.getName().equalsIgnoreCase("ID") 
+					&& field.getJavaType() == JavaType.INT
+					&& field.isRequired()) {
+				idFieldFound = true;
+				break;
+			}
+		}
+		return idFieldFound;
 	}
 	
 	private void setupDatabase(EnumDescriptor fieldName, Connection conn) throws SQLException {
 		String tableName = StringUtils.capitalize(fieldName.getName());
 		if (!tableExist(tableName, conn)) {
-			String sql = "CREATE TABLE " + tableName + "(" 
-					+ "ID INTEGER PRIMARY KEY AUTOINCREMENT,"
-					+ "value TEXT NOT NULL)";
+			String sql = String.format(
+				"CREATE TABLE %s(%s,value TEXT NOT NULL)"
+					, tableName
+					, this.getDatabaseBackend().getIdentityDefinition());
 
 			Logger.log(sql);
 			
@@ -304,7 +297,10 @@ public class ProtoDB {
 
 	private void setupBlobdata(Connection conn) throws SQLException {
 		if (!tableExist("BlobData", conn))
-			executeStatement("CREATE TABLE BlobData (ID INTEGER PRIMARY KEY AUTOINCREMENT, data BLOB)", conn);
+			executeStatement(
+				String.format("CREATE TABLE BlobData (%s, data BLOB)", 
+						this.getDatabaseBackend().getIdentityDefinition()), 
+						conn);
 	}
 
 	private void executeStatement(String sql, Connection conn) throws SQLException {
@@ -366,7 +362,7 @@ public class ProtoDB {
 	<T extends Message> T get(int id, List<String> excludedObjects, T instance, Connection conn) throws SQLException{
 		Builder b = instance.newBuilderForType();
 		
-		ProtoDBScanner scanner = new ProtoDBScanner(instance);
+		ProtoDBScanner scanner = new ProtoDBScanner(instance, this.getDatabaseBackend());
 		Logger.log(String.format("Populating object %s :: %s", scanner.getObjectName(), id));
 		
 		// populate list of sub objects
@@ -378,7 +374,7 @@ public class ProtoDB {
 		ResultSet rs = getResultSetForObject(id, conn, b, scanner);
 		
 		int rowcount = 0;
-		while(rs.next()) {
+ 		while(rs.next()) {
 			// populate object fields
 			Populator.populateObjectFields(this, conn, b, scanner, rs, excludedObjects);
 			
@@ -428,7 +424,7 @@ public class ProtoDB {
 				conn = this.initialize();
 			
 				T instance = listOfObjects.get(0);
-				ProtoDBScanner scanner = new ProtoDBScanner(instance);
+				ProtoDBScanner scanner = new ProtoDBScanner(instance, this.getDatabaseBackend());;
 	
 				// get a list of all parent id's
 				List<Integer> ids = new ArrayList<Integer>();
@@ -494,7 +490,7 @@ public class ProtoDB {
 			
 			if (mg instanceof MessageOrBuilder) {
 
-				ProtoDBScanner other = new ProtoDBScanner(mg);
+				ProtoDBScanner other = new ProtoDBScanner(mg, this.getDatabaseBackend());;
 				JoinResult joinResult = Searcher.getJoinQuery(other, populateBlobs, false, scanner, field.getName(), -1, -1);
 				
 				joinResult.addLinkWhereClause(parentIDs, scanner);
@@ -574,7 +570,9 @@ public class ProtoDB {
 		}
 		catch (SQLException e) {			
 			try {
-				conn.rollback();
+				if (conn != null)
+					conn.rollback();
+
 			} catch (SQLException sqlEx) {}
 
 			System.out.println("Exception in ProtoDB!");
@@ -603,7 +601,7 @@ public class ProtoDB {
 	private <T extends Message> T save(T b, Connection conn) throws SQLException, ClassNotFoundException {
 		// create a new builder to store the new object
 		Builder mainBuilder = b.newBuilderForType();
-		ProtoDBScanner scanner = new ProtoDBScanner(b);
+		ProtoDBScanner scanner = new ProtoDBScanner(b, this.getDatabaseBackend());;
 		
 		//check for existence. UPDATE if present!
 		Boolean objectExist = checkExisting(scanner, conn);
@@ -619,7 +617,7 @@ public class ProtoDB {
 			Object o = b.getField(field);
 			
 			if (field.getJavaType() == JavaType.MESSAGE && !field.isRepeated()) {
-				ProtoDBScanner other = new ProtoDBScanner((Message)o);
+				ProtoDBScanner other = new ProtoDBScanner((Message)o, this.getDatabaseBackend());;
 				Message ob = save((Message)o, conn);				
 				scanner.addObjectID(fieldName, (int)ob.getField(other.getIdField()));
 				
@@ -666,7 +664,7 @@ public class ProtoDB {
 				Object mg = b.getRepeatedField(field, i);
 				if (mg instanceof Message) {
 					Message b2 = (Message)mg;
-					ProtoDBScanner other = new ProtoDBScanner(b2);
+					ProtoDBScanner other = new ProtoDBScanner(b2, this.getDatabaseBackend());;
 					
 					// save other object
 					Message ob = save(b2, conn);
@@ -762,11 +760,14 @@ public class ProtoDB {
 		prep.setBytes(1, data);
 		prep.execute();
 		
-		return getIdentity(conn);
+		return this.getDatabaseBackend().getIdentityValue(conn);
 	}
 	
 	private int saveEnum(FieldDescriptor field, String value, Connection conn) throws SQLException {
-		PreparedStatement prep = conn.prepareStatement("SELECT ID FROM " + field.getName() + " WHERE value = ?");
+		PreparedStatement prep = conn.prepareStatement(
+			String.format("SELECT ID FROM %s WHERE value = ?", 
+				StringUtils.capitalize(field.getName())));
+		
 		prep.setString(1, value);
 		ResultSet rs = prep.executeQuery();
 		
@@ -856,7 +857,7 @@ public class ProtoDB {
 		if (objectExist)
 			id = scanner.getIdValue();
 		else
-			id = getIdentity(conn);
+			id = this.getDatabaseBackend().getIdentityValue(conn);
 		
 		return id;
 	}
@@ -885,7 +886,9 @@ public class ProtoDB {
 		}
 		catch (SQLException e) {			
 			try {
-				conn.rollback();
+				if (conn != null)
+					conn.rollback();
+
 			} catch (SQLException sqlEx) {}
 			
 			throw e;
@@ -913,7 +916,7 @@ public class ProtoDB {
 	 * @throws ClassNotFoundException 
 	 */
 	private void delete(MessageOrBuilder b, Connection conn) throws SQLException, ClassNotFoundException {
-		ProtoDBScanner scanner = new ProtoDBScanner(b);
+		ProtoDBScanner scanner = new ProtoDBScanner(b, this.getDatabaseBackend());;
 				
 		// delete underlying objects
 		for(FieldDescriptor field : scanner.getObjectFields()) {
@@ -933,7 +936,7 @@ public class ProtoDB {
 				Object mg = b.getRepeatedField(field, i);
 				if (mg instanceof MessageOrBuilder) {
 					MessageOrBuilder b2 = (MessageOrBuilder)mg;
-					ProtoDBScanner other = new ProtoDBScanner(b2);
+					ProtoDBScanner other = new ProtoDBScanner(b2, this.getDatabaseBackend());;
 					
 					// delete other object
 					delete(b2, conn);
@@ -1015,7 +1018,7 @@ public class ProtoDB {
 	
 	private <T extends Message> List<T> find(T instance, Queue<String> fieldQueue, Object searchFor, Boolean isLikeFilter, List<String> excludedObjects, Connection conn, int numberOfResults, int offset) throws SearchFieldNotFoundException, SQLException, ClassNotFoundException {
 		List<T> result = new ArrayList<T>();
-		ProtoDBScanner scanner = new ProtoDBScanner(instance);
+		ProtoDBScanner scanner = new ProtoDBScanner(instance, this.getDatabaseBackend());;
 		
 		// Get first field
 		String firstField = fieldQueue.poll();
@@ -1131,7 +1134,7 @@ public class ProtoDB {
 							ids.add((int)dmpart.getField(idField));
 					
 					//find main objects that contain the sub objects (ID-wise)
-					ProtoDBScanner other = new ProtoDBScanner(dmObjects.get(0));
+					ProtoDBScanner other = new ProtoDBScanner(dmObjects.get(0), this.getDatabaseBackend());
 					prep.prepareStatement(scanner.getSearchStatementLinkObject(field, other, ids));
 				}
 			}
@@ -1298,7 +1301,7 @@ public class ProtoDB {
 		try {
 			conn = this.initialize();
 
-			ProtoDBScanner scanner = new ProtoDBScanner(instance);
+			ProtoDBScanner scanner = new ProtoDBScanner(instance, this.getDatabaseBackend());
 			JoinResult joinClause = Searcher.getJoinQuery(scanner, populateBlobs, !searchShallow, numberOfResults, offset);
 			
 			// check if this is a repeated (or enum)
@@ -1336,22 +1339,6 @@ public class ProtoDB {
 	//----------------------------------------------------------------------  HELPERS
 	//---------------------------------------------------------------------------------
 
-	/***
-	 * Internal function to get the latest inserted row ID
-	 * @param conn
-	 * @return
-	 * @throws SQLException
-	 */
-	private static int getIdentity(Connection conn) throws SQLException {
-		PreparedStatement prep = conn.prepareStatement("SELECT last_insert_rowid()");
-		ResultSet rs = prep.executeQuery();
-		
-		if (rs.next())
-			return rs.getInt(1);
-		else
-			return -1;
-	}
-	
 	
 	/***
 	 * Internal function to check if table exists
@@ -1361,17 +1348,43 @@ public class ProtoDB {
 	 * @throws SQLException
 	 */
 	private boolean tableExist(String tableName, Connection conn) throws SQLException {
-		PreparedStatement prep = conn.prepareStatement("SELECT COUNT(1) FROM sqlite_master WHERE type='table' AND name=?");
-		prep.setString(1, tableName);
-		
-		boolean b = false;
-		ResultSet rs = prep.executeQuery();
-		if (rs.next())
-			if (rs.getInt(1)==1)
-				b = true;
-		
-		return b;
-		
+		return this.getDatabaseBackend().tableExist(tableName, conn);
+	}
+	
+	public void dropAllTables() throws SQLException, ClassNotFoundException {
+		Connection conn = null;
+
+		try {
+			conn = this.initialize();
+			
+			List<String> tables = this.getDatabaseBackend().getAllTables(conn);
+			
+			for (String t : tables) {
+				PreparedStatement prep = 
+					conn.prepareStatement(
+						String.format("DROP TABLE %s%s%s", 
+							this.getDatabaseBackend().getStartBracket(),
+							t,
+							this.getDatabaseBackend().getEndBracket()));
+				
+				prep.execute();				
+			}
+		}
+		catch (SQLException | ClassNotFoundException e) {			
+			try {
+				if (conn != null)
+					conn.rollback();
+
+			} catch (SQLException sqlEx) {}
+
+			System.out.println("Exception in ProtoDB!");
+			e.printStackTrace();
+
+			throw e;
+		}		
+		finally {
+			this.disconnect(conn);
+		}
 	}
 	
 	public void executeNonQuery(String sql) throws Exception {
@@ -1384,7 +1397,9 @@ public class ProtoDB {
 		}
 		catch (SQLException | ClassNotFoundException e) {			
 			try {
-				conn.rollback();
+				if (conn != null)
+					conn.rollback();
+
 			} catch (SQLException sqlEx) {}
 
 			System.out.println("Exception in ProtoDB!");
@@ -1396,4 +1411,9 @@ public class ProtoDB {
 			this.disconnect(conn);
 		}
 	}
+	
+	public DBType getDBType() {
+		return this.getDatabaseBackend().getDBType();
+	}
+	
 }

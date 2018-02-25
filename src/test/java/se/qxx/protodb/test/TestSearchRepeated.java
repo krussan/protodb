@@ -4,15 +4,22 @@ import static org.junit.Assert.*;
 
 import java.io.File;
 import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 import se.qxx.protodb.JoinResult;
 import se.qxx.protodb.ProtoDB;
+import se.qxx.protodb.ProtoDBFactory;
 import se.qxx.protodb.ProtoDBScanner;
 import se.qxx.protodb.Searcher;
+import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
@@ -20,20 +27,24 @@ import se.qxx.protodb.model.ProtoDBSearchOperator;
 import se.qxx.protodb.test.TestDomain.RepObjectOne;
 import se.qxx.protodb.test.TestDomain.SimpleTwo;
 
-public class TestSearchRepeated {
+@RunWith(Parameterized.class)
+public class TestSearchRepeated extends TestBase {
 	ProtoDB db = null;
 	
-	private final String DATABASE_FILE = "protodb_repeated_test.db";
+	@Parameters
+    public static Collection<Object[]> data() {
+    	return getParams("testParamsFile");
+    }
+    
+    public TestSearchRepeated(String driver, String connectionString) throws DatabaseNotSupportedException, ClassNotFoundException, SQLException {
+    	db = ProtoDBFactory.getInstance(driver, connectionString);
+    	
+    	clearDatabase(db, connectionString);
+	}	
 
 	@Before
 	public void Setup() throws ClassNotFoundException, SQLException, IDFieldNotFoundException {
 		
-		File f = new File(DATABASE_FILE);
-		if (f.exists())
-			f.delete();
-		
-	    db = new ProtoDB(DATABASE_FILE);
-	    
 	    db.setupDatabase(TestDomain.RepObjectOne.newBuilder());
 		
 		RepObjectOne o1 = RepObjectOne.newBuilder()
@@ -106,18 +117,22 @@ public class TestSearchRepeated {
 							.build())
 					.build();
 			
-			ProtoDBScanner scanner = new ProtoDBScanner(o1);
+			ProtoDBScanner scanner = new ProtoDBScanner(o1, db.getDatabaseBackend());
 			JoinResult result = Searcher.getJoinQuery(scanner, false, true);
 
 			// the query of the repeated subobjects need to be populated separately
-			String expected = "SELECT DISTINCT "
-					+ "A.[ID] AS A_ID, "
-					+ "A.[happycamper] AS A_happycamper "
+			String expected =
+				String.format(
+					"SELECT DISTINCT "
+					+ "A.%1$sID%2$s AS A_ID, "
+					+ "A.%1$shappycamper%2$s AS A_happycamper "
 					+ "FROM   RepObjectOne AS A   "
 					+ "LEFT JOIN RepObjectOneSimpleTwo_Listofobjects AS L1 "
 					+ " ON L1._repobjectone_ID = A.ID "
 					+ "LEFT JOIN SimpleTwo AS AA "
-					+ " ON L1._simpletwo_ID = AA.ID ";
+					+ " ON L1._simpletwo_ID = AA.ID ",
+					db.getDatabaseBackend().getStartBracket(),
+					db.getDatabaseBackend().getEndBracket());
 			
 			assertEquals(expected, result.getJoinClause());
 		}

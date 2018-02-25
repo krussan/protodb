@@ -22,6 +22,7 @@ import com.google.protobuf.DynamicMessage;
 import com.google.protobuf.Message;
 import com.google.protobuf.Message.Builder;
 
+import se.qxx.protodb.backend.DatabaseBackend;
 import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
 import se.qxx.protodb.model.ProtoDBSearchOperator;
@@ -33,6 +34,8 @@ public class JoinResult {
 	private List<String> whereClauses = new ArrayList<String>();
 	private List<Object> whereParameters = new ArrayList<Object>();
 	private boolean hasComplexJoins = false;
+	private DatabaseBackend backend = null;
+
 	int nrOfResults = 0;
 	int offset = 0;
 	
@@ -61,12 +64,21 @@ public class JoinResult {
 		this.hasComplexJoins = hasComplexJoins;
 	}
 
-	public JoinResult(String joinClause, HashMap<String, String> aliases, boolean hasComplexJoins, int nrOfResults, int offset) {
+	public DatabaseBackend getBackend() {
+		return backend;
+	}
+
+	public void setBackend(DatabaseBackend backend) {
+		this.backend = backend;
+	}
+
+	public JoinResult(String joinClause, HashMap<String, String> aliases, boolean hasComplexJoins, int nrOfResults, int offset, DatabaseBackend backend) {
 		this.setAliases(aliases);
 		this.setJoinClause(joinClause);
 		this.setComplexJoins(hasComplexJoins);
 		this.setNrOfResults(nrOfResults);
 		this.setOffset(offset);
+		this.setBackend(backend);
 	}
 
 	public HashMap<String, String> getAliases() {
@@ -124,7 +136,7 @@ public class JoinResult {
 			
 			FieldDescriptor nf = scanner.getFieldByName(nextField);
 			DynamicMessage obj = DynamicMessage.getDefaultInstance(nf.getMessageType());
-			ProtoDBScanner other = new ProtoDBScanner(obj);
+			ProtoDBScanner other = new ProtoDBScanner(obj, scanner.getBackend());
 			
 			return getWhereField(other, tail);
 
@@ -238,7 +250,7 @@ public class JoinResult {
 //		// populate list of basic types
 //		populateRepeatedBasicFields(id, conn, b, scanner);
 		
-		ProtoDBScanner scanner = new ProtoDBScanner(instance);
+		ProtoDBScanner scanner = new ProtoDBScanner(instance, backend);
 		
 		for (FieldDescriptor f : scanner.getBasicFields()) {
 			String alias = this.getAliases().get(parentHierarchy);

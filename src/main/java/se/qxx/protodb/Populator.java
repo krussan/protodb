@@ -18,6 +18,7 @@ import com.google.protobuf.Descriptors.FieldDescriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
 import com.google.protobuf.Message.Builder;
 
+import se.qxx.protodb.backend.DatabaseBackend;
 import se.qxx.protodb.model.ProtoDBSearchOperator;
 
 public class Populator {
@@ -37,8 +38,16 @@ public class Populator {
 	}
 
 	public static void populateField(Builder b, FieldDescriptor field, Object o) {
-		if (field.getJavaType() == JavaType.FLOAT)
-			b.setField(field, ((Double)o).floatValue());
+		if (field.getJavaType() == JavaType.DOUBLE)
+			if (o instanceof Double)
+				b.setField(field, (double)o);
+			else
+				b.setField(field, (float)o);
+		else if (field.getJavaType() == JavaType.FLOAT)
+			if (o instanceof Double)
+				b.setField(field, ((Double)o).floatValue());
+			else
+				b.setField(field, (float)o);
 		else if (field.getJavaType() == JavaType.INT)
 			if (o instanceof Long)
 				b.setField(field, ((Long)o).intValue()); 
@@ -52,6 +61,8 @@ public class Populator {
 		else if (field.getJavaType() == JavaType.BOOLEAN ) {
 			if (o instanceof Integer) 
 				b.setField(field, ((int)o) == 1 ? true : false);
+			else if (o instanceof Boolean)
+				b.setField(field, (boolean)o);
 			else
 				b.setField(field, ((String)o).equals("Y") ? true : false);	
 		}
@@ -182,7 +193,7 @@ public class Populator {
 			if (!isExcludedField(field.getName(), excludedObjects)) {
 			
 				MessageOrBuilder b2 = (MessageOrBuilder)mg;
-				ProtoDBScanner other = new ProtoDBScanner(b2);
+				ProtoDBScanner other = new ProtoDBScanner(b2, scanner.getBackend());
 			
 				if (field.isRepeated()) {
 					// get select statement for link table
@@ -210,7 +221,13 @@ public class Populator {
 		}
 	}
 
-	public static void populateRepeatedObjectFields(ProtoDB db, int id, List<String> excludedObjects, Connection conn, Builder b, ProtoDBScanner scanner)
+	public static void populateRepeatedObjectFields(
+			ProtoDB db, 
+			int id, 
+			List<String> excludedObjects, 
+			Connection conn, 
+			Builder b, 
+			ProtoDBScanner scanner)
 			throws SQLException {
 		
 		for (FieldDescriptor field : scanner.getRepeatedObjectFields()) {

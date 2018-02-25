@@ -1,0 +1,2 @@
+org.sqlite.JDBC;jdbc:sqlite:protodb_select_test.db
+com.mysql.jdbc.Driver;jdbc:mysql://192.168.1.120/protodb_select?user=protodb&password=protodb&connectTimeout=1500
