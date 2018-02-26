@@ -11,6 +11,7 @@ import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.mutable.MutableInt;
 
+import com.google.protobuf.ByteString;
 import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.EnumDescriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
@@ -435,6 +436,8 @@ public class ProtoDBScanner {
 			prep.setInt(i, (int)value);
 		else if (jType == JavaType.LONG)
 			prep.setLong(i, (long)value);
+		else if (jType == JavaType.BYTE_STRING)
+			prep.setBytes(i, ((ByteString)value).toByteArray());
 		else
 			prep.setString(i, value.toString());
 			

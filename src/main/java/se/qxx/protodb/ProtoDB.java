@@ -444,12 +444,14 @@ public class ProtoDB {
 					ResultSet rs = prep.executeQuery();
 					
 					Map<Integer, List<Object>> result = joinResult.getResultLink(innerInstance, rs, this.isPopulateBlobsActive());
-					return updateParentObjects(scanner, field, listOfObjects, result);
+					updateParentObjects(scanner, field, listOfObjects, result);
 				}
 				
 				for (FieldDescriptor field : scanner.getRepeatedBasicFields()) {
 					updateRepeatedBasicObjects(scanner, field, listOfObjects, ids, conn);
 				}
+				
+				return listOfObjects;
 			
 			}
 			catch (Exception e) {
@@ -477,13 +479,13 @@ public class ProtoDB {
 		Map<Integer, List<Object>> map = new HashMap<Integer, List<Object>>();
 		
 		while (rs.next()) {
-			int parentID = rs.getInt(0);
+			int parentID = rs.getInt(1);
 			
 			if (!map.containsKey(parentID)) {
 				map.put(parentID, new ArrayList<Object>()); 
 			}
 			
-			map.get(parentID).add(rs.getObject("value"));
+			map.get(parentID).add(rs.getObject(2));
 		}		
 
 		updateParentObjects(scanner, field, listOfObjects, map);
@@ -501,7 +503,10 @@ public class ProtoDB {
 			
 			if (subObjects != null) {
 				for (Object sub : subObjects) {
-					b.addRepeatedField(field, sub);
+					if (field.getJavaType() == JavaType.BYTE_STRING)
+						b.addRepeatedField(field, ByteString.copyFrom((byte[])sub));
+					else
+						b.addRepeatedField(field, sub);
 				}
 			}
 			
