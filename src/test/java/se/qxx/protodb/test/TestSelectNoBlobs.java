@@ -6,6 +6,7 @@ import java.io.File;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -19,6 +20,7 @@ import se.qxx.protodb.ProtoDB;
 import se.qxx.protodb.ProtoDBFactory;
 import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
+import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
 import se.qxx.protodb.test.TestDomain.ObjectFive;
 import se.qxx.protodb.test.TestDomain.ObjectFour;
 
@@ -54,12 +56,17 @@ public class TestSelectNoBlobs extends TestBase {
 	public void TestRequiredBlobs() {	
 		try {
 			db.setPopulateBlobs(false);
-			TestDomain.ObjectFive b = db.get(20, TestDomain.ObjectFive.getDefaultInstance());
+			List<ObjectFive> list = db.find(ObjectFive.getDefaultInstance(), "fourTitle", "%", true);
 
-			// happyCamper should be 3
-			assertEquals(1, b.getID());
 			
-		} catch (SQLException | ClassNotFoundException e) {
+			assertNotNull(list);
+			assertEquals(1, list.size());
+			
+			// happyCamper should be 3
+			assertEquals("this is a repeated blob filler", list.get(0).getFourTitle());
+			assertEquals(ByteString.EMPTY, list.get(0).getFourImage());
+			
+		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}

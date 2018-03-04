@@ -47,4 +47,9 @@ public class MysqlBackend extends DatabaseBackend {
 	public DBType getDBType() {
 		return DBType.Mysql;
 	}
+	
+	@Override
+	public String getEscapeString() {
+		return "ESCAPE '\\\\'";
+	}
 }

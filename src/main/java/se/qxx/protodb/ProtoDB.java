@@ -380,9 +380,13 @@ public class ProtoDB {
 			Populator.populateObjectFields(this, conn, b, scanner, rs, excludedObjects);
 			
 			// populate blobs		
-			if (this.isPopulateBlobsActive())
+			if (this.isPopulateBlobsActive()) {
 				Populator.populateBlobs(conn, b, scanner, rs);
-			
+			}
+			else {
+				// need to populate required blobs with empty set
+				Populator.populateRequiredBlobs(b, scanner);
+			}
 			// populate basic fields			
 			Populator.populateBasicFields(id, b, scanner, rs);	
 			

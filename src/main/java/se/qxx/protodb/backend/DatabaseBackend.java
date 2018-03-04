@@ -99,6 +99,10 @@ public abstract class DatabaseBackend {
 		typeMap.put(type, typeName);
 	}
 	
+	public String getEscapeString() {
+		return "ESCAPE '\\'";
+	}
+	
 	//getTypeMap
 	//DOUBLE -> FLOAT
 	//FLOAT -> REAL
