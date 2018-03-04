@@ -444,11 +444,11 @@ public class ProtoDB {
 					ResultSet rs = prep.executeQuery();
 					
 					Map<Integer, List<Object>> result = joinResult.getResultLink(innerInstance, rs, this.isPopulateBlobsActive());
-					updateParentObjects(scanner, field, listOfObjects, result);
+					listOfObjects = updateParentObjects(scanner, field, listOfObjects, result);
 				}
 				
 				for (FieldDescriptor field : scanner.getRepeatedBasicFields()) {
-					updateRepeatedBasicObjects(scanner, field, listOfObjects, ids, conn);
+					listOfObjects = updateRepeatedBasicObjects(scanner, field, listOfObjects, ids, conn);
 				}
 				
 				return listOfObjects;
@@ -470,7 +470,7 @@ public class ProtoDB {
 			
 	}
 	
-	private <T extends Message> void updateRepeatedBasicObjects(ProtoDBScanner scanner, FieldDescriptor field, List<T> listOfObjects, List<Integer> ids, Connection conn) throws SQLException {
+	private <T extends Message> List<T> updateRepeatedBasicObjects(ProtoDBScanner scanner, FieldDescriptor field, List<T> listOfObjects, List<Integer> ids, Connection conn) throws SQLException {
 		String sql = scanner.getBasicLinkTableSelectStatementIn(field, ids);
 		
 		PreparedStatement prep = conn.prepareStatement(sql);
@@ -488,7 +488,7 @@ public class ProtoDB {
 			map.get(parentID).add(rs.getObject(2));
 		}		
 
-		updateParentObjects(scanner, field, listOfObjects, map);
+		return updateParentObjects(scanner, field, listOfObjects, map);
 	}
 	
 	
