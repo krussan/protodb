@@ -301,4 +301,12 @@ public class Populator {
 		return strippedList;
 	}
 
+	public static void populateRequiredBlobs(Builder b, ProtoDBScanner scanner) {
+		for(FieldDescriptor field : scanner.getBlobFields()) {
+			if (field.isRequired())
+				b.setField(field, ByteString.EMPTY);
+		}
+		
+	}
+
 }

@@ -288,6 +288,9 @@ public class JoinResult {
 				Populator.populateField(b, f, byteData);			
 			}
 		}
+		else {
+			Populator.populateRequiredBlobs(b, scanner);
+		}
 		
 		// invoke parseFrom by reflection to cast this from dynamicMessage to the actual type
 		if (instance instanceof DynamicMessage)
