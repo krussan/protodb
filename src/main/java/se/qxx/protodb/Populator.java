@@ -17,6 +17,7 @@ import com.google.protobuf.Descriptors.EnumValueDescriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
 import com.google.protobuf.Message.Builder;
+import com.mysql.jdbc.UpdatableResultSet;
 
 import se.qxx.protodb.backend.DatabaseBackend;
 import se.qxx.protodb.model.ProtoDBSearchOperator;
@@ -268,6 +269,8 @@ public class Populator {
 			rs.close();
 		}
 	}
+	
+
 
 	private static boolean isExcludedField(String name, List<String> excludedObjects) {
 		if (excludedObjects == null)
