@@ -20,7 +20,9 @@ import se.qxx.protodb.ProtoDB;
 import se.qxx.protodb.ProtoDBFactory;
 import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
+import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
+import se.qxx.protodb.model.ProtoDBSearchOperator;
 import se.qxx.protodb.test.TestDomain.ObjectFive;
 import se.qxx.protodb.test.TestDomain.ObjectFour;
 
@@ -71,5 +73,30 @@ public class TestSelectNoBlobs extends TestBase {
 			fail(e.getMessage());
 		}
 	}
+	
+	@Test
+	public void TestSearchRequiredBlobs() {
+		try {
+			db.setPopulateBlobs(false);
+			List<ObjectFive> list = db.search(
+					ObjectFive.getDefaultInstance(), 
+					"fourTitle", 
+					"%", 
+					ProtoDBSearchOperator.Like);
+	
+			
+			assertNotNull(list);
+			assertEquals(1, list.size());
+			
+			// happyCamper should be 3
+			assertEquals("this is a repeated blob filler", list.get(0).getFourTitle());
+			assertEquals(ByteString.EMPTY, list.get(0).getFourImage());
+			
+		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
+		
+	}	
 
 }
