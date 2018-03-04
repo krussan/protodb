@@ -1447,6 +1447,11 @@ public class ProtoDB {
 			this.disconnect(conn);
 		}
 	}
+
+	public Connection getConnection() throws SQLException, ClassNotFoundException {
+		Class.forName(this.getDatabaseBackend().getDriver());
+	    return DriverManager.getConnection(this.getDatabaseBackend().getConnectionString());
+	}
 	
 	public DBType getDBType() {
 		return this.getDatabaseBackend().getDBType();
