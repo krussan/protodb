@@ -15,6 +15,7 @@ public class MysqlBackend extends DatabaseBackend {
 		super(driver, connectionString);
 		
 		this.addTypeMap(JDBCType.FLOAT, "REAL");
+		this.addTypeMap(JDBCType.BLOB, "LONGBLOB");
 	}
 	
 	@Override

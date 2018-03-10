@@ -3,6 +3,7 @@ package se.qxx.protodb;
 import java.rmi.UnexpectedException;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.JDBCType;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -299,8 +300,9 @@ public class ProtoDB {
 	private void setupBlobdata(Connection conn) throws SQLException {
 		if (!tableExist("BlobData", conn))
 			executeStatement(
-				String.format("CREATE TABLE BlobData (%s, data BLOB)", 
-						this.getDatabaseBackend().getIdentityDefinition()), 
+				String.format("CREATE TABLE BlobData (%s, data %s)", 
+						this.getDatabaseBackend().getIdentityDefinition(),
+						this.getDatabaseBackend().getTypeMap(JDBCType.BLOB)), 
 						conn);
 	}
 
@@ -1360,7 +1362,7 @@ public class ProtoDB {
 			List<T> result = joinClause.getResult(instance, rs, this.isPopulateBlobsActive());
 			
 			if (joinClause.hasComplexJoins())
-				result = getByJoin(result, false);
+				result = getByJoin(result, this.isPopulateBlobsActive());
 
 			return result;
 		}

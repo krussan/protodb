@@ -20,6 +20,7 @@ public class SqliteBackend extends DatabaseBackend {
 		this.addTypeMap(JDBCType.BIT, "INTEGER");
 		this.addTypeMap(JDBCType.LONGVARCHAR, "VARCHAR");
 		this.addTypeMap(JDBCType.LONGVARBINARY, "VARCHAR");
+		this.addTypeMap(JDBCType.BLOB, "BLOB");
 	}
 
 	@Override
