@@ -1362,7 +1362,7 @@ public class ProtoDB {
 			List<T> result = joinClause.getResult(instance, rs, this.isPopulateBlobsActive());
 			
 			if (joinClause.hasComplexJoins())
-				result = getByJoin(result, false);
+				result = getByJoin(result, this.isPopulateBlobsActive());
 
 			return result;
 		}
