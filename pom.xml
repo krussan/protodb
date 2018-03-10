@@ -4,7 +4,7 @@
 
   <groupId>se.qxx.protodb</groupId>
   <artifactId>protodb-java</artifactId>
-  <version>1.6.3</version>
+  <version>1.6.4</version>
   <packaging>jar</packaging>
 
   <name>protodb</name>
@@ -96,6 +96,7 @@
               </execution>
             </executions>
         </plugin>    
+
     </plugins>
   </build>
 </project>
