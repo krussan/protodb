@@ -456,8 +456,6 @@ public class ProtoDB {
 				for (FieldDescriptor field : scanner.getRepeatedBasicFields()) {
 					listOfObjects = updateRepeatedBasicObjects(scanner, field, listOfObjects, ids, conn);
 				}
-				
-				return listOfObjects;
 			
 			}
 			catch (Exception e) {
@@ -472,7 +470,7 @@ public class ProtoDB {
 			
 		}
 		
-		return null;
+		return listOfObjects;
 			
 	}
 	
