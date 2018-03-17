@@ -16,13 +16,13 @@ import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
 
 public class Searcher {
 	
-	public static JoinResult getJoinQuery(ProtoDBScanner scanner, boolean getBlobs, boolean travelComplexLinks) {
-		return getJoinQuery(scanner, getBlobs, travelComplexLinks, null, StringUtils.EMPTY, -1, -1);
-	}
-	
-	public static JoinResult getJoinQuery(ProtoDBScanner scanner, boolean getBlobs, boolean travelComplexLinks, int numberOfResults, int offset) {
-		return getJoinQuery(scanner, getBlobs, travelComplexLinks, null, StringUtils.EMPTY, numberOfResults, offset);
-	}
+//	public static JoinResult getJoinQuery(ProtoDBScanner scanner, boolean getBlobs, boolean travelComplexLinks) {
+//		return getJoinQuery(scanner, getBlobs, travelComplexLinks, null, StringUtils.EMPTY, -1, -1);
+//	}
+//	
+//	public static JoinResult getJoinQuery(ProtoDBScanner scanner, boolean getBlobs, boolean travelComplexLinks, int numberOfResults, int offset) {
+//		return getJoinQuery(scanner, getBlobs, travelComplexLinks, null, StringUtils.EMPTY, numberOfResults, offset);
+//	}
 	
 	
 	public static JoinResult getJoinQuery(
@@ -32,7 +32,9 @@ public class Searcher {
 			ProtoDBScanner other, 
 			String linkFieldName, 
 			int numberOfResults, 
-			int offset) {
+			int offset,
+			String sortField,
+			ProtoDBSort sortOrder) {
 		
 		HashMap<String, String> aliases = new HashMap<String, String>();
 		String currentAlias = "A";
@@ -57,7 +59,7 @@ public class Searcher {
 		// If complex join set a distinct on the first object only
 		// This to do a simple search query. The result needs to be picked up by
 		// the get query.
-		String sql = String.format("SELECT %s%s%s FROM %s %s %s %s %s"
+		String sql = String.format("SELECT %s%s%s FROM %s %s %s %s %s %s"
 				, columns.hasComplexJoins() ? "DISTINCT " : ""
 			    , StringUtils.isEmpty(linkTableColumns) ? "" : linkTableColumns + ", "
 				, columns.hasComplexJoins() ? columns.getDistinctColumnList() : columns.getColumnListFinal()
@@ -65,10 +67,22 @@ public class Searcher {
 				, StringUtils.isEmpty(linkTableJoin) ? "" : "LEFT JOIN"
 				, scanner.getObjectName() + " AS A "
 				, StringUtils.isEmpty(linkTableJoin) ? "" : " ON L0._" + scanner.getObjectName().toLowerCase() + "_ID = A.ID"
-				, joinList);
+				, joinList
+				, getSortClause(sortField, sortOrder));
 			
 		return new JoinResult(sql, aliases, columns.hasComplexJoins(), numberOfResults, offset, scanner.getBackend());
 		 
+	}
+	
+	private static String getSortClause(String sortField, ProtoDBSort sortOrder) {
+		if (!StringUtils.isEmpty(sortField)) {
+			return String.format(
+					"ORDER BY %s %s "
+					, sortField
+					, sortOrder == ProtoDBSort.Desc ? "DESC" : "ASC");
+		}
+		
+		return "";
 	}
 	
 	private static String getJoinClauseRepeated(ProtoDBScanner parentScanner, ProtoDBScanner scanner, String parentFieldName, HashMap<String, String> aliases, MutableInt linkTableIterator, String parentHierarchy, String fieldHierarchy) {

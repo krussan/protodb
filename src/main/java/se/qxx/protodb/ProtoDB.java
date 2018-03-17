@@ -1316,26 +1316,63 @@ public class ProtoDB {
 	}
 
 	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
-		return search(instance, fieldName, searchFor, op, false, null, -1, -1);
+		return search(instance, fieldName, searchFor, op, false, null, -1, -1, StringUtils.EMPTY, ProtoDBSort.Asc);
+	}
+	
+	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, String sortField) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
+		return search(instance, fieldName, searchFor, op, false, null, -1, -1, sortField, ProtoDBSort.Asc);
+	}
+	
+	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, String sortField, ProtoDBSort sortOrder) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
+		return search(instance, fieldName, searchFor, op, false, null, -1, -1, sortField, sortOrder);
 	}
 
+
 	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, boolean searchShallow) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
-		return search(instance, fieldName, searchFor, op, searchShallow, null, -1, -1);
+		return search(instance, fieldName, searchFor, op, searchShallow, null, -1, -1, StringUtils.EMPTY, ProtoDBSort.Asc);
+	}
+
+	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, boolean searchShallow, String sortField) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
+		return search(instance, fieldName, searchFor, op, searchShallow, null, -1, -1, sortField, ProtoDBSort.Asc);
+	}
+	
+	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, boolean searchShallow, String sortField, ProtoDBSort sortOrder) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
+		return search(instance, fieldName, searchFor, op, searchShallow, null, -1, -1, sortField, sortOrder);
 	}
 	
 	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, int numberOfResults, int offset) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
-		return search(instance, fieldName, searchFor, op, false, null, numberOfResults, offset);
+		return search(instance, fieldName, searchFor, op, false, null, numberOfResults, offset, StringUtils.EMPTY, ProtoDBSort.Asc);
+	}
+
+	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, int numberOfResults, int offset, String sortField) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
+		return search(instance, fieldName, searchFor, op, false, null, numberOfResults, offset, sortField, ProtoDBSort.Asc);
 	}
 	
+	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, int numberOfResults, int offset, String sortField, ProtoDBSort sortOrder) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
+		return search(instance, fieldName, searchFor, op, false, null, numberOfResults, offset, sortField, sortOrder);
+	}
+
 	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, boolean searchShallow, List<String> excludedObjects) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
-		return search(instance, fieldName, searchFor, op, searchShallow, excludedObjects, -1, -1);
+		return search(instance, fieldName, searchFor, op, searchShallow, excludedObjects, -1, -1, StringUtils.EMPTY, ProtoDBSort.Asc);
+	}
+	
+	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, boolean searchShallow, List<String> excludedObjects, String sortField) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
+		return search(instance, fieldName, searchFor, op, searchShallow, excludedObjects, -1, -1, sortField, ProtoDBSort.Asc);
+	}
+	
+	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, boolean searchShallow, List<String> excludedObjects, String sortField, ProtoDBSort sortOrder) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
+		return search(instance, fieldName, searchFor, op, searchShallow, excludedObjects, -1, -1, sortField, sortOrder);
 	}
 	
 	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, boolean searchShallow, int numberOfResults, int offset) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
-		return search(instance, fieldName, searchFor, op, searchShallow, null, numberOfResults, offset);
+		return search(instance, fieldName, searchFor, op, searchShallow, null, numberOfResults, offset, StringUtils.EMPTY, ProtoDBSort.Asc);
 	}
 	
-	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, boolean searchShallow, List<String> excludedObjects,  int numberOfResults, int offset) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
+	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, boolean searchShallow, List<String> excludedObjects,  int numberOfResults, int offset, String sortField) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
+		return search(instance, fieldName, searchFor, op, searchShallow, null, numberOfResults, offset, sortField, ProtoDBSort.Asc);
+	}
+	
+	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, boolean searchShallow, List<String> excludedObjects,  int numberOfResults, int offset, String sortField, ProtoDBSort sortOrder) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
 		Connection conn = null;
 		
 		try {
