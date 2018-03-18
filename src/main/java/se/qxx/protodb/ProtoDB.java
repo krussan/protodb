@@ -527,7 +527,16 @@ public class ProtoDB {
 			if (mg instanceof MessageOrBuilder) {
 
 				ProtoDBScanner other = new ProtoDBScanner(mg, this.getDatabaseBackend());;
-				JoinResult joinResult = Searcher.getJoinQuery(other, populateBlobs, false, scanner, field.getName(), -1, -1);
+				JoinResult joinResult = Searcher.getJoinQuery(
+						other, 
+						populateBlobs, 
+						false, 
+						scanner, 
+						field.getName(), 
+						-1, 
+						-1, 
+						StringUtils.EMPTY,
+						ProtoDBSort.Asc);
 				
 				joinResult.addLinkWhereClause(parentIDs, scanner);
 				
@@ -1379,7 +1388,14 @@ public class ProtoDB {
 			conn = this.initialize();
 
 			ProtoDBScanner scanner = new ProtoDBScanner(instance, this.getDatabaseBackend());
-			JoinResult joinClause = Searcher.getJoinQuery(scanner, populateBlobs, !searchShallow, numberOfResults, offset);
+			JoinResult joinClause = Searcher.getJoinQuery(
+					scanner, 
+					populateBlobs, 
+					!searchShallow, 
+					numberOfResults, 
+					offset,
+					sortField,
+					sortOrder);
 			
 			// check if this is a repeated (or enum)
 			joinClause.addWhereClause(scanner, fieldName, searchFor, op);
