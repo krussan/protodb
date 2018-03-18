@@ -86,7 +86,7 @@ public class TestSearchBlob extends TestBase{
 				+ "AA.%1$sdata%2$s AS A_by "
 				+ "FROM   SimpleTest AS A   "
 				+ "LEFT JOIN BlobData AS AA "
-				+ " ON A._by_ID = AA.ID ",
+				+ " ON A._by_ID = AA.ID  ",
 				db.getDatabaseBackend().getStartBracket(),
 				db.getDatabaseBackend().getEndBracket());
 		

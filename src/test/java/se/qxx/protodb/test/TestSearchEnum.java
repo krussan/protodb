@@ -102,7 +102,7 @@ public class TestSearchEnum extends TestBase {
 				+ "AA.%1$svalue%2$s AS A_rating "
 				+ "FROM   EnumOne AS A   "
 				+ "LEFT JOIN Rating AS AA "
-				+ " ON A._rating_ID = AA.ID ",
+				+ " ON A._rating_ID = AA.ID  ",
 				db.getDatabaseBackend().getStartBracket(),
 				db.getDatabaseBackend().getEndBracket());
 		
