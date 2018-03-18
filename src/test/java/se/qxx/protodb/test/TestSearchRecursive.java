@@ -222,7 +222,7 @@ public class TestSearchRecursive extends TestBase {
 				+ "LEFT JOIN ObjectOne AS ABB "
 				+ " ON AB._testtwo_ID = ABB.ID "
 				+ "LEFT JOIN SimpleTest AS ABBA "
-				+ " ON ABB._testone_ID = ABBA.ID ",
+				+ " ON ABB._testone_ID = ABBA.ID  ",
 				db.getDatabaseBackend().getStartBracket(),
 				db.getDatabaseBackend().getEndBracket());
 				
