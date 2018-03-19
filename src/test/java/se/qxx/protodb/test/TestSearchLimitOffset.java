@@ -132,7 +132,7 @@ public class TestSearchLimitOffset extends TestBase {
 					+ " ON L1._repobjectone_ID = A.ID "
 					+ "LEFT JOIN SimpleTwo AS AA "
 					+ " ON L1._simpletwo_ID = AA.ID "
-					+ "   LIMIT 10 "
+					+ "  LIMIT 10 "
 					+ "OFFSET 1",
 					db.getDatabaseBackend().getStartBracket(),
 					db.getDatabaseBackend().getEndBracket());
