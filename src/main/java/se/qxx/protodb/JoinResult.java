@@ -35,6 +35,7 @@ public class JoinResult {
 	private List<Object> whereParameters = new ArrayList<Object>();
 	private boolean hasComplexJoins = false;
 	private DatabaseBackend backend = null;
+	private String sortSql = StringUtils.EMPTY;
 
 	int nrOfResults = 0;
 	int offset = 0;
@@ -70,6 +71,14 @@ public class JoinResult {
 
 	public void setBackend(DatabaseBackend backend) {
 		this.backend = backend;
+	}
+	
+	public String getSortSql() {
+		return sortSql;
+	}
+
+	public void setSortSql(String sortSql) {
+		this.sortSql = sortSql;
 	}
 
 	public JoinResult(String joinClause, HashMap<String, String> aliases, boolean hasComplexJoins, int nrOfResults, int offset, DatabaseBackend backend) {
@@ -145,40 +154,20 @@ public class JoinResult {
 	
 	public void addWhereClause(ProtoDBScanner scanner, String searchField, Object value, ProtoDBSearchOperator op) throws SearchFieldNotFoundException {
 		if (!StringUtils.isEmpty(searchField)) {
-		
-			boolean isRootField = !StringUtils.contains(searchField, ".");
-			FieldDescriptor whereField = getWhereField(scanner, searchField);
-			boolean isEnumField = whereField.getJavaType() == JavaType.ENUM;
-			
-			String alias = StringUtils.EMPTY;
-			String field = StringUtils.EMPTY;
-			
-			if (isEnumField) {
-				String key = "." + searchField;
-				field = "value";
-				alias = this.getAliases().get(key);				
-			}
-			else if (isRootField) {
-				alias = "A";
-				field = searchField;
-			}
-			else {
-				String key = "." + StringUtils.substringBeforeLast(searchField, ".");
-				field = StringUtils.substringAfterLast(searchField, ".");
-				alias = this.getAliases().get(key);
-			}
+
+			SearchField field = findSearchField(scanner, searchField);
 			
 			if (op == ProtoDBSearchOperator.In) {
-				this.getWhereClauses().add(String.format("%s.%s IN (%s)", 
-						alias,
-						field,
-						value));				
+				this.getWhereClauses().add(
+						String.format("%s IN (%s)", 
+								field.getAliasFieldName(),
+								value));				
 			}
 			else {
-				this.getWhereClauses().add(String.format("%s.%s %s ?", 
-						alias,
-						field,
-						(op == ProtoDBSearchOperator.Like ? "LIKE" : "=")));
+				this.getWhereClauses().add(
+						String.format("%s %s ?", 
+								field.getAliasFieldName(),
+								(op == ProtoDBSearchOperator.Like ? "LIKE" : "=")));
 				
 				this.getWhereParameters().add(value);
 			}
@@ -186,8 +175,58 @@ public class JoinResult {
 		}
 	}
 	
+	public void addSortOrder(ProtoDBScanner scanner, String sortField, ProtoDBSort sortOrder) throws SearchFieldNotFoundException {
+		if (!StringUtils.isEmpty(sortField)) {
+			SearchField field = findSearchField(scanner, sortField);
+			this.setSortSql(getSortClause(field.getAliasFieldName(), sortOrder));
+		}
+	}
+
+
+	private String getSortClause(String sortField, ProtoDBSort sortOrder) {
+		if (!StringUtils.isEmpty(sortField)) {
+			return String.format(
+					" ORDER BY %s %s "
+					, sortField
+					, sortOrder == ProtoDBSort.Desc ? "DESC" : "ASC");
+		}
+		
+		return "";
+	}
+
+	
+	public SearchField findSearchField(ProtoDBScanner scanner, String searchField) throws SearchFieldNotFoundException {
+		boolean isRootField = !StringUtils.contains(searchField, ".");
+		FieldDescriptor whereField = getWhereField(scanner, searchField);
+		boolean isEnumField = whereField.getJavaType() == JavaType.ENUM;
+		
+		String alias = StringUtils.EMPTY;
+		String field = StringUtils.EMPTY;
+		
+		if (isEnumField) {
+			String key = "." + searchField;
+			field = "value";
+			alias = this.getAliases().get(key);				
+		}
+		else if (isRootField) {
+			alias = "A";
+			field = searchField;
+		}
+		else {
+			String key = "." + StringUtils.substringBeforeLast(searchField, ".");
+			field = StringUtils.substringAfterLast(searchField, ".");
+			alias = this.getAliases().get(key);
+		}
+		
+		return new SearchField(field, alias);
+
+	}
+	
 	public String getSql() {
 		String sql = String.format("%s %s",this.getJoinClause(), this.getWhereClause());
+		
+		if (!StringUtils.isEmpty(this.getSortSql()))
+			sql += this.getSortSql();
 		
 		if (this.getNrOfResults() > 0) {
 			sql += String.format(" LIMIT %s ", this.getNrOfResults());
@@ -195,6 +234,8 @@ public class JoinResult {
 				sql += String.format("OFFSET %s", this.getOffset());
 			}
 		}
+		
+		
 		
 		return sql;
 	}

@@ -130,7 +130,7 @@ public class TestSearchRepeated extends TestBase {
 					+ "LEFT JOIN RepObjectOneSimpleTwo_Listofobjects AS L1 "
 					+ " ON L1._repobjectone_ID = A.ID "
 					+ "LEFT JOIN SimpleTwo AS AA "
-					+ " ON L1._simpletwo_ID = AA.ID  ",
+					+ " ON L1._simpletwo_ID = AA.ID ",
 					db.getDatabaseBackend().getStartBracket(),
 					db.getDatabaseBackend().getEndBracket());
 			

@@ -534,9 +534,7 @@ public class ProtoDB {
 						scanner, 
 						field.getName(), 
 						-1, 
-						-1, 
-						StringUtils.EMPTY,
-						ProtoDBSort.Asc);
+						-1);
 				
 				joinResult.addLinkWhereClause(parentIDs, scanner);
 				
@@ -1393,12 +1391,11 @@ public class ProtoDB {
 					populateBlobs, 
 					!searchShallow, 
 					numberOfResults, 
-					offset,
-					sortField,
-					sortOrder);
+					offset);
 			
 			// check if this is a repeated (or enum)
 			joinClause.addWhereClause(scanner, fieldName, searchFor, op);
+			joinClause.addSortOrder(scanner, sortField, sortOrder);
 			
 			PreparedStatement prep = joinClause.getStatement(conn);
 			

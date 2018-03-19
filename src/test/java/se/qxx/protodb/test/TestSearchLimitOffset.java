@@ -18,6 +18,7 @@ import se.qxx.protodb.JoinResult;
 import se.qxx.protodb.ProtoDB;
 import se.qxx.protodb.ProtoDBFactory;
 import se.qxx.protodb.ProtoDBScanner;
+import se.qxx.protodb.ProtoDBSort;
 import se.qxx.protodb.Searcher;
 import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
@@ -131,7 +132,7 @@ public class TestSearchLimitOffset extends TestBase {
 					+ " ON L1._repobjectone_ID = A.ID "
 					+ "LEFT JOIN SimpleTwo AS AA "
 					+ " ON L1._simpletwo_ID = AA.ID "
-					+ "   LIMIT 10 "
+					+ "  LIMIT 10 "
 					+ "OFFSET 1",
 					db.getDatabaseBackend().getStartBracket(),
 					db.getDatabaseBackend().getEndBracket());
@@ -142,6 +143,47 @@ public class TestSearchLimitOffset extends TestBase {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
+	}
+
+	@Test
+	public void TestLimitOffsetOrderBy() throws IDFieldNotFoundException {
+		try {
+			
+		    db.setupDatabase(TestDomain.RepObjectOne.newBuilder());
+			
+		    for (int i=1;i<50;i++) {
+				RepObjectOne o1 = RepObjectOne.newBuilder()
+						.setID(i)
+						.setHappycamper(i)
+						.build();
+				
+				db.save(o1);
+		    }
+
+			List<TestDomain.RepObjectOne> result =
+				db.search(
+					TestDomain.RepObjectOne.getDefaultInstance(), 
+					"", 
+					"%", 
+					ProtoDBSearchOperator.Like,
+					10, 
+					0,
+					"happycamper",
+					ProtoDBSort.Desc);
+			
+			// we should get 10 results
+			assertEquals(10, result.size());
+			
+			// the first should be number 1
+			assertEquals(49, result.get(0).getHappycamper());
+			
+			// the last should be number 10
+			assertEquals(40, result.get(9).getHappycamper());
+
+		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException  e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}		
 	}
 
 }
