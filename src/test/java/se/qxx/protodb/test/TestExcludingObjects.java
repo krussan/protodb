@@ -202,7 +202,45 @@ public class TestExcludingObjects extends TestBase {
 			fail(e.getMessage());
 		}
 	}
-	
+
+	@Test
+	public void TestExcludingOnObjectTwoSearch() {	
+		try {
+			List<String> excludedObjects = new ArrayList<String>();
+			excludedObjects.add("testTwo.testOne");
+			excludedObjects.add("testOne");
+			
+			List<ObjectTwo> result = db.search(
+					TestDomain.ObjectTwo.getDefaultInstance(), 
+					"ID", 
+					1, 
+					ProtoDBSearchOperator.Equals,
+					excludedObjects);
+
+			assertNotNull(result);
+			assertEquals(1, result.size());
+			
+			assertEquals(666, result.get(0).getOtis());
+			
+			TestDomain.SimpleTest o2testOne = result.get(0).getTestOne();
+			assertFalse(o2testOne.isInitialized());
+			
+			TestDomain.ObjectOne o2TestTwo = result.get(0).getTestTwo();
+			assertTrue(o2TestTwo.isInitialized());
+			
+			assertEquals(986, o2TestTwo.getOois());
+			
+			TestDomain.SimpleTest o1TestOne = o2TestTwo.getTestOne();
+			assertFalse(o1TestOne.isInitialized());
+			
+			
+			
+		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
+	}
+
 	@Test
 	public void TestExcludeOnRepeatedObjects() {
 		try {

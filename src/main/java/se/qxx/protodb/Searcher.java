@@ -327,8 +327,8 @@ public class Searcher {
 						currentAlias, 
 						f.getName()));
 				}
-				ac++;
 			}
+			ac++;			
 		}
 
 		if (getBlobs) {
@@ -346,9 +346,9 @@ public class Searcher {
 						scanner.getBackend().getEndBracket(),
 						currentAlias, 
 						f.getName()));
-					
-					ac++;	
+						
 				}
+				ac++;
 			}
 		}
 
@@ -382,9 +382,9 @@ public class Searcher {
 											f.getName(), 
 											excludedObjects)));
 					
-					ac++;
 				}
 			
+				ac++;
 			}
 			
 			for (FieldDescriptor f : scanner.getRepeatedBasicFields()) {
