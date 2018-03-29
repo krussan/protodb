@@ -11,12 +11,14 @@ import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.mutable.MutableInt;
 
+import com.google.protobuf.ByteString;
 import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.EnumDescriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
 import com.google.protobuf.DynamicMessage;
 import com.google.protobuf.MessageOrBuilder;
 
+import se.qxx.protodb.backend.DatabaseBackend;
 import se.qxx.protodb.model.ProtoField;
 import se.qxx.protodb.model.ProtoTable;
 
@@ -26,12 +28,12 @@ public class ProtoDBScanner {
 
 	String objectName;
 	private MessageOrBuilder message = null;
+	private DatabaseBackend backend = null;
 	
 	private List<FieldDescriptor> objectFields = new ArrayList<FieldDescriptor>();
 	private List<String> objectFieldTargets = new ArrayList<String>();
 
 	private List<FieldDescriptor> repeatedObjectFields = new ArrayList<FieldDescriptor>();
-//	private List<String> repeatedObjectFieldTargets = new ArrayList<String>();
 	
 	private List<FieldDescriptor> basicFields = new ArrayList<FieldDescriptor>();
 	private List<FieldDescriptor> repeatedBasicFields = new ArrayList<FieldDescriptor>();
@@ -46,8 +48,10 @@ public class ProtoDBScanner {
 
 	private HashMap<String, String> aliases = new HashMap<String, String>();
 	
-	public ProtoDBScanner(MessageOrBuilder b) {
+
+	public ProtoDBScanner(MessageOrBuilder b, DatabaseBackend backend) {
 		this.setMessage(b);
+		this.setBackend(backend);
 		this.scan(b);
 	}
 	
@@ -64,8 +68,6 @@ public class ProtoDBScanner {
 
 		List<FieldDescriptor> fields = b.getDescriptorForType().getFields();
 		for(FieldDescriptor field : fields) {
-//			Object o = b.getField(field);
-//			ProtoDBScanner dbInternal = null;
 			JavaType jType = field.getJavaType();
 			
 			if (field.getName().equalsIgnoreCase("ID"))
@@ -73,10 +75,11 @@ public class ProtoDBScanner {
 			
 			if (field.isRepeated())
 			{
-				if (jType == JavaType.MESSAGE) 
+				if (jType == JavaType.MESSAGE 
+//						|| jType == JavaType.BYTE_STRING
+					) 
 					this.addRepeatedObjectField(field);		
 				else if (jType == JavaType.ENUM) {
-//					EnumValueDescriptor target = (EnumValueDescriptor)this.getMessage().getField(field);
 					this.addRepeatedObjectField(field);
 				}
 				else {
@@ -87,7 +90,7 @@ public class ProtoDBScanner {
 			else {
 				if (jType == JavaType.MESSAGE) {
 					MessageOrBuilder target = (MessageOrBuilder)this.getMessage().getField(field);
-					ProtoDBScanner dbInternal = new ProtoDBScanner(target);			
+					ProtoDBScanner dbInternal = new ProtoDBScanner(target, this.getBackend());			
 					
 					this.addObjectField(field);
 					this.addObjectFieldTarget(dbInternal.getObjectName());
@@ -147,20 +150,31 @@ public class ProtoDBScanner {
 	protected List<String> getQuotedColumns() {
 		List<String> cols = new ArrayList<String>();
 		for (FieldDescriptor field : this.getObjectFields()) {
-			cols.add(String.format("[%s]", getObjectFieldName(field)));
+			cols.add(
+				getQuotedColumn(
+					getObjectFieldName(field)));
 		}
 		
 		for (FieldDescriptor field : this.getBlobFields()) {
-			cols.add(String.format("[%s]", getObjectFieldName(field)));
+			cols.add(
+				getQuotedColumn(
+					getObjectFieldName(field)));
 		}
 		
 		for (FieldDescriptor field : this.getBasicFields()) {
 			String fieldName = field.getName();
 			if (!fieldName.equalsIgnoreCase("ID"))
-				cols.add(String.format("[%s]", fieldName));
+				cols.add(getQuotedColumn(fieldName));
 		}
 		
 		return cols;
+	}
+	
+	private String getQuotedColumn(String columnName) {
+		return String.format("%s%s%s", 
+				this.getBackend().getStartBracket(), 
+				columnName,
+				this.getBackend().getEndBracket());
 	}
 	
 	public String getLinkTableInsertStatement(ProtoDBScanner other, String fieldName) {
@@ -192,7 +206,7 @@ public class ProtoDBScanner {
 		return "DELETE FROM " + this.getObjectName() + " WHERE ID = ?";
 	}
 	
-	public String getCreateStatement() {
+	public String getCreateStatement(DatabaseBackend backend) {
 		String sql = String.format("CREATE TABLE %s ", this.getObjectName());
 		List<String> cols = new ArrayList<String>();
 		
@@ -200,29 +214,29 @@ public class ProtoDBScanner {
 			FieldDescriptor field = this.getObjectFields().get(i);
 			String target = this.getObjectFieldTargets().get(i);
 			
-			cols.add(String.format("[%s] INTEGER %s REFERENCES %s (ID)",
-					getObjectFieldName(field), 
+			cols.add(String.format("%s INTEGER %s REFERENCES %s (ID)",
+					getQuotedColumn(getObjectFieldName(field)), 
 					field.isOptional() ? "NULL" : "NOT NULL",
 					target));
 		}
 		
 		for (FieldDescriptor field : this.getBlobFields()) {
-			cols.add(String.format("[%s] INTEGER %s REFERENCES BlobData (ID)",
-					getObjectFieldName(field), 
+			cols.add(String.format("%s INTEGER %s REFERENCES BlobData (ID)",
+					getQuotedColumn(getObjectFieldName(field)), 
 					field.isOptional() ? "NULL" : "NOT NULL"));
 		}
 		
 		for(FieldDescriptor field : this.getBasicFields()) {
 			if (!field.getName().equalsIgnoreCase("ID"))
-				cols.add(String.format("[%s] %s %s", 
-					getBasicFieldName(field), 
+				cols.add(String.format("%s %s %s", 
+					getQuotedColumn(getBasicFieldName(field)), 
 					getDBType(field), 
 					field.isOptional() ? "NULL" : "NOT NULL"));
 		}
 		
 		
-		sql += "(ID INTEGER PRIMARY KEY AUTOINCREMENT, " + StringUtils.join(cols, ",") + ")";
-		;
+		sql += String.format("(%s, %s)", backend.getIdentityDefinition(), StringUtils.join(cols, ","));
+		
 		return sql;
 	}
 	
@@ -277,10 +291,12 @@ public class ProtoDBScanner {
 	}	
 	
 	public String getSearchStatement(FieldDescriptor field, Boolean isLikeFilter) {
-		return "SELECT ID " 
-			+ " FROM " + this.getObjectName()
-			+ " WHERE " + this.getBasicFieldName(field)
-			+ (isLikeFilter ? " LIKE ? ESCAPE '\\'" : " = ?");
+		return String.format(
+				"SELECT ID FROM %s WHERE %s %s %s"
+				, this.getObjectName()
+				, this.getBasicFieldName(field)
+				, (isLikeFilter ? " LIKE ? " : " = ?")
+				, (isLikeFilter ? this.getBackend().getEscapeString() : ""));
 	}
 	
 	public String getSearchStatementSubObject(FieldDescriptor field, List<Integer> subObjectIDs) {
@@ -320,7 +336,18 @@ public class ProtoDBScanner {
 		return " SELECT value FROM " + this.getBasicLinkTableName(field)
 			+  " WHERE _" + this.getObjectName().toLowerCase() + "_ID = ?";
 	}	
-	
+
+	public String getBasicLinkTableSelectStatementIn(FieldDescriptor field, List<Integer> ids) {
+		return String.format(
+				" SELECT %s_%s_ID%s, %1$svalue%3$s FROM %s WHERE %1$s_%2$s_ID%3$s IN (%s)"
+			, this.getBackend().getStartBracket()
+			, this.getObjectName().toLowerCase()
+			, this.getBackend().getEndBracket()
+			, this.getBasicLinkTableName(field)
+			, StringUtils.join(ids, ","));
+			
+	}	
+
 
 	public String getBasicLinkInsertStatement(FieldDescriptor field) {
 		return String.format("INSERT INTO %s ("
@@ -349,6 +376,8 @@ public class ProtoDBScanner {
 			type = "INTEGER";
 		else if (jType == JavaType.LONG)
 			type = "BIGINT";
+		else if (jType == JavaType.BYTE_STRING)
+			type = "BLOB";
 		else
 			type ="TEXT";
 		
@@ -409,6 +438,8 @@ public class ProtoDBScanner {
 			prep.setInt(i, (int)value);
 		else if (jType == JavaType.LONG)
 			prep.setLong(i, (long)value);
+		else if (jType == JavaType.BYTE_STRING)
+			prep.setBytes(i, ((ByteString)value).toByteArray());
 		else
 			prep.setString(i, value.toString());
 			
@@ -507,6 +538,15 @@ public class ProtoDBScanner {
 	private void setMessage(MessageOrBuilder message) {
 		this.message = message;
 	}
+	
+	public DatabaseBackend getBackend() {
+		return backend;
+	}
+
+	public void setBackend(DatabaseBackend backend) {
+		this.backend = backend;
+	}
+
 
 	public FieldDescriptor getIdField() {
 		return idField;

@@ -5,29 +5,46 @@ import static org.junit.Assert.*;
 import java.io.File;
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Properties;
 
+import org.apache.commons.lang3.StringUtils;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.theories.ParametersSuppliedBy;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
+import org.junit.runner.RunWith;
 
+import se.qxx.protodb.DBType;
 import se.qxx.protodb.ProtoDB;
+import se.qxx.protodb.ProtoDBFactory;
+import se.qxx.protodb.backend.Drivers;
+import se.qxx.protodb.backend.MysqlBackend;
+import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
+import se.qxx.protodb.exceptions.ProtoDBParserException;
 
 import com.google.protobuf.ByteString;
 
-public class TestDelete {
+@RunWith(Parameterized.class)
+public class TestDelete extends TestBase {
 	ProtoDB db = null;
 	
-	private final String DATABASE_FILE = "protodb_test.db";
+	@Parameters
+    public static Collection<Object[]> data() {
+        return getParams("testParamsFile");
+    }
+    
+    public TestDelete(String driver, String connectionString) throws DatabaseNotSupportedException, ClassNotFoundException, SQLException {
+    	db = ProtoDBFactory.getInstance(driver, connectionString);
+    	
+    	clearDatabase(db, connectionString);
+    	
+    }
+    
 	
-	@Before
-	public void Setup() {
-		
-		File f = new File(DATABASE_FILE);
-		f.delete();
-		
-	    db = new ProtoDB(DATABASE_FILE);
-	}
-	
+	//private final String DATABASE_FILE = "protodb_test.db";
 	
 	@Test
 	public void TestSimple() {		

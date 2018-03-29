@@ -1,0 +1,2 @@
+GRANT FILE ON *.* TO protodb
+GRANT ALL ON protodb_select.* TO protodb

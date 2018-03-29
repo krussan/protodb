@@ -78,3 +78,15 @@ message EnumOneList {
 	repeated Rating list_of_ratings = 3;
 	optional string producer = 4;
 }
+
+message ObjectFour {
+	required int32 ID = 1;
+	optional string fourTitle = 2;
+	repeated bytes fourImage = 3;
+}
+
+message ObjectFive {
+	required int32 ID = 1;
+	required string fourTitle = 2;
+	required bytes fourImage = 3;
+}
