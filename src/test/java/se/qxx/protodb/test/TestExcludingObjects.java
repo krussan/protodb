@@ -265,4 +265,35 @@ public class TestExcludingObjects extends TestBase {
 
 	}
 	
+	@Test
+	public void TestExcludingBlobSearch() {
+		try {
+			List<String> excludedObjects = new ArrayList<String>();
+			excludedObjects.add("testOne.by");
+			
+			List<TestDomain.ObjectOne> result =
+				db.search(
+					TestDomain.ObjectOne.getDefaultInstance(), 
+					"testOne.ss", 
+					"ThisIsATestOfObjectOne", 
+					ProtoDBSearchOperator.Equals,
+					excludedObjects);
+			
+			// we should get one single result..
+			assertEquals(1, result.size());
+		
+			TestDomain.ObjectOne b = result.get(0);
+			assertEquals(b.getOois(), 986);
+			
+			TestDomain.SimpleTest o1 = b.getTestOne();
+			ByteString data = o1.getBy();
+			assertTrue(data.isEmpty());
+			
+		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
+		
+	}
+	
 }
