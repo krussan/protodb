@@ -251,7 +251,7 @@ public class Searcher {
 
 		if (getBlobs) {
 			for (FieldDescriptor f : scanner.getBlobFields()) {
-				if (Populator.isExcludedField(f.getName(), excludedObjects)) {
+				if (!Populator.isExcludedField(f.getName(), excludedObjects)) {
 					String hierarchy = String.format("%s.%s", fieldHierarchy, f.getName());
 					joinClause += getJoinClauseBlob(f.getName(), aliases, fieldHierarchy, hierarchy);
 				}
@@ -299,35 +299,37 @@ public class Searcher {
 			String hierarchy = String.format("%s.%s", parentHierarchy, f.getName());
 			aliases.put(hierarchy, otherAlias);
 
-			if (!Populator.isExcludedField(f.getName(), excludedObjects)) {
+			if (f.getJavaType() == JavaType.MESSAGE) {
+				DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
+	
+				ProtoDBScanner other = new ProtoDBScanner(mg, scanner.getBackend());
 
-				if (f.getJavaType() == JavaType.MESSAGE) {
-					DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
-		
-					ProtoDBScanner other = new ProtoDBScanner(mg, scanner.getBackend());
-		
-					result.append(Searcher.getColumnListForJoin(
-							other, 
-							aliases, 
-							otherAlias, 
-							hierarchy, 
-							getBlobs, 
-							travelComplexLinks,
-							Populator.stripExcludedFields(
-									f.getName(), 
-									excludedObjects)));
+				// must recurse even if excluded
+				ColumnResult columnList = Searcher.getColumnListForJoin(
+						other, 
+						aliases, 
+						otherAlias, 
+						hierarchy, 
+						getBlobs, 
+						travelComplexLinks,
+						Populator.stripExcludedFields(
+								f.getName(), 
+								excludedObjects));
 					
-				}
-				else if (f.getJavaType() == JavaType.ENUM) {
-					// Adding default value column for enum type
-					result.append(String.format("%s.%svalue%s AS %s_%s, ", 
-						otherAlias,
-						scanner.getBackend().getStartBracket(),
-						scanner.getBackend().getEndBracket(),
-						currentAlias, 
-						f.getName()));
+				if (!Populator.isExcludedField(f.getName(), excludedObjects)) {
+					result.append(columnList);
 				}
 			}
+			else if (f.getJavaType() == JavaType.ENUM) {
+				// Adding default value column for enum type
+				result.append(String.format("%s.%svalue%s AS %s_%s, ", 
+					otherAlias,
+					scanner.getBackend().getStartBracket(),
+					scanner.getBackend().getEndBracket(),
+					currentAlias, 
+					f.getName()));
+			}
+			
 			ac++;			
 		}
 
@@ -335,11 +337,12 @@ public class Searcher {
 			//TODO!
 			//Add hierarchy and join to Blob table. Return the blob data as a column value
 			for (FieldDescriptor f : scanner.getBlobFields()) {
+				String otherAlias = currentAlias + ((char)(65 + ac));
+				String hierarchy = String.format("%s.%s", parentHierarchy, f.getName());
+				aliases.put(hierarchy, otherAlias);
+
 				if (!Populator.isExcludedField(f.getName(), excludedObjects)) {
-					String otherAlias = currentAlias + ((char)(65 + ac));
-					String hierarchy = String.format("%s.%s", parentHierarchy, f.getName());
-					aliases.put(hierarchy, otherAlias);
-	
+
 					result.append(String.format("%s.%sdata%s AS %s_%s, ", 
 						otherAlias,
 						scanner.getBackend().getStartBracket(),
@@ -367,23 +370,24 @@ public class Searcher {
 				String hierarchy = String.format("%s.%s", parentHierarchy, f.getName());
 				aliases.put(hierarchy, otherAlias);
 
-				if (!Populator.isExcludedField(f.getName(), excludedObjects)) {
-
-					// parentHierarchy, fieldname
-					result.append(
-							Searcher.getColumnListForJoin(
-									other, 
-									aliases, 
-									otherAlias, 
-									hierarchy, 
-									getBlobs, 
-									travelComplexLinks,
-									Populator.stripExcludedFields(
-											f.getName(), 
-											excludedObjects)));
-					
-				}
 			
+				// parentHierarchy, fieldname
+				ColumnResult columnList =
+						Searcher.getColumnListForJoin(
+								other, 
+								aliases, 
+								otherAlias, 
+								hierarchy, 
+								getBlobs, 
+								travelComplexLinks,
+								Populator.stripExcludedFields(
+										f.getName(), 
+										excludedObjects));
+										
+				if (!Populator.isExcludedField(f.getName(), excludedObjects)) {
+					result.append(columnList);
+				}
+		
 				ac++;
 			}
 			
