@@ -251,7 +251,7 @@ public class JoinResult {
 		return prep;
 	}
 	
-	public <T extends Message> Map<Integer, List<Object>> getResultLink(T instance, ResultSet rs, boolean getBlobs) throws SQLException, ProtoDBParserException {
+	public <T extends Message> Map<Integer, List<Object>> getResultLink(T instance, ResultSet rs, boolean getBlobs, List<String> excludedObjects) throws SQLException, ProtoDBParserException {
 		Map<Integer, List<Object>> map = new HashMap<Integer, List<Object>>();
 		
 		while (rs.next()) {
@@ -261,23 +261,23 @@ public class JoinResult {
 				map.put(parentID, new ArrayList<Object>()); 
 			}
 			
-			map.get(parentID).add(getResult(instance, rs, StringUtils.EMPTY, getBlobs));
+			map.get(parentID).add(getResult(instance, rs, StringUtils.EMPTY, getBlobs, excludedObjects));
 		}
 		
 		return map;
 	}
 		
-	public <T extends Message> List<T> getResult(T instance, ResultSet rs, boolean getBlobs) throws SQLException, ProtoDBParserException {
+	public <T extends Message> List<T> getResult(T instance, ResultSet rs, boolean getBlobs, List<String> excludedObjects) throws SQLException, ProtoDBParserException {
 		List<T> result = new ArrayList<T>();
 		while (rs.next()) {
-			result.add(getResult(instance, rs, StringUtils.EMPTY, getBlobs));
+			result.add(getResult(instance, rs, StringUtils.EMPTY, getBlobs, excludedObjects));
 		}
 		
 		return result;
 	}
 
 	@SuppressWarnings("unchecked")
-	private <T extends Message> T getResult(T instance, ResultSet rs, String parentHierarchy, boolean getBlobs) throws SQLException, ProtoDBParserException {
+	private <T extends Message> T getResult(T instance, ResultSet rs, String parentHierarchy, boolean getBlobs, List<String> excludedObjects) throws SQLException, ProtoDBParserException {
 //		Builder b = instance.newBuilderForType();
 		
 		DynamicMessage.Builder b = DynamicMessage.newBuilder(instance.getDefaultInstanceForType());
@@ -302,31 +302,42 @@ public class JoinResult {
 		}
 		
 		for (FieldDescriptor f : scanner.getObjectFields()) {
-			if (f.getJavaType() == JavaType.ENUM) {
-				String alias = this.getAliases().get(parentHierarchy);
-				String columnName = String.format("%s_%s", alias, f.getName());
-				String enumValue = rs.getString(columnName);
-				
-				Populator.populateField(b, f, enumValue);
-			}
-			else {
-				DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
-				String hierarchy = String.format("%s.%s", parentHierarchy, f.getName());
-				
-				mg = getResult(mg, rs, hierarchy, getBlobs);
-				
-				b.setField(f, mg);
+			if (!Populator.isExcludedField(f.getName(), excludedObjects)) {
+				if (f.getJavaType() == JavaType.ENUM) {
+					String alias = this.getAliases().get(parentHierarchy);
+					String columnName = String.format("%s_%s", alias, f.getName());
+					String enumValue = rs.getString(columnName);
+					
+					Populator.populateField(b, f, enumValue);
+				}
+				else {
+					DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
+					String hierarchy = String.format("%s.%s", parentHierarchy, f.getName());
+					
+					mg = getResult(
+							mg, 
+							rs, 
+							hierarchy, 
+							getBlobs, 
+							Populator.stripExcludedFields(
+									f.getName(), 
+									excludedObjects));
+					
+					b.setField(f, mg);
+				}
 			}
 		}
 		
 		if (getBlobs) {
 			for (FieldDescriptor f : scanner.getBlobFields()) {
-				String alias = this.getAliases().get(parentHierarchy);
-				String columnName = String.format("%s_%s", alias, f.getName());
-				
-				byte[] byteData = rs.getBytes(columnName);
-				
-				Populator.populateField(b, f, byteData);			
+				if (!Populator.isExcludedField(f.getName(), excludedObjects)) {
+					String alias = this.getAliases().get(parentHierarchy);
+					String columnName = String.format("%s_%s", alias, f.getName());
+					
+					byte[] byteData = rs.getBytes(columnName);
+					
+					Populator.populateField(b, f, byteData);
+				}
 			}
 		}
 		else {
