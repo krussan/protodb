@@ -421,7 +421,7 @@ public class ProtoDB {
 	 * @param listOfObjects
 	 * @return
 	 */
-	public <T extends Message> List<T> getByJoin(List<T> listOfObjects, boolean populateBlobs) throws ClassNotFoundException, SQLException, ProtoDBParserException {
+	public <T extends Message> List<T> getByJoin(List<T> listOfObjects, boolean populateBlobs, List<String> excludedObjects) throws ClassNotFoundException, SQLException, ProtoDBParserException {
 		
 		if (listOfObjects != null && listOfObjects.size() > 0) {
 			
@@ -449,7 +449,12 @@ public class ProtoDB {
 					PreparedStatement prep = joinResult.getStatement(conn);
 					ResultSet rs = prep.executeQuery();
 					
-					Map<Integer, List<Object>> result = joinResult.getResultLink(innerInstance, rs, this.isPopulateBlobsActive());
+					Map<Integer, List<Object>> result = joinResult.getResultLink(
+							innerInstance, 
+							rs, 
+							this.isPopulateBlobsActive(),
+							excludedObjects);
+					
 					listOfObjects = updateParentObjects(scanner, field, listOfObjects, result);
 				}
 				
@@ -1451,10 +1456,17 @@ public class ProtoDB {
 			// since we are calling on the parent the subqueries should return all
 			// subobjects regardless of the search criteria (maybe this could be
 			// set as a parameter)
-			List<T> result = joinClause.getResult(instance, rs, this.isPopulateBlobsActive());
+			List<T> result = joinClause.getResult(
+					instance, 
+					rs, 
+					this.isPopulateBlobsActive(),
+					excludedObjects);
 			
 			if (joinClause.hasComplexJoins())
-				result = getByJoin(result, this.isPopulateBlobsActive());
+				result = getByJoin(
+						result, 
+						this.isPopulateBlobsActive(),
+						excludedObjects);
 
 			return result;
 		}
