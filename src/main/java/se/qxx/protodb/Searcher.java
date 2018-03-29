@@ -21,12 +21,16 @@ public class Searcher {
 		return getJoinQuery(scanner, getBlobs, travelComplexLinks, null, StringUtils.EMPTY, -1, -1, null);
 	}
 	
+	public static JoinResult getJoinQuery(ProtoDBScanner scanner, boolean getBlobs, boolean travelComplexLinks, List<String> excludedObjects) {
+		return getJoinQuery(scanner, getBlobs, travelComplexLinks, null, StringUtils.EMPTY, -1, -1, excludedObjects);
+	}
+	
 	public static JoinResult getJoinQuery(ProtoDBScanner scanner, boolean getBlobs, boolean travelComplexLinks, int numberOfResults, int offset) {
 		return getJoinQuery(scanner, getBlobs, travelComplexLinks, null, StringUtils.EMPTY, numberOfResults, offset, null);
 	}
 	
-	public static JoinResult getJoinQuery(ProtoDBScanner scanner, boolean getBlobs, boolean travelComplexLinks, List<String> excludedObjects) {
-		return getJoinQuery(scanner, getBlobs, travelComplexLinks, null, StringUtils.EMPTY, -1, -1, excludedObjects);
+	public static JoinResult getJoinQuery(ProtoDBScanner scanner, boolean getBlobs, boolean travelComplexLinks, int numberOfResults, int offset, List<String> excludedObjects) {
+		return getJoinQuery(scanner, getBlobs, travelComplexLinks, null, StringUtils.EMPTY, numberOfResults, offset, excludedObjects);
 	}
 	
 	public static JoinResult getJoinQuery(
@@ -36,7 +40,8 @@ public class Searcher {
 			ProtoDBScanner other, 
 			String linkFieldName, 
 			int numberOfResults, 
-			int offset) {
+			int offset,
+			List<String> excludedObjects) {
 		
 		HashMap<String, String> aliases = new HashMap<String, String>();
 		String currentAlias = "A";
@@ -54,9 +59,26 @@ public class Searcher {
 			linkTableJoin = other.getLinkTableName(scanner, linkFieldName) + " L0";
 		}
 		
-		ColumnResult columns = Searcher.getColumnListForJoin(scanner, aliases, currentAlias, StringUtils.EMPTY, getBlobs, travelComplexLinks);
+		ColumnResult columns = Searcher.getColumnListForJoin(
+				scanner, 
+				aliases, 
+				currentAlias, 
+				StringUtils.EMPTY, 
+				getBlobs, 
+				travelComplexLinks,
+				excludedObjects);
 		
-		String joinList = Searcher.getJoinClause(null, scanner, StringUtils.EMPTY, aliases, new MutableInt(1), StringUtils.EMPTY, StringUtils.EMPTY, travelComplexLinks, getBlobs);
+		String joinList = Searcher.getJoinClause(
+				null, 
+				scanner, 
+				StringUtils.EMPTY, 
+				aliases, 
+				new MutableInt(1), 
+				StringUtils.EMPTY, 
+				StringUtils.EMPTY, 
+				travelComplexLinks, 
+				getBlobs, 
+				excludedObjects);
 		
 		// If complex join set a distinct on the first object only
 		// This to do a simple search query. The result needs to be picked up by
@@ -190,7 +212,10 @@ public class Searcher {
 		return joinClause;
 	}
 	
-	private static String getJoinClause(ProtoDBScanner parentScanner, ProtoDBScanner scanner, String parentFieldName, HashMap<String, String> aliases, MutableInt linkTableIterator, String parentHierarchy, String fieldHierarchy, boolean travelComplexLinks, boolean getBlobs) {
+	private static String getJoinClause(ProtoDBScanner parentScanner, ProtoDBScanner scanner, String parentFieldName, HashMap<String, String> aliases, MutableInt linkTableIterator, String parentHierarchy, String fieldHierarchy, boolean travelComplexLinks, boolean getBlobs, List<String> excludedObjects) {
+		// excluded objects is on the form field.field.field
+		// this should be the same as the hierarchy?
+		
 		String joinClause = StringUtils.EMPTY;
 
 		if (travelComplexLinks) {
@@ -200,11 +225,11 @@ public class Searcher {
 				}
 				else {
 					DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
-				ProtoDBScanner other = new ProtoDBScanner(mg, scanner.getBackend());
+					ProtoDBScanner other = new ProtoDBScanner(mg, scanner.getBackend());
 					String hierarchy = String.format("%s.%s", fieldHierarchy, f.getName());
 					
 					joinClause += getJoinClauseRepeated(scanner, other, f.getName(), aliases, linkTableIterator, fieldHierarchy, hierarchy);
-					joinClause += getJoinClause(scanner, other, f.getName(), aliases, linkTableIterator, fieldHierarchy, hierarchy, travelComplexLinks, getBlobs);
+					joinClause += getJoinClause(scanner, other, f.getName(), aliases, linkTableIterator, fieldHierarchy, hierarchy, travelComplexLinks, getBlobs, excludedObjects);
 				}
 			}
 		}
@@ -217,7 +242,7 @@ public class Searcher {
 				ProtoDBScanner other = new ProtoDBScanner(mg, scanner.getBackend());
 				
 				joinClause += getJoinClauseSimple(scanner, other, f.getName(), aliases, fieldHierarchy, hierarchy);
-				joinClause += getJoinClause(scanner, other, f.getName(), aliases, linkTableIterator, fieldHierarchy, hierarchy, travelComplexLinks, getBlobs);
+				joinClause += getJoinClause(scanner, other, f.getName(), aliases, linkTableIterator, fieldHierarchy, hierarchy, travelComplexLinks, getBlobs, excludedObjects);
 			}
 			else if (f.getJavaType() == JavaType.ENUM) {
 				joinClause += getJoinClauseEnum(f.getName(), aliases, fieldHierarchy, hierarchy);
@@ -235,7 +260,14 @@ public class Searcher {
 	}
 	
 
-	public static ColumnResult getColumnListForJoin(ProtoDBScanner scanner, HashMap<String, String> aliases, String currentAlias, String parentHierarchy, boolean getBlobs, boolean travelComplexLinks) {
+	public static ColumnResult getColumnListForJoin(
+			ProtoDBScanner scanner, 
+			HashMap<String, String> aliases, 
+			String currentAlias, 
+			String parentHierarchy, 
+			boolean getBlobs, 
+			boolean travelComplexLinks,
+			List<String> excludedObjects) {
 		// the purpose of this is to create a sql query that joins all table together
 		// Each column returned should have a prefix with the object identity followed by
 		// underscore and the column name. I.e. Object_field. This to avoid conflict with
@@ -265,12 +297,22 @@ public class Searcher {
 			String hierarchy = String.format("%s.%s", parentHierarchy, f.getName());
 			aliases.put(hierarchy, otherAlias);
 
-			if (f.getJavaType() == JavaType.MESSAGE) {
+			if (f.getJavaType() == JavaType.MESSAGE && !Populator.isExcludedField(f.getName(), excludedObjects)) {
 				DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
 	
 				ProtoDBScanner other = new ProtoDBScanner(mg, scanner.getBackend());
 	
-				result.append(Searcher.getColumnListForJoin(other, aliases, otherAlias, hierarchy, getBlobs, travelComplexLinks));
+				result.append(Searcher.getColumnListForJoin(
+						other, 
+						aliases, 
+						otherAlias, 
+						hierarchy, 
+						getBlobs, 
+						travelComplexLinks,
+						Populator.stripExcludedFields(
+								f.getName(), 
+								excludedObjects)));
+				
 			}
 			else if (f.getJavaType() == JavaType.ENUM) {
 				// Adding default value column for enum type
@@ -310,18 +352,30 @@ public class Searcher {
 
 		if (travelComplexLinks) {
 			for (FieldDescriptor f : scanner.getRepeatedObjectFields()) {
-				String otherAlias = currentAlias + ((char)(65 + ac));
-			
-				DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
-		
-				ProtoDBScanner other = new ProtoDBScanner(mg, scanner.getBackend());
-				String hierarchy = String.format("%s.%s", parentHierarchy, f.getName());
-				aliases.put(hierarchy, otherAlias);
-	
-				// parentHierarchy, fieldname
-				result.append(Searcher.getColumnListForJoin(other, aliases, otherAlias, hierarchy, getBlobs, travelComplexLinks));
+				if (!Populator.isExcludedField(f.getName(), excludedObjects)) {
+					String otherAlias = currentAlias + ((char)(65 + ac));
 				
-				ac++;
+					DynamicMessage mg = DynamicMessage.getDefaultInstance(f.getMessageType());
+			
+					ProtoDBScanner other = new ProtoDBScanner(mg, scanner.getBackend());
+					String hierarchy = String.format("%s.%s", parentHierarchy, f.getName());
+					aliases.put(hierarchy, otherAlias);
+		
+					// parentHierarchy, fieldname
+					result.append(
+							Searcher.getColumnListForJoin(
+									other, 
+									aliases, 
+									otherAlias, 
+									hierarchy, 
+									getBlobs, 
+									travelComplexLinks,
+									Populator.stripExcludedFields(
+											f.getName(), 
+											excludedObjects)));
+					
+					ac++;
+				}
 			
 			}
 			

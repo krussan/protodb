@@ -21,7 +21,9 @@ import se.qxx.protodb.ProtoDB;
 import se.qxx.protodb.ProtoDBFactory;
 import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
+import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
+import se.qxx.protodb.model.ProtoDBSearchOperator;
 import se.qxx.protodb.test.TestDomain.ObjectOne;
 import se.qxx.protodb.test.TestDomain.ObjectTwo;
 import se.qxx.protodb.test.TestDomain.SimpleTest;
@@ -139,7 +141,36 @@ public class TestExcludingObjects extends TestBase {
 			fail(e.getMessage());
 		}
 	}
-	
+
+	@Test
+	public void TestExcludingSearch() {	
+		try {
+			List<String> excludedObjects = new ArrayList<String>();
+			excludedObjects.add("testOne");
+			
+			List<TestDomain.ObjectOne> result =
+				db.search(
+					TestDomain.ObjectOne.getDefaultInstance(), 
+					"testOne.ss", 
+					"ThisIsATestOfObjectOne", 
+					ProtoDBSearchOperator.Equals,
+					excludedObjects);
+			
+			// we should get one single result..
+			assertEquals(1, result.size());
+		
+			TestDomain.ObjectOne b = result.get(0);
+			assertEquals(b.getOois(), 986);
+			
+			TestDomain.SimpleTest o1 = b.getTestOne();
+			assertFalse(o1.isInitialized());
+			
+		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
+	}
+
 	@Test
 	public void TestExcludingOnObjectTwo() {	
 		try {

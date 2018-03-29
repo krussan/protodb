@@ -272,7 +272,7 @@ public class Populator {
 	
 
 
-	private static boolean isExcludedField(String name, List<String> excludedObjects) {
+	public static boolean isExcludedField(String name, List<String> excludedObjects) {
 		if (excludedObjects == null)
 			return false;
 		
@@ -286,7 +286,7 @@ public class Populator {
 		return false;
 	}
 	
-	private static List<String> stripExcludedFields(String firstField, List<String> excludedObjects) {
+	public static List<String> stripExcludedFields(String firstField, List<String> excludedObjects) {
 		List<String> strippedList = new ArrayList<String>();
 		
 		if (excludedObjects != null) {
