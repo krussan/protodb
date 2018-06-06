@@ -25,22 +25,37 @@ import com.google.protobuf.Message.Builder;
 import se.qxx.protodb.backend.DatabaseBackend;
 import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
+import se.qxx.protodb.model.ColumnResult;
 import se.qxx.protodb.model.ProtoDBSearchOperator;
 
 public class JoinResult {
 
 	private HashMap<String, String> aliases = new HashMap<String,String>();
-	private String joinClause = StringUtils.EMPTY;
+	private List<JoinRow> joinClause = new ArrayList<JoinRow>();
 	private List<String> whereClauses = new ArrayList<String>();
 	private List<Object> whereParameters = new ArrayList<Object>();
 	private boolean hasComplexJoins = false;
 	private DatabaseBackend backend = null;
 	private String sortSql = StringUtils.EMPTY;
+	private String mainTable = StringUtils.EMPTY;
+	private ColumnResult columnResult;
 
 	int nrOfResults = 0;
 	int offset = 0;
-	
-	
+
+	public ColumnResult getColumnResult() {
+		return columnResult;
+	}
+
+
+	public String getMainTable() {
+		return mainTable;
+	}
+
+	public void setMainTable(String mainTable) {
+		this.mainTable = mainTable;
+	}
+
 	public int getNrOfResults() {
 		return nrOfResults;
 	}
@@ -80,14 +95,29 @@ public class JoinResult {
 	public void setSortSql(String sortSql) {
 		this.sortSql = sortSql;
 	}
+	
+	public void setColumnResult(ColumnResult columnResult) {
+		this.columnResult = columnResult;
+	}
 
-	public JoinResult(String joinClause, HashMap<String, String> aliases, boolean hasComplexJoins, int nrOfResults, int offset, DatabaseBackend backend) {
+	public JoinResult(
+			String mainTable, 
+			List<JoinRow> joinClause,
+			ColumnResult columnResult,
+			HashMap<String, String> aliases, 
+			boolean hasComplexJoins, 
+			int nrOfResults, 
+			int offset,
+			DatabaseBackend backend) {
+		
+		this.setMainTable(mainTable);
 		this.setAliases(aliases);
 		this.setJoinClause(joinClause);
 		this.setComplexJoins(hasComplexJoins);
 		this.setNrOfResults(nrOfResults);
 		this.setOffset(offset);
 		this.setBackend(backend);
+		this.setColumnResult(columnResult);
 	}
 
 	public HashMap<String, String> getAliases() {
@@ -98,11 +128,11 @@ public class JoinResult {
 		this.aliases = aliases;
 	}
 
-	public String getJoinClause() {
+	public List<JoinRow> getJoinClause() {
 		return joinClause;
 	}
 
-	public void setJoinClause(String joinClause) {
+	public void setJoinClause(List<JoinRow> joinClause) {
 		this.joinClause = joinClause;
 	}
 	
@@ -222,8 +252,28 @@ public class JoinResult {
 
 	}
 	
+	private String getJoinSql() {
+		String joinSql = StringUtils.EMPTY;
+		for (JoinRow row : this.getJoinClause()) {
+			joinSql += row.getJoinCluase();
+		}
+		
+		return joinSql;
+	}
+	
+	private String getResultSql() {
+		String sql = String.format("SELECT %s%s FROM %s AS A %s"
+				, this.hasComplexJoins() ? "DISTINCT " : ""
+				, this.getColumnResult().getSql()
+				, this.getMainTable()
+				, this.getJoinSql());
+
+		return sql;
+	}
+	
 	public String getSql() {
-		String sql = String.format("%s %s",this.getJoinClause(), this.getWhereClause());
+		
+		String sql = String.format("%s %s",this.getJoinSql(), this.getWhereClause());
 		
 		if (!StringUtils.isEmpty(this.getSortSql()))
 			sql += this.getSortSql();

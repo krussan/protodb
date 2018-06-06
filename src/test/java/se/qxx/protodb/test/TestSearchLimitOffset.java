@@ -128,10 +128,6 @@ public class TestSearchLimitOffset extends TestBase {
 					+ "A.%1$sID%2$s AS A_ID, "
 					+ "A.%1$shappycamper%2$s AS A_happycamper "
 					+ "FROM   RepObjectOne AS A   "
-					+ "LEFT JOIN RepObjectOneSimpleTwo_Listofobjects AS L1 "
-					+ " ON L1._repobjectone_ID = A.ID "
-					+ "LEFT JOIN SimpleTwo AS AA "
-					+ " ON L1._simpletwo_ID = AA.ID "
 					+ "  LIMIT 10 "
 					+ "OFFSET 1",
 					db.getDatabaseBackend().getStartBracket(),
