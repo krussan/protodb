@@ -273,7 +273,7 @@ public class JoinResult {
 	
 	public String getSql() {
 		
-		String sql = String.format("%s %s",this.getJoinSql(), this.getWhereClause());
+		String sql = String.format("%s %s",this.getResultSql(), this.getWhereClause());
 		
 		if (!StringUtils.isEmpty(this.getSortSql()))
 			sql += this.getSortSql();

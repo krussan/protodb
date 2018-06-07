@@ -61,7 +61,7 @@ public class Column {
 	
 	@Override
 	public String toString() {
-		return String.format("%s.%s%s%s AS %s_%s, ", 
+		return String.format("%s.%s%s%s AS %s_%s", 
 				this.getOtherAlias(),
 				this.getBackend().getStartBracket(),
 				this.getColumnName(),
