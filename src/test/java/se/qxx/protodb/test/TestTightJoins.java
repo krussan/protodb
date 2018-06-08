@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.apache.commons.lang3.StringUtils;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -133,11 +134,12 @@ public class TestTightJoins extends TestBase {
 					"SELECT DISTINCT "
 					+ "A.%1$sID%2$s AS A_ID, "
 					+ "A.%1$shappycamper%2$s AS A_happycamper "
-					+ "FROM   RepObjectOne AS A   ",
+					+ "FROM RepObjectOne AS A ",
 					db.getDatabaseBackend().getStartBracket(),
 					db.getDatabaseBackend().getEndBracket());
 			
-			assertEquals(expected, result.getJoinClause());
+			assertEquals(expected, result.getSql());
+
 		}
 		catch (Exception e) {
 			e.printStackTrace();

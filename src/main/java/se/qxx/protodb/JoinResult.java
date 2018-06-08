@@ -37,7 +37,6 @@ public class JoinResult {
 	private boolean hasComplexJoins = false;
 	private DatabaseBackend backend = null;
 	private String sortSql = StringUtils.EMPTY;
-	private String mainTable = StringUtils.EMPTY;
 	private ColumnResult columnResult;
 
 	int nrOfResults = 0;
@@ -45,15 +44,6 @@ public class JoinResult {
 
 	public ColumnResult getColumnResult() {
 		return columnResult;
-	}
-
-
-	public String getMainTable() {
-		return mainTable;
-	}
-
-	public void setMainTable(String mainTable) {
-		this.mainTable = mainTable;
 	}
 
 	public int getNrOfResults() {
@@ -101,7 +91,6 @@ public class JoinResult {
 	}
 
 	public JoinResult(
-			String mainTable, 
 			List<JoinRow> joinClause,
 			ColumnResult columnResult,
 			HashMap<String, String> aliases, 
@@ -110,7 +99,6 @@ public class JoinResult {
 			int offset,
 			DatabaseBackend backend) {
 		
-		this.setMainTable(mainTable);
 		this.setAliases(aliases);
 		this.setJoinClause(joinClause);
 		this.setComplexJoins(hasComplexJoins);
@@ -154,7 +142,11 @@ public class JoinResult {
 	public void addLinkWhereClause(List<Integer> parentIDs, ProtoDBScanner other) {
 		String listOfIds = StringUtils.join(parentIDs, ",");
 		
-		this.getWhereClauses().add(String.format("L0._" + other.getObjectName().toLowerCase() + "_ID IN (%s)", 
+		this.getWhereClauses().add(
+			String.format("L0.%s_%s_ID%s IN (%s)",
+				other.getBackend().getStartBracket(),
+				other.getObjectName().toLowerCase(),
+				other.getBackend().getEndBracket(),
 				listOfIds));						
 	}
 	
@@ -262,10 +254,9 @@ public class JoinResult {
 	}
 	
 	private String getResultSql() {
-		String sql = String.format("SELECT %s%s FROM %s AS A %s"
+		String sql = String.format("SELECT %s%s %s"
 				, this.hasComplexJoins() ? "DISTINCT " : ""
 				, this.getColumnResult().getSql()
-				, this.getMainTable()
 				, this.getJoinSql());
 
 		return sql;
@@ -285,9 +276,7 @@ public class JoinResult {
 			}
 		}
 		
-		
-		
-		return sql;
+		return StringUtils.replacePattern(sql, "\\s+", " ");
 	}
 	
 	public PreparedStatement getStatement(Connection conn) throws SQLException {
@@ -305,7 +294,7 @@ public class JoinResult {
 		Map<Integer, List<Object>> map = new HashMap<Integer, List<Object>>();
 		
 		while (rs.next()) {
-			int parentID = rs.getInt("__thisID");
+			int parentID = rs.getInt("L0__thisID");
 			
 			if (!map.containsKey(parentID)) {
 				map.put(parentID, new ArrayList<Object>()); 

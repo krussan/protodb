@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.apache.commons.lang3.StringUtils;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -212,23 +213,23 @@ public class TestSearchRecursive extends TestBase {
 				+ "ABBA.%1$sbb%2$s AS ABBA_bb, "
 				+ "ABBA.%1$sss%2$s AS ABBA_ss "
 //				+ "ABBA.by AS ABBA_by "
-				+ "FROM   ObjectThree AS A   "
+				+ "FROM   ObjectThree AS A "
 				+ "LEFT JOIN SimpleTest AS AA "
-				+ " ON A._apa_ID = AA.ID "
+				+ "ON A._apa_ID = AA.ID "
 				+ "LEFT JOIN ObjectTwo AS AB "
-				+ " ON A._bepa_ID = AB.ID "
+				+ "ON A._bepa_ID = AB.ID "
 				+ "LEFT JOIN SimpleTest AS ABA "
-				+ " ON AB._testone_ID = ABA.ID "
+				+ "ON AB._testone_ID = ABA.ID "
 				+ "LEFT JOIN ObjectOne AS ABB "
-				+ " ON AB._testtwo_ID = ABB.ID "
+				+ "ON AB._testtwo_ID = ABB.ID "
 				+ "LEFT JOIN SimpleTest AS ABBA "
-				+ " ON ABB._testone_ID = ABBA.ID ",
+				+ "ON ABB._testone_ID = ABBA.ID ",
 				db.getDatabaseBackend().getStartBracket(),
 				db.getDatabaseBackend().getEndBracket());
 				
 				
-				assertEquals(expected, result.getJoinClause());
-						
+		assertEquals(expected, result.getSql());
+
 				
 	}
 	

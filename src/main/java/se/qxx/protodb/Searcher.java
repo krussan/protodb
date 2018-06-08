@@ -46,49 +46,14 @@ public class Searcher {
 		
 		HashMap<String, String> aliases = new HashMap<String, String>();
 		String currentAlias = "A";
-		aliases.put(StringUtils.EMPTY, "A");
+		aliases.put(StringUtils.EMPTY, currentAlias);
 
-		String linkTableJoin = StringUtils.EMPTY;
-		String linkTableColumns = StringUtils.EMPTY;
-		
-		
 		// get a list of all aliases that are used
 		// need to get the where clause and the sort clause as well
 		// getJoinClause needs to return a set of aliases<->rows for each join
-		
-		
-//		joinClause.addWhereClause(scanner, fieldName, searchFor, op);
-//		joinClause.addSortOrder(scanner, sortField, sortOrder);
-
 		ColumnResult columns = new ColumnResult();
-		String mainTable = scanner.getObjectName();
-		
-		if (other != null && !StringUtils.isEmpty(linkFieldName)) {
-			
-			// if a link object was specified then we need the link table as main table
-			mainTable = other.getLinkTableName(scanner, linkFieldName);
-			
-			columns.append(
-					"A", 
-					"A", 
-					String.format("_%s_ID", other.getObjectName().toLowerCase()), 
-					"_this_ID",
-					scanner.getBackend());
+		List<JoinRow> joinClause = new ArrayList<JoinRow>();
 
-			columns.append(
-					"A", 
-					"A", 
-					String.format("_%s_ID", scanner.getObjectName().toLowerCase()), 
-					"_other_ID",
-					scanner.getBackend());
-
-//			linkTableColumns = "L0._" + other.getObjectName().toLowerCase() + "_ID AS __thisID, "
-//					+  " L0._" + scanner.getObjectName().toLowerCase() + "_ID AS __otherID ";
-//			
-//			
-//			linkTableJoin =  + " L0";
-		}
-		
 		// add the rest standard joins
 		columns.append(
 			Searcher.getColumnListForJoin(
@@ -100,7 +65,10 @@ public class Searcher {
 				travelComplexLinks,
 				excludedObjects));
 		
-		List<JoinRow> joinList = Searcher.getJoinClause(
+		setMainTable(scanner, other, linkFieldName, columns, joinClause);
+		
+		joinClause.addAll(
+			Searcher.getJoinClause(
 				null, 
 				scanner, 
 				StringUtils.EMPTY, 
@@ -110,22 +78,67 @@ public class Searcher {
 				StringUtils.EMPTY, 
 				travelComplexLinks, 
 				getBlobs, 
-				excludedObjects);
+				excludedObjects));
 		
 		// If complex join set a distinct on the first object only
 		// This to do a simple search query. The result needs to be picked up by
 		// the get query.
 			
 		return new JoinResult(
-				scanner.getObjectName(), //mainTable 
-				joinList, // joinTables
-				columns, // columns
-				aliases, // map of aliases
-				columns.hasComplexJoins(), // contains complex joins 
-				numberOfResults,  // nrOfResults specified
-				offset,  // from offset
-				scanner.getBackend()); // the backend
+				joinClause,
+				columns, 
+				aliases, 
+				columns.hasComplexJoins(),  
+				numberOfResults,  
+				offset,  
+				scanner.getBackend()); 
 		 
+	}
+
+	private static void setMainTable(ProtoDBScanner scanner, ProtoDBScanner other, String linkFieldName,
+			ColumnResult columns, List<JoinRow> joinClause) {
+		if (other != null && !StringUtils.isEmpty(linkFieldName)) {
+			
+			// if a link object was specified then we need the link table as main table
+			joinClause.add(
+				new JoinRow(
+						"L0", 
+						String.format(
+							"FROM %s AS L0 ", 
+							other.getLinkTableName(scanner, linkFieldName))));
+			
+			joinClause.add(
+				new JoinRow(
+						"A", 
+						String.format(
+							"LEFT JOIN %s AS A ON L0.%s_%s_ID%s = A.ID ",
+							scanner.getObjectName(),
+							scanner.getBackend().getStartBracket(),
+							scanner.getObjectName().toLowerCase(),
+							scanner.getBackend().getEndBracket())));
+			
+			columns.append(
+					"L0", 
+					"L0", 
+					String.format("_%s_ID", other.getObjectName().toLowerCase()), 
+					"_thisID",
+					scanner.getBackend());
+
+			columns.append(
+					"L0", 
+					"L0", 
+					String.format("_%s_ID", scanner.getObjectName().toLowerCase()), 
+					"_otherID",
+					scanner.getBackend());
+		}
+		else {
+			joinClause.add(
+				new JoinRow(
+					"A", 
+					String.format(
+						"FROM %s AS A ", 
+						scanner.getObjectName())));
+		}
 	}
 	
 	
@@ -253,7 +266,6 @@ public class Searcher {
 		
 		// excluded objects is on the form field.field.field
 		// this should be the same as the hierarchy?
-		
 		List<JoinRow> joinClause = new ArrayList<JoinRow>();
 		
 		if (travelComplexLinks) {

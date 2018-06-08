@@ -61,6 +61,7 @@ public class ColumnResult {
 			this.setHasComplexJoins(true);
 		
 		this.getColumnList().addAll(subResult.getColumnList());
+		this.getDistinctColumnList().addAll(subResult.getDistinctColumnList());
 	}	
 	
 	private String getDistinctColumnListSql() {
