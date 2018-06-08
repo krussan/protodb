@@ -48,22 +48,58 @@ public class Searcher {
 		String currentAlias = "A";
 		aliases.put(StringUtils.EMPTY, "A");
 
+		String linkTableJoin = StringUtils.EMPTY;
+		String linkTableColumns = StringUtils.EMPTY;
+		
+		
 		// get a list of all aliases that are used
 		// need to get the where clause and the sort clause as well
 		// getJoinClause needs to return a set of aliases<->rows for each join
 		
+		
 //		joinClause.addWhereClause(scanner, fieldName, searchFor, op);
 //		joinClause.addSortOrder(scanner, sortField, sortOrder);
 
-		ColumnResult columns = Searcher.getColumnListForJoin(
+		ColumnResult columns = new ColumnResult();
+		String mainTable = scanner.getObjectName();
+		
+		if (other != null && !StringUtils.isEmpty(linkFieldName)) {
+			
+			// if a link object was specified then we need the link table as main table
+			mainTable = other.getLinkTableName(scanner, linkFieldName);
+			
+			columns.append(
+					"A", 
+					"A", 
+					String.format("_%s_ID", other.getObjectName().toLowerCase()), 
+					"_this_ID",
+					scanner.getBackend());
+
+			columns.append(
+					"A", 
+					"A", 
+					String.format("_%s_ID", scanner.getObjectName().toLowerCase()), 
+					"_other_ID",
+					scanner.getBackend());
+
+//			linkTableColumns = "L0._" + other.getObjectName().toLowerCase() + "_ID AS __thisID, "
+//					+  " L0._" + scanner.getObjectName().toLowerCase() + "_ID AS __otherID ";
+//			
+//			
+//			linkTableJoin =  + " L0";
+		}
+		
+		// add the rest standard joins
+		columns.append(
+			Searcher.getColumnListForJoin(
 				scanner, 
 				aliases, 
 				currentAlias, 
 				StringUtils.EMPTY, 
 				getBlobs, 
 				travelComplexLinks,
-				excludedObjects);
-
+				excludedObjects));
+		
 		List<JoinRow> joinList = Searcher.getJoinClause(
 				null, 
 				scanner, 
@@ -81,14 +117,14 @@ public class Searcher {
 		// the get query.
 			
 		return new JoinResult(
-				scanner.getObjectName(), 
-				joinList,
-				columns,
-				aliases, 
-				columns.hasComplexJoins(), 
-				numberOfResults, 
-				offset, 
-				scanner.getBackend());
+				scanner.getObjectName(), //mainTable 
+				joinList, // joinTables
+				columns, // columns
+				aliases, // map of aliases
+				columns.hasComplexJoins(), // contains complex joins 
+				numberOfResults,  // nrOfResults specified
+				offset,  // from offset
+				scanner.getBackend()); // the backend
 		 
 	}
 	
