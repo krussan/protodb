@@ -25,6 +25,7 @@ import com.google.protobuf.Message.Builder;
 import se.qxx.protodb.backend.DatabaseBackend;
 import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
+import se.qxx.protodb.model.Column;
 import se.qxx.protodb.model.ColumnResult;
 import se.qxx.protodb.model.ProtoDBSearchOperator;
 
@@ -263,7 +264,11 @@ public class JoinResult {
 	}
 	
 	public String getSql() {
+	
+		// Filter the joinclauses
+		filterJoins();
 		
+		// create output
 		String sql = String.format("%s %s",this.getResultSql(), this.getWhereClause());
 		
 		if (!StringUtils.isEmpty(this.getSortSql()))
@@ -288,6 +293,12 @@ public class JoinResult {
 		}
 		
 		return prep;
+	}
+	
+	public void filterJoins() {
+		// get a list of actual aliases used in the select
+		List<Column> columns = this.getColumnResult().getColumns();
+		
 	}
 	
 	public <T extends Message> Map<Integer, List<Object>> getResultLink(T instance, ResultSet rs, boolean getBlobs, List<String> excludedObjects) throws SQLException, ProtoDBParserException {

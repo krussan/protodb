@@ -64,14 +64,6 @@ public class ColumnResult {
 		this.getDistinctColumnList().addAll(subResult.getDistinctColumnList());
 	}	
 	
-	private String getDistinctColumnListSql() {
-		return getSql(this.getDistinctColumnList());
-	}
-	
-	private String getColumnListSql() {
-		return getSql(this.getColumnList());
-	}
-	
 	private String getSql(List<Column> columns) {
 		String result = StringUtils.EMPTY;
 		for (Column c : columns) {
@@ -81,7 +73,11 @@ public class ColumnResult {
 		return StringUtils.left(result, result.length() - 2);
 	}
 	
+	public List<Column> getColumns() {
+		return this.hasComplexJoins() ? this.getDistinctColumnList() : this.getColumnList();
+	}
+	
 	public String getSql() {
-		return this.hasComplexJoins() ? this.getDistinctColumnListSql() : this.getColumnListSql();
+		return this.getSql(this.getColumns());
 	}
 }
