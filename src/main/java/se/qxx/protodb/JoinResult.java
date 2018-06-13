@@ -29,13 +29,15 @@ import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
 import se.qxx.protodb.model.Column;
 import se.qxx.protodb.model.ColumnResult;
 import se.qxx.protodb.model.ProtoDBSearchOperator;
+import se.qxx.protodb.model.SearchField;
+import se.qxx.protodb.model.WhereClause;
 
 public class JoinResult {
 
 	private HashMap<String, String> aliases = new HashMap<String,String>();
 	private List<JoinRow> joinClause = new ArrayList<JoinRow>();
-	private List<String> whereClauses = new ArrayList<String>();
-	private List<Object> whereParameters = new ArrayList<Object>();
+	private List<WhereClause> whereClauses = new ArrayList<WhereClause>();
+	
 	private boolean hasComplexJoins = false;
 	private DatabaseBackend backend = null;
 	private String sortSql = StringUtils.EMPTY;
@@ -133,75 +135,39 @@ public class JoinResult {
 			return String.format(" WHERE %s",StringUtils.join(this.getWhereClauses(), " AND "));
 	}
 	
-	private List<String> getWhereClauses() {
+	private List<WhereClause> getWhereClauses() {
 		return whereClauses;
 	}
 
-	private List<Object> getWhereParameters() {
-		return whereParameters;
-	}
+//	private List<Object> getWhereParameters() {
+//		return whereParameters;
+//	}
 
 	public void addLinkWhereClause(List<Integer> parentIDs, ProtoDBScanner other) {
-		String listOfIds = StringUtils.join(parentIDs, ",");
-		
 		this.getWhereClauses().add(
-			String.format("L0.%s_%s_ID%s IN (%s)",
-				other.getBackend().getStartBracket(),
-				other.getObjectName().toLowerCase(),
-				other.getBackend().getEndBracket(),
-				listOfIds));						
+				WhereClause.createLink(other, parentIDs));
 	}
 	
-	public FieldDescriptor getWhereField(ProtoDBScanner scanner, String searchField) throws SearchFieldNotFoundException {
-		// We need to get the last field in the sequence and check if that field is an enum field
-		boolean isRootField = !StringUtils.contains(searchField, ".");
-		
-		if (isRootField) {
-			FieldDescriptor f = scanner.getFieldByName(searchField);
-			if (f == null)
-				throw new SearchFieldNotFoundException(searchField, scanner.getObjectName());
-			
-			return f;
-			
-		} else {
-			String nextField = StringUtils.substringBefore(searchField, ".");
-			String tail = StringUtils.substringAfter(searchField, ".");
-			
-			FieldDescriptor nf = scanner.getFieldByName(nextField);
-			DynamicMessage obj = DynamicMessage.getDefaultInstance(nf.getMessageType());
-			ProtoDBScanner other = new ProtoDBScanner(obj, scanner.getBackend());
-			
-			return getWhereField(other, tail);
-
-		}
-	}
 	
 	public void addWhereClause(ProtoDBScanner scanner, String searchField, Object value, ProtoDBSearchOperator op) throws SearchFieldNotFoundException {
 		if (!StringUtils.isEmpty(searchField)) {
-
-			SearchField field = findSearchField(scanner, searchField);
+			WhereClause clause = 
+					WhereClause.create(
+							scanner, 
+							this.getAliases(),
+							searchField, 
+							op, 
+							value);
 			
-			if (op == ProtoDBSearchOperator.In) {
-				this.getWhereClauses().add(
-						String.format("%s IN (%s)", 
-								field.getAliasFieldName(),
-								value));				
-			}
-			else {
-				this.getWhereClauses().add(
-						String.format("%s %s ?", 
-								field.getAliasFieldName(),
-								(op == ProtoDBSearchOperator.Like ? "LIKE" : "=")));
-				
-				this.getWhereParameters().add(value);
-			}
+			if (clause != null)
+				this.getWhereClauses().add(clause);
 			
 		}
 	}
 	
 	public void addSortOrder(ProtoDBScanner scanner, String sortField, ProtoDBSort sortOrder) throws SearchFieldNotFoundException {
 		if (!StringUtils.isEmpty(sortField)) {
-			SearchField field = findSearchField(scanner, sortField);
+			SearchField field = SearchField.find(scanner, this.getAliases(), sortField);
 			this.setSortSql(getSortClause(field.getAliasFieldName(), sortOrder));
 		}
 	}
@@ -218,34 +184,7 @@ public class JoinResult {
 		return "";
 	}
 
-	
-	public SearchField findSearchField(ProtoDBScanner scanner, String searchField) throws SearchFieldNotFoundException {
-		boolean isRootField = !StringUtils.contains(searchField, ".");
-		FieldDescriptor whereField = getWhereField(scanner, searchField);
-		boolean isEnumField = whereField.getJavaType() == JavaType.ENUM;
 		
-		String alias = StringUtils.EMPTY;
-		String field = StringUtils.EMPTY;
-		
-		if (isEnumField) {
-			String key = "." + searchField;
-			field = "value";
-			alias = this.getAliases().get(key);				
-		}
-		else if (isRootField) {
-			alias = "A";
-			field = searchField;
-		}
-		else {
-			String key = "." + StringUtils.substringBeforeLast(searchField, ".");
-			field = StringUtils.substringAfterLast(searchField, ".");
-			alias = this.getAliases().get(key);
-		}
-		
-		return new SearchField(field, alias);
-
-	}
-	
 	private String getJoinSql() {
 		String joinSql = StringUtils.EMPTY;
 		for (JoinRow row : this.getJoinClause()) {
@@ -289,8 +228,8 @@ public class JoinResult {
 	public PreparedStatement getStatement(Connection conn) throws SQLException {
 		PreparedStatement prep = conn.prepareStatement(this.getSql());
 		
-		for(int i = 0; i<this.getWhereParameters().size(); i++) {
-			Object o = this.getWhereParameters().get(i);
+		for(int i = 0; i<this.getWhereClauses().size(); i++) {
+			Object o = this.getWhereClauses().get(i).getValue();
 			prep.setObject(i + 1, o);
 		}
 		
@@ -314,6 +253,8 @@ public class JoinResult {
 			if (!result.contains(c.getAlias()))
 				result.add(c.getAlias());
 		}
+		
+
 		
 		return result;
 	}
