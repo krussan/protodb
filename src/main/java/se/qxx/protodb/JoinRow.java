@@ -2,8 +2,26 @@ package se.qxx.protodb;
 
 public class JoinRow {
 	private String alias;
-	private String joinCluase;
+	private String joinClause;
+	private String parentAlias;
+	private boolean isIncluded = false;
 	
+	public boolean isIncluded() {
+		return isIncluded;
+	}
+
+	public void setIncluded(boolean isIncluded) {
+		this.isIncluded = isIncluded;
+	}
+
+	public String getParentAlias() {
+		return parentAlias;
+	}
+
+	public void setParentAlias(String parentAlias) {
+		this.parentAlias = parentAlias;
+	}
+
 	public String getAlias() {
 		return alias;
 	}
@@ -13,15 +31,16 @@ public class JoinRow {
 	}
 
 	public String getJoinCluase() {
-		return joinCluase;
+		return joinClause;
 	}
 
-	public void setJoinCluase(String joinCluase) {
-		this.joinCluase = joinCluase;
+	public void setJoinCluase(String joinClause) {
+		this.joinClause = joinClause;
 	}
 
-	public JoinRow(String alias, String joinClause) {
+	public JoinRow(String parentAlias, String alias, String joinClause) {
+		this.parentAlias = parentAlias;
 		this.alias = alias;
-		this.joinCluase = joinClause;
+		this.joinClause = joinClause;
 	}
 }

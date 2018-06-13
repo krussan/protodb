@@ -102,6 +102,7 @@ public class Searcher {
 			// if a link object was specified then we need the link table as main table
 			joinClause.add(
 				new JoinRow(
+						"",
 						"L0", 
 						String.format(
 							"FROM %s AS L0 ", 
@@ -109,6 +110,7 @@ public class Searcher {
 			
 			joinClause.add(
 				new JoinRow(
+						"",
 						"A", 
 						String.format(
 							"LEFT JOIN %s AS A ON L0.%s_%s_ID%s = A.ID ",
@@ -134,6 +136,7 @@ public class Searcher {
 		else {
 			joinClause.add(
 				new JoinRow(
+					"",
 					"A", 
 					String.format(
 						"FROM %s AS A ", 
@@ -148,7 +151,9 @@ public class Searcher {
 		List<JoinRow> joinClause = new ArrayList<JoinRow>();
 					
 		if (parentScanner != null) {
-			joinClause.add(new JoinRow(aliases.get(fieldHierarchy),
+			joinClause.add(new JoinRow(
+					aliases.get(parentHierarchy),
+					aliases.get(fieldHierarchy),
 					String.format("LEFT JOIN %s AS L%s  ON L%s._%s_ID = %s.ID ", 
 							parentScanner.getLinkTableName(scanner, parentFieldName), 
 							linkTableIterator,
@@ -156,7 +161,9 @@ public class Searcher {
 							parentScanner.getObjectName().toLowerCase(), 
 							aliases.get(parentHierarchy))));
 
-			joinClause.add(new JoinRow(aliases.get(fieldHierarchy),
+			joinClause.add(new JoinRow(
+					aliases.get(parentHierarchy),
+					aliases.get(fieldHierarchy),
 					String.format("LEFT JOIN %s AS %s  ON L%s._%s_ID = %s.ID ", 
 							scanner.getObjectName(), 
 							aliases.get(fieldHierarchy),
@@ -184,7 +191,9 @@ public class Searcher {
 					
 		if (parentScanner != null) {
 			joinClause.add(
-				new JoinRow(aliases.get(fieldHierarchy),
+				new JoinRow(
+					aliases.get(parentHierarchy),
+					aliases.get(fieldHierarchy),					
 					String.format("LEFT JOIN %s AS L%s  ON L%s._%s_ID = %s.ID ", 
 						parentScanner.getLinkTableName(scanner, parentFieldName), 
 						linkTableIterator,
@@ -193,7 +202,9 @@ public class Searcher {
 						aliases.get(parentHierarchy))));
 			
 
-			joinClause.add(new JoinRow(aliases.get(fieldHierarchy),
+			joinClause.add(new JoinRow(
+					aliases.get(parentHierarchy),
+					aliases.get(fieldHierarchy),					
 					String.format("LEFT JOIN %s AS %s  ON L%s._%s_ID = %s.ID ", 
 						scanner.getObjectName(), 
 						aliases.get(fieldHierarchy),
@@ -212,6 +223,7 @@ public class Searcher {
 		List<JoinRow> joinClause = new ArrayList<JoinRow>();
 		
 		joinClause.add(new JoinRow(
+				aliases.get(parentHierarchy),
 				aliases.get(fieldHierarchy),
 				String.format("LEFT JOIN %s AS %s  ON %s._%s_ID = %s.ID ", 
 					StringUtils.capitalize(enumFieldName), 
@@ -227,6 +239,7 @@ public class Searcher {
 		List<JoinRow> joinClause = new ArrayList<JoinRow>();
 		
 		joinClause.add(new JoinRow(
+				aliases.get(parentHierarchy),
 				aliases.get(fieldHierarchy),
 				String.format("LEFT JOIN BlobData AS %s  ON %s._%s_ID = %s.ID ",  
 					aliases.get(fieldHierarchy),
@@ -241,7 +254,9 @@ public class Searcher {
 		List<JoinRow> joinClause = new ArrayList<JoinRow>();
 		
 		if (parentScanner != null) {
-			joinClause.add(new JoinRow(aliases.get(fieldHierarchy), 
+			joinClause.add(new JoinRow(
+					aliases.get(parentHierarchy),
+					aliases.get(fieldHierarchy),
 					String.format("LEFT JOIN %s AS %s  ON %s._%s_ID = %s.ID ", 
 						scanner.getObjectName(), 
 						aliases.get(fieldHierarchy),

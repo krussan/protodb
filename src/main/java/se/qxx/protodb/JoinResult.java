@@ -7,6 +7,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -248,7 +249,8 @@ public class JoinResult {
 	private String getJoinSql() {
 		String joinSql = StringUtils.EMPTY;
 		for (JoinRow row : this.getJoinClause()) {
-			joinSql += row.getJoinCluase();
+			if (row.isIncluded())
+				joinSql += row.getJoinCluase();
 		}
 		
 		return joinSql;
@@ -298,9 +300,47 @@ public class JoinResult {
 	public void filterJoins() {
 		// get a list of actual aliases used in the select
 		List<Column> columns = this.getColumnResult().getColumns();
+		List<String> columnAliasesIncluded = getAliasIncluded();
+		
+		// get a list of aliases needed (include all joins in path if there is a hierarchy)
+		for (JoinRow r : this.getJoinClause()) {
+			setIncluded(columnAliasesIncluded, this.getJoinClause(), r, 0);
+		}
+	}
+	
+	private List<String> getAliasIncluded() {
+		List<String> result = new ArrayList<String>();
+		for (Column c : this.getColumnResult().getColumns()) {
+			if (!result.contains(c.getAlias()))
+				result.add(c.getAlias());
+		}
+		
+		return result;
+	}
+	
+	private void setIncluded(List<String> aliasesIncluded, List<JoinRow> allRows, JoinRow r, int level) {
+		if (aliasesIncluded.contains(r.getAlias()) || level > 0) {
+			r.setIncluded(true);	
+			
+			JoinRow parent = getParentRow(allRows, r);
+			if (parent != null) {
+				setIncluded(aliasesIncluded, allRows, parent, level + 1);
+			}
+		}
 		
 	}
 	
+
+	private JoinRow getParentRow(List<JoinRow> allRows, JoinRow r) {
+		String aliasToFind = r.getParentAlias();
+		for (JoinRow current : allRows) {
+			if (StringUtils.equalsIgnoreCase(aliasToFind, current.getAlias()))
+				return current;
+		}
+		
+		return null;
+	}
+
 	public <T extends Message> Map<Integer, List<Object>> getResultLink(T instance, ResultSet rs, boolean getBlobs, List<String> excludedObjects) throws SQLException, ProtoDBParserException {
 		Map<Integer, List<Object>> map = new HashMap<Integer, List<Object>>();
 		
