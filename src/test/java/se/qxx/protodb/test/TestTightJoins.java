@@ -29,6 +29,7 @@ import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
 import se.qxx.protodb.model.ProtoDBSearchOperator;
 import se.qxx.protodb.test.TestDomain.ObjectOne;
+import se.qxx.protodb.test.TestDomain.ObjectThree;
 import se.qxx.protodb.test.TestDomain.ObjectTwo;
 import se.qxx.protodb.test.TestDomain.RepObjectOne;
 import se.qxx.protodb.test.TestDomain.SimpleTest;
@@ -146,5 +147,25 @@ public class TestTightJoins extends TestBase {
 			fail(e.getMessage());
 		}
 	}
-	
+
+	@Test
+	public void TestSearchRecursive() {
+		try {
+			List<ObjectThree> list = 
+				db.search(ObjectThree.getDefaultInstance(),
+					"bepa.testtwo.testone.ss",
+					"ThisIsATestOfObjectOne",
+					ProtoDBSearchOperator.Equals,
+					5,
+					0);
+			
+			assertEquals(1, list.size());
+			
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
+	}
+
 }

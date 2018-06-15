@@ -39,7 +39,7 @@ public class SearchField {
 	
 	public static SearchField find(
 			ProtoDBScanner scanner, 
-			HashMap<String, String> aliases, 
+			CaseInsensitiveMap aliases, 
 			String searchField) throws SearchFieldNotFoundException {
 		
 		boolean isRootField = !StringUtils.contains(searchField, ".");
