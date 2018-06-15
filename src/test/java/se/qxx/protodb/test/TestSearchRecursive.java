@@ -213,7 +213,7 @@ public class TestSearchRecursive extends TestBase {
 				+ "ABBA.%1$sbb%2$s AS ABBA_bb, "
 				+ "ABBA.%1$sss%2$s AS ABBA_ss "
 //				+ "ABBA.by AS ABBA_by "
-				+ "FROM   ObjectThree AS A "
+				+ "FROM ObjectThree AS A "
 				+ "LEFT JOIN SimpleTest AS AA "
 				+ "ON A._apa_ID = AA.ID "
 				+ "LEFT JOIN ObjectTwo AS AB "

@@ -131,8 +131,15 @@ public class JoinResult {
 	public String getWhereClause() {
 		if (this.getWhereClauses().isEmpty())
 			return StringUtils.EMPTY;
-		else
-			return String.format(" WHERE %s",StringUtils.join(this.getWhereClauses(), " AND "));
+		else {
+			StringBuilder sb = new StringBuilder(" WHERE ");
+			for (WhereClause wc : this.getWhereClauses() ) {
+				sb.append(String.format("%s AND ", wc.getSql()));
+			}
+			
+			String sql = sb.toString();
+			return StringUtils.left(sql, sql.length() - 4);
+		}
 	}
 	
 	private List<WhereClause> getWhereClauses() {
@@ -229,8 +236,11 @@ public class JoinResult {
 		PreparedStatement prep = conn.prepareStatement(this.getSql());
 		
 		for(int i = 0; i<this.getWhereClauses().size(); i++) {
-			Object o = this.getWhereClauses().get(i).getValue();
-			prep.setObject(i + 1, o);
+			WhereClause wc = this.getWhereClauses().get(i);
+			
+			if (wc.getOperator() != ProtoDBSearchOperator.In)
+				prep.setObject(i + 1, wc.getValue());
+			
 		}
 		
 		return prep;
@@ -238,8 +248,10 @@ public class JoinResult {
 	
 	public void filterJoins() {
 		// get a list of actual aliases used in the select
-		List<Column> columns = this.getColumnResult().getColumns();
 		List<String> columnAliasesIncluded = getAliasIncluded();
+		
+		// Add list of where clauses included
+		columnAliasesIncluded.addAll(getWhereAliasIncluded());
 		
 		// get a list of aliases needed (include all joins in path if there is a hierarchy)
 		for (JoinRow r : this.getJoinClause()) {
@@ -247,11 +259,23 @@ public class JoinResult {
 		}
 	}
 	
+	private List<String> getWhereAliasIncluded() {
+		List<String> result = new ArrayList<String>();
+		for (WhereClause wc : this.getWhereClauses()) {
+			String alias = wc.getSearchField().getAlias();
+			if (!result.contains(alias))
+				result.add(alias);
+		}
+		
+		return result;
+	}
+	
 	private List<String> getAliasIncluded() {
 		List<String> result = new ArrayList<String>();
 		for (Column c : this.getColumnResult().getColumns()) {
-			if (!result.contains(c.getAlias()))
-				result.add(c.getAlias());
+			String alias = c.getOtherAlias();
+			if (!result.contains(alias))
+				result.add(alias);
 		}
 		
 
