@@ -49,7 +49,7 @@ public class WhereClause {
 	
 	public static WhereClause create(
 			ProtoDBScanner scanner, 
-			HashMap<String, String> aliases, 
+			CaseInsensitiveMap aliases, 
 			String fieldName, 
 			ProtoDBSearchOperator operator, 
 			Object value) throws SearchFieldNotFoundException {

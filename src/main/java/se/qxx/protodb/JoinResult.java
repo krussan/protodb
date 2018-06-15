@@ -26,6 +26,7 @@ import com.google.protobuf.Message.Builder;
 import se.qxx.protodb.backend.DatabaseBackend;
 import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
+import se.qxx.protodb.model.CaseInsensitiveMap;
 import se.qxx.protodb.model.Column;
 import se.qxx.protodb.model.ColumnResult;
 import se.qxx.protodb.model.ProtoDBSearchOperator;
@@ -34,7 +35,7 @@ import se.qxx.protodb.model.WhereClause;
 
 public class JoinResult {
 
-	private HashMap<String, String> aliases = new HashMap<String,String>();
+	private CaseInsensitiveMap aliases = new CaseInsensitiveMap();
 	private List<JoinRow> joinClause = new ArrayList<JoinRow>();
 	private List<WhereClause> whereClauses = new ArrayList<WhereClause>();
 	
@@ -97,7 +98,7 @@ public class JoinResult {
 	public JoinResult(
 			List<JoinRow> joinClause,
 			ColumnResult columnResult,
-			HashMap<String, String> aliases, 
+			CaseInsensitiveMap aliases, 
 			boolean hasComplexJoins, 
 			int nrOfResults, 
 			int offset,
@@ -112,11 +113,11 @@ public class JoinResult {
 		this.setColumnResult(columnResult);
 	}
 
-	public HashMap<String, String> getAliases() {
+	public CaseInsensitiveMap getAliases() {
 		return aliases;
 	}
 
-	private void setAliases(HashMap<String, String> aliases) {
+	private void setAliases(CaseInsensitiveMap aliases) {
 		this.aliases = aliases;
 	}
 
@@ -162,7 +163,7 @@ public class JoinResult {
 					WhereClause.create(
 							scanner, 
 							this.getAliases(),
-							searchField, 
+							searchField.toLowerCase(), 
 							op, 
 							value);
 			

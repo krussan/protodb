@@ -19,6 +19,7 @@ import com.google.protobuf.DynamicMessage;
 import com.google.protobuf.MessageOrBuilder;
 
 import se.qxx.protodb.backend.DatabaseBackend;
+import se.qxx.protodb.model.CaseInsensitiveMap;
 import se.qxx.protodb.model.ProtoField;
 import se.qxx.protodb.model.ProtoTable;
 
@@ -46,7 +47,7 @@ public class ProtoDBScanner {
 	private HashMap<String, Integer> objectIDs = new HashMap<String,Integer>();
 	private HashMap<String, Integer> blobIDs = new HashMap<String,Integer>();
 
-	private HashMap<String, String> aliases = new HashMap<String, String>();
+	private CaseInsensitiveMap aliases = new CaseInsensitiveMap();
 	
 
 	public ProtoDBScanner(MessageOrBuilder b, DatabaseBackend backend) {
