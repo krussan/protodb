@@ -1443,7 +1443,7 @@ public class ProtoDB {
 					excludedObjects);
 			
 			// check if this is a repeated (or enum)
-			joinClause.addWhereClause(scanner, fieldName, searchFor, op);
+			joinClause.addWhereClause(scanner, fieldName, searchFor, op);	
 			joinClause.addSortOrder(scanner, sortField, sortOrder);
 			
 			PreparedStatement prep = joinClause.getStatement(conn);

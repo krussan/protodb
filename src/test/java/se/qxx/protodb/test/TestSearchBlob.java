@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.apache.commons.lang3.StringUtils;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -84,13 +85,13 @@ public class TestSearchBlob extends TestBase{
 				+ "A.%1$sbb%2$s AS A_bb, "
 				+ "A.%1$sss%2$s AS A_ss, "
 				+ "AA.%1$sdata%2$s AS A_by "
-				+ "FROM   SimpleTest AS A   "
+				+ "FROM SimpleTest AS A "
 				+ "LEFT JOIN BlobData AS AA "
-				+ " ON A._by_ID = AA.ID ",
+				+ "ON A._by_ID = AA.ID ",
 				db.getDatabaseBackend().getStartBracket(),
 				db.getDatabaseBackend().getEndBracket());
 		
-		assertEquals(expected, result.getJoinClause());
+		assertEquals(expected, result.getSql());
 	}
 	
 	@Test

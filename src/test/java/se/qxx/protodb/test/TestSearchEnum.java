@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.apache.commons.lang3.StringUtils;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -100,13 +101,13 @@ public class TestSearchEnum extends TestBase {
 				+ "A.%1$sID%2$s AS A_ID, "
 				+ "A.%1$stitle%2$s AS A_title, "
 				+ "AA.%1$svalue%2$s AS A_rating "
-				+ "FROM   EnumOne AS A   "
+				+ "FROM EnumOne AS A "
 				+ "LEFT JOIN Rating AS AA "
-				+ " ON A._rating_ID = AA.ID ",
+				+ "ON A._rating_ID = AA.ID ",
 				db.getDatabaseBackend().getStartBracket(),
 				db.getDatabaseBackend().getEndBracket());
 		
-		assertEquals(expected, result.getJoinClause());
+		assertEquals(expected, result.getSql());
 	}
 	
 }
