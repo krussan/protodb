@@ -288,23 +288,26 @@ public class JoinResult {
 		if (aliasesIncluded.contains(r.getAlias()) || level > 0) {
 			r.setIncluded(true);	
 			
-			JoinRow parent = getParentRow(allRows, r);
-			if (parent != null) {
-				setIncluded(aliasesIncluded, allRows, parent, level + 1);
+			List<JoinRow> parents = getParentRow(allRows, r);
+			for (JoinRow p : parents) {
+				if (p != null)
+					setIncluded(aliasesIncluded, allRows, p, level + 1);
 			}
 		}
 		
 	}
 	
 
-	private JoinRow getParentRow(List<JoinRow> allRows, JoinRow r) {
+	private List<JoinRow> getParentRow(List<JoinRow> allRows, JoinRow r) {
 		String aliasToFind = r.getParentAlias();
+		List<JoinRow> rows = new ArrayList<JoinRow>();
+		
 		for (JoinRow current : allRows) {
 			if (StringUtils.equalsIgnoreCase(aliasToFind, current.getAlias()))
-				return current;
+				rows.add(current);
 		}
 		
-		return null;
+		return rows;
 	}
 
 	public <T extends Message> Map<Integer, List<Object>> getResultLink(T instance, ResultSet rs, boolean getBlobs, List<String> excludedObjects) throws SQLException, ProtoDBParserException {
