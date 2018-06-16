@@ -32,6 +32,7 @@ import se.qxx.protodb.test.TestDomain.ObjectOne;
 import se.qxx.protodb.test.TestDomain.ObjectThree;
 import se.qxx.protodb.test.TestDomain.ObjectTwo;
 import se.qxx.protodb.test.TestDomain.RepObjectOne;
+import se.qxx.protodb.test.TestDomain.RepObjectTwo;
 import se.qxx.protodb.test.TestDomain.SimpleTest;
 import se.qxx.protodb.test.TestDomain.SimpleTwo;
 
@@ -167,5 +168,43 @@ public class TestTightJoins extends TestBase {
 			fail(e.getMessage());
 		}
 	}
+	
+	@Test
+	public void TestRepeatedRepeated() {
+		try {
+			RepObjectTwo two = RepObjectTwo.newBuilder()
+					.setID(10)
+					.setTitle("TestRepRep")
+					.build();
+			
+			ProtoDBScanner scanner = new ProtoDBScanner(two, db.getDatabaseBackend());
+			JoinResult result = Searcher.getJoinQuery(scanner, false, true);
+			result.addWhereClause(scanner, "listRepObject.list_of_objects.title", "title", ProtoDBSearchOperator.Equals);
+			String expected = String.format(
+					"SELECT DISTINCT A.%1$sID%2$s AS A_ID, A.%1$stitle%2$s AS A_title FROM "
+					+ "RepObjectTwo AS A "
+					+ "LEFT JOIN RepObjectTwoRepObjectOne_ListRepObject AS L1 "
+					+ "ON L1._repobjecttwo_ID = A.ID "
+					+ "LEFT JOIN RepObjectOne AS AA "
+					+ "ON L1._repobjectone_ID = AA.ID "
+					+ "LEFT JOIN RepObjectOneSimpleTwo_Listofobjects AS L2 "
+					+ "ON L2._repobjectone_ID = AA.ID "
+					+ "LEFT JOIN SimpleTwo AS AAA "
+					+ "ON L2._simpletwo_ID = AAA.ID "
+					+ "WHERE AAA.title = ? ",
+					db.getDatabaseBackend().getStartBracket(),
+					db.getDatabaseBackend().getEndBracket());
+			
+			String actual = result.getSql();
+			
+			assertEquals(expected, actual);
+			
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
+	}
+
 
 }

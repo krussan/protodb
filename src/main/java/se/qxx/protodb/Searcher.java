@@ -101,46 +101,25 @@ public class Searcher {
 		List<JoinRow> joinClause = new ArrayList<JoinRow>();
 
 		if (parentScanner != null) {
-			joinClause.add(new JoinRow(aliases.get(parentHierarchy), aliases.get(fieldHierarchy),
+			// set parent to empty on linktable since we do not want to traverse to parent on this one
+			joinClause.add(new JoinRow(
+					StringUtils.EMPTY, 
+					aliases.get(fieldHierarchy),
 					String.format("LEFT JOIN %s AS L%s  ON L%s._%s_ID = %s.ID ",
-							parentScanner.getLinkTableName(scanner, parentFieldName), linkTableIterator,
-							linkTableIterator, parentScanner.getObjectName().toLowerCase(),
+							parentScanner.getLinkTableName(scanner, parentFieldName), 
+							linkTableIterator,
+							linkTableIterator, 
+							parentScanner.getObjectName().toLowerCase(),
 							aliases.get(parentHierarchy))));
 
-			joinClause.add(new JoinRow(aliases.get(parentHierarchy), aliases.get(fieldHierarchy),
-					String.format("LEFT JOIN %s AS %s  ON L%s._%s_ID = %s.ID ", scanner.getObjectName(),
-							aliases.get(fieldHierarchy), linkTableIterator, scanner.getObjectName().toLowerCase(),
-							aliases.get(fieldHierarchy))));
-
-			linkTableIterator.increment();
-		}
-
-		return joinClause;
-	}
-
-	private static String getJoinClauseRepeatedBasic(ProtoDBScanner parentScanner, FieldDescriptor parentField,
-			CaseInsensitiveMap aliases, MutableInt linkTableIterator, String parentHierarchy, String fieldHierarchy) {
-		return String.format("LEFT JOIN %s AS L%s ", parentScanner.getBasicLinkTableName(parentField),
-				linkTableIterator);
-
-	}
-
-	private static List<JoinRow> getJoinClauseRepeatedBlob(ProtoDBScanner parentScanner, ProtoDBScanner scanner,
-			String parentFieldName, CaseInsensitiveMap aliases, MutableInt linkTableIterator, String parentHierarchy,
-			String fieldHierarchy) {
-
-		List<JoinRow> joinClause = new ArrayList<JoinRow>();
-
-		if (parentScanner != null) {
-			joinClause.add(new JoinRow(aliases.get(parentHierarchy), aliases.get(fieldHierarchy),
-					String.format("LEFT JOIN %s AS L%s  ON L%s._%s_ID = %s.ID ",
-							parentScanner.getLinkTableName(scanner, parentFieldName), linkTableIterator,
-							linkTableIterator, parentScanner.getObjectName().toLowerCase(),
-							aliases.get(parentHierarchy))));
-
-			joinClause.add(new JoinRow(aliases.get(parentHierarchy), aliases.get(fieldHierarchy),
-					String.format("LEFT JOIN %s AS %s  ON L%s._%s_ID = %s.ID ", scanner.getObjectName(),
-							aliases.get(fieldHierarchy), linkTableIterator, scanner.getObjectName().toLowerCase(),
+			joinClause.add(new JoinRow(
+					aliases.get(parentHierarchy), 
+					aliases.get(fieldHierarchy),
+					String.format("LEFT JOIN %s AS %s  ON L%s._%s_ID = %s.ID ", 
+							scanner.getObjectName(),
+							aliases.get(fieldHierarchy), 
+							linkTableIterator, 
+							scanner.getObjectName().toLowerCase(),
 							aliases.get(fieldHierarchy))));
 
 			linkTableIterator.increment();

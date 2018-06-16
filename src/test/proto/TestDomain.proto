@@ -90,3 +90,9 @@ message ObjectFive {
 	required string fourTitle = 2;
 	required bytes fourImage = 3;
 }
+
+message RepObjectTwo {
+	required int32 ID = 1;
+	required string title = 2;
+	repeated RepObjectOne listRepObject = 3;
+}
