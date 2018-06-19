@@ -126,6 +126,11 @@ public class SearchOptions<T extends Message> {
 		return this;
 	}
 
+	public SearchOptions<T> addAllExcludedObjects(List<String> excludedObjects) {
+		this.getExcludedObjects().addAll(excludedObjects);
+		return this;
+	}
+
 	public Object getSearchFor() {
 		return searchFor;
 	}
