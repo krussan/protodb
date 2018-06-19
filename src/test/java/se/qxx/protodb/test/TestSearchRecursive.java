@@ -21,11 +21,13 @@ import se.qxx.protodb.JoinResult;
 import se.qxx.protodb.ProtoDB;
 import se.qxx.protodb.ProtoDBFactory;
 import se.qxx.protodb.ProtoDBScanner;
+import se.qxx.protodb.SearchOptions;
 import se.qxx.protodb.Searcher;
 import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
+import se.qxx.protodb.exceptions.SearchOptionsNotInitializedException;
 import se.qxx.protodb.model.ProtoDBSearchOperator;
 import se.qxx.protodb.test.TestDomain.ObjectTwo;
 
@@ -238,11 +240,12 @@ public class TestSearchRecursive extends TestBase {
 		try {
 			List<TestDomain.ObjectThree> result =
 				db.search(
-					TestDomain.ObjectThree.getDefaultInstance(), 
-					"bepa.testTwo.testOne.ss", 
-					"ThisIsATestOfObjectOne", 
-					ProtoDBSearchOperator.Equals);
-			
+						SearchOptions.newBuilder(TestDomain.ObjectThree.getDefaultInstance())
+						.addSearchArgument("ThisIsATestOfObjectOne")
+						.addFieldName("bepa.testTwo.testOne.ss")
+						.addOperator(ProtoDBSearchOperator.Equals)
+						.setShallow(true));						
+					
 			// we should get one single result..
 			assertEquals(1, result.size());
 		
@@ -256,7 +259,7 @@ public class TestSearchRecursive extends TestBase {
 //			PreparedStatement prep = "SELECT * FROM SimpleTest";
 //			
 //			testTableStructure(db, "SimpleTest", SIMPLE_FIELD_NAMES, SIMPLE_FIELD_TYPES);
-		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException e) {
+		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException | SearchOptionsNotInitializedException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}

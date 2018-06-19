@@ -19,11 +19,13 @@ import se.qxx.protodb.JoinResult;
 import se.qxx.protodb.ProtoDB;
 import se.qxx.protodb.ProtoDBFactory;
 import se.qxx.protodb.ProtoDBScanner;
+import se.qxx.protodb.SearchOptions;
 import se.qxx.protodb.Searcher;
 import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
+import se.qxx.protodb.exceptions.SearchOptionsNotInitializedException;
 import se.qxx.protodb.model.ProtoDBSearchOperator;
 import se.qxx.protodb.test.TestDomain.ObjectFour;
 import se.qxx.protodb.test.TestDomain.RepObjectOne;
@@ -71,10 +73,10 @@ public class TestSearchRepeatedBlobs extends TestBase {
 		try {
 			List<TestDomain.ObjectFour> result =
 				db.search(
-					TestDomain.ObjectFour.getDefaultInstance(), 
-					"fourtitle", 
-					"ObjectFourTitle", 
-					ProtoDBSearchOperator.Equals);
+					SearchOptions.newBuilder(TestDomain.ObjectFour.getDefaultInstance())
+					.addFieldName("fourtitle")
+					.addSearchArgument("ObjectFourTitle")
+					.addOperator(ProtoDBSearchOperator.Equals));
 			
 			
 			// we should get one single result..
@@ -84,7 +86,7 @@ public class TestSearchRepeatedBlobs extends TestBase {
 			assertEquals(2, result.get(0).getFourImageList().size());
 			
 
-		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException e) {
+		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException | SearchOptionsNotInitializedException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}

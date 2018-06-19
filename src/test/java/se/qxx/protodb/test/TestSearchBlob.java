@@ -21,11 +21,13 @@ import se.qxx.protodb.JoinResult;
 import se.qxx.protodb.ProtoDB;
 import se.qxx.protodb.ProtoDBFactory;
 import se.qxx.protodb.ProtoDBScanner;
+import se.qxx.protodb.SearchOptions;
 import se.qxx.protodb.Searcher;
 import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
+import se.qxx.protodb.exceptions.SearchOptionsNotInitializedException;
 import se.qxx.protodb.model.ProtoDBSearchOperator;
 import se.qxx.protodb.test.TestDomain.EnumOne;
 import se.qxx.protodb.test.TestDomain.Rating;
@@ -95,10 +97,14 @@ public class TestSearchBlob extends TestBase{
 	}
 	
 	@Test
-	public void TestBlobPopulator() throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
+	public void TestBlobPopulator() throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException, SearchOptionsNotInitializedException {
 		TestDomain.SimpleTest o1 = TestDomain.SimpleTest.getDefaultInstance();
 
-		List<TestDomain.SimpleTest> result = db.search(o1, "ss", "ThisIsATest", ProtoDBSearchOperator.Equals);
+		List<TestDomain.SimpleTest> result = db.search(
+				SearchOptions.newBuilder(o1)
+				.addFieldName("ss")
+				.addSearchArgument("ThisIsATest")
+				.addOperator(ProtoDBSearchOperator.Equals));
 		
 		assertEquals(1, result.size());
 		assertEquals(3, result.get(0).getBy().size());
