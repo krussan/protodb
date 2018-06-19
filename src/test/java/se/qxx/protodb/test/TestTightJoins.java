@@ -260,6 +260,12 @@ public class TestTightJoins extends TestBase {
 			assertNotNull(result);
 			assertEquals(1, result.size());
 			
+			
+			assertEquals(1, result.get(0).getListRepObjectCount());
+			assertEquals(2, result.get(0).getListRepObject(0).getListOfObjectsCount());
+			assertEquals("thisisatitle", result.get(0).getListRepObject(0).getListOfObjects(0));
+			assertEquals("who_said_that", result.get(0).getListRepObject(0).getListOfObjects(1));
+			
 		}
 		catch (Exception e) {
 			e.printStackTrace();
