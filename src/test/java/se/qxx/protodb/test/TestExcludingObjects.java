@@ -19,10 +19,12 @@ import com.google.protobuf.ByteString;
 
 import se.qxx.protodb.ProtoDB;
 import se.qxx.protodb.ProtoDBFactory;
+import se.qxx.protodb.SearchOptions;
 import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
+import se.qxx.protodb.exceptions.SearchOptionsNotInitializedException;
 import se.qxx.protodb.model.ProtoDBSearchOperator;
 import se.qxx.protodb.test.TestDomain.ObjectOne;
 import se.qxx.protodb.test.TestDomain.ObjectTwo;
@@ -145,16 +147,14 @@ public class TestExcludingObjects extends TestBase {
 	@Test
 	public void TestExcludingSearch() {	
 		try {
-			List<String> excludedObjects = new ArrayList<String>();
-			excludedObjects.add("testOne");
-			
+
 			List<TestDomain.ObjectOne> result =
 				db.search(
-					TestDomain.ObjectOne.getDefaultInstance(), 
-					"testOne.ss", 
-					"ThisIsATestOfObjectOne", 
-					ProtoDBSearchOperator.Equals,
-					excludedObjects);
+					SearchOptions.newBuilder(TestDomain.ObjectOne.getDefaultInstance())
+					.addFieldName("testOne.ss")
+					.addSearchArgument("ThisIsATestOfObjectOne")
+					.addOperator(ProtoDBSearchOperator.Equals)
+					.addExcludedObject("testOne"));
 			
 			// we should get one single result..
 			assertEquals(1, result.size());
@@ -165,7 +165,7 @@ public class TestExcludingObjects extends TestBase {
 			TestDomain.SimpleTest o1 = b.getTestOne();
 			assertFalse(o1.isInitialized());
 			
-		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException e) {
+		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException | SearchOptionsNotInitializedException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
@@ -211,11 +211,12 @@ public class TestExcludingObjects extends TestBase {
 			excludedObjects.add("testOne");
 			
 			List<ObjectTwo> result = db.search(
-					TestDomain.ObjectTwo.getDefaultInstance(), 
-					"ID", 
-					1, 
-					ProtoDBSearchOperator.Equals,
-					excludedObjects);
+					SearchOptions.newBuilder(TestDomain.ObjectTwo.getDefaultInstance())
+					.addFieldName("ID")
+					.addSearchArgument(1)
+					.addOperator(ProtoDBSearchOperator.Equals)
+					.addExcludedObject("testTwo.testOne")
+					.addExcludedObject("testOne"));
 
 			assertNotNull(result);
 			assertEquals(1, result.size());
@@ -235,7 +236,7 @@ public class TestExcludingObjects extends TestBase {
 			
 			
 			
-		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException e) {
+		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException | SearchOptionsNotInitializedException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}

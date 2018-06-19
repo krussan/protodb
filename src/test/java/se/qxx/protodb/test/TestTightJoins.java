@@ -22,6 +22,7 @@ import se.qxx.protodb.JoinResult;
 import se.qxx.protodb.ProtoDB;
 import se.qxx.protodb.ProtoDBFactory;
 import se.qxx.protodb.ProtoDBScanner;
+import se.qxx.protodb.SearchOptions;
 import se.qxx.protodb.Searcher;
 import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
@@ -90,6 +91,20 @@ public class TestTightJoins extends TestBase {
 						.setSs("ThisIsATestOfObjectOne")
 				).build();
 		
+		TestDomain.ObjectOne o1a = TestDomain.ObjectOne.newBuilder()
+				.setID(-1)
+				.setOois(986)
+				.setTestOne(TestDomain.SimpleTest.newBuilder()
+						.setID(-1)
+						.setBb(false)
+						.setBy(ByteString.copyFrom(new byte[] {5,8,6}))
+						.setDd(1467802579378.62352352)
+						.setFf((float) 555444333.213)
+						.setIl(999999998)
+						.setIs(999999998)
+						.setSs("ObjectOneA")
+				).build();
+		
 		
 	    TestDomain.ObjectTwo o2 = 
 	    		TestDomain.ObjectTwo.newBuilder()
@@ -106,6 +121,8 @@ public class TestTightJoins extends TestBase {
 	    		.build();
 	    
 	    db.save(o3);
+	    
+
     }
 
 	
@@ -153,13 +170,12 @@ public class TestTightJoins extends TestBase {
 	public void TestSearchRecursive() {
 		try {
 			List<ObjectThree> list = 
-				db.search(ObjectThree.getDefaultInstance(),
-					"bepa.testtwo.testone.ss",
-					"ThisIsATestOfObjectOne",
-					ProtoDBSearchOperator.Equals,
-					5,
-					0);
-			
+				db.search(
+					SearchOptions.newBuilder(ObjectThree.getDefaultInstance())
+						.addFieldName("bepa.testtwo.testone.ss")
+						.addOperator(ProtoDBSearchOperator.Equals)
+						.addSearchArgument("ThisIsATestOfObjectOne"));
+
 			assertEquals(1, list.size());
 			
 		}
@@ -198,6 +214,57 @@ public class TestTightJoins extends TestBase {
 			String actual = result.getSql();
 			
 			assertEquals(expected, actual);
+			
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
+	}
+	
+	public void TestRepeatedRepeatedSearch() {
+		try {
+
+			RepObjectOne rep_o1 = RepObjectOne.newBuilder()
+					.setID(10)
+					.setHappycamper(555)
+					.addListOfObjects(SimpleTwo.newBuilder()
+							.setID(1)
+							.setDirector("directThis")
+							.setTitle("thisisatitle")
+							.build())
+					.addListOfObjects(SimpleTwo.newBuilder()
+							.setID(2)
+							.setDirector("no_way")
+							.setTitle("who_said_that")
+							.build())
+					.build();
+		    
+			RepObjectTwo two = RepObjectTwo.newBuilder()
+					.setID(20)
+					.setTitle("TestRepRep")
+					.addListRepObject(rep_o1)
+					.build();
+			
+			db.save(two);
+			
+			
+			List<RepObjectTwo> result = 
+				db.search(
+					SearchOptions.newBuilder(two)
+						.addFieldName("title")
+						.addOperator(ProtoDBSearchOperator.Equals)
+						.addSearchArgument("TestRepRep")
+						.setShallow(false));
+			
+			assertNotNull(result);
+			assertEquals(1, result.size());
+			
+			
+			assertEquals(1, result.get(0).getListRepObjectCount());
+			assertEquals(2, result.get(0).getListRepObject(0).getListOfObjectsCount());
+			assertEquals("thisisatitle", result.get(0).getListRepObject(0).getListOfObjects(0));
+			assertEquals("who_said_that", result.get(0).getListRepObject(0).getListOfObjects(1));
 			
 		}
 		catch (Exception e) {
