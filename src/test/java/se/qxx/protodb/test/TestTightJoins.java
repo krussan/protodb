@@ -57,6 +57,7 @@ public class TestTightJoins extends TestBase {
 	public void Setup() throws ClassNotFoundException, SQLException, IDFieldNotFoundException {
 		
 	    db.setupDatabase(TestDomain.ObjectThree.newBuilder());
+	    db.setupDatabase(TestDomain.RepObjectTwo.newBuilder());
 	    
 	    TestDomain.SimpleTest t = TestDomain.SimpleTest.newBuilder()
 				.setID(-1)
@@ -222,6 +223,7 @@ public class TestTightJoins extends TestBase {
 		}
 	}
 	
+	@Test
 	public void TestRepeatedRepeatedSearch() {
 		try {
 
@@ -260,11 +262,10 @@ public class TestTightJoins extends TestBase {
 			assertNotNull(result);
 			assertEquals(1, result.size());
 			
-			
 			assertEquals(1, result.get(0).getListRepObjectCount());
 			assertEquals(2, result.get(0).getListRepObject(0).getListOfObjectsCount());
-			assertEquals("thisisatitle", result.get(0).getListRepObject(0).getListOfObjects(0));
-			assertEquals("who_said_that", result.get(0).getListRepObject(0).getListOfObjects(1));
+			assertEquals("thisisatitle", result.get(0).getListRepObject(0).getListOfObjects(0).getTitle());
+			assertEquals("who_said_that", result.get(0).getListRepObject(0).getListOfObjects(1).getTitle());
 			
 		}
 		catch (Exception e) {

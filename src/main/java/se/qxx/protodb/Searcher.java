@@ -12,6 +12,7 @@ import com.google.protobuf.DynamicMessage;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.model.CaseInsensitiveMap;
+import se.qxx.protodb.model.Column;
 import se.qxx.protodb.model.ColumnResult;
 
 import com.google.protobuf.Descriptors.FieldDescriptor;
@@ -54,7 +55,8 @@ public class Searcher {
 		List<JoinRow> joinClause = new ArrayList<JoinRow>();
 
 		// add the rest standard joins
-		columns.append(Searcher.getColumnListForJoin(scanner, aliases, currentAlias, StringUtils.EMPTY, getBlobs,
+		columns.append(
+			Searcher.getColumnListForJoin(scanner, aliases, currentAlias, StringUtils.EMPTY, getBlobs,
 				travelComplexLinks, excludedObjects));
 
 		setMainTable(scanner, other, linkFieldName, columns, joinClause);
@@ -84,11 +86,17 @@ public class Searcher {
 							scanner.getBackend().getStartBracket(), scanner.getObjectName().toLowerCase(),
 							scanner.getBackend().getEndBracket())));
 
-			columns.append("L0", "L0", String.format("_%s_ID", other.getObjectName().toLowerCase()), "_thisID",
+			Column c1 = new Column("L0", "L0", String.format("_%s_ID", other.getObjectName().toLowerCase()), "_thisID",
 					scanner.getBackend());
 
-			columns.append("L0", "L0", String.format("_%s_ID", scanner.getObjectName().toLowerCase()), "_otherID",
+			Column c2 = new Column("L0", "L0", String.format("_%s_ID", scanner.getObjectName().toLowerCase()), "_otherID",
 					scanner.getBackend());
+
+			columns.getColumnList().add(c1);
+			columns.getColumnList().add(c2);
+			
+			columns.addDistinctColumns(c1);
+			columns.addDistinctColumns(c2);
 		} else {
 			joinClause.add(new JoinRow("", "A", String.format("FROM %s AS A ", scanner.getObjectName())));
 		}

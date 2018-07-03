@@ -28,6 +28,10 @@ public class ColumnResult {
 		distinctColumnList.clear();
 		distinctColumnList.addAll(this.getColumnList());	
 	}
+	
+	public void addDistinctColumns(Column c) {
+		distinctColumnList.add(c);
+	}
 
 //	public String getColumnListFinal() {
 //		return StringUtils.left(columnList, columnList.length() - 2);
