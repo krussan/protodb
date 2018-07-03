@@ -310,14 +310,14 @@ public class JoinResult {
 		return rows;
 	}
 
-	public <T extends Message> Map<Integer, List<Object>> getResultLink(T instance, ResultSet rs, boolean getBlobs, List<String> excludedObjects) throws SQLException, ProtoDBParserException {
-		Map<Integer, List<Object>> map = new HashMap<Integer, List<Object>>();
+	public <T extends Message> Map<Integer, List<T>> getResultLink(T instance, ResultSet rs, boolean getBlobs, List<String> excludedObjects) throws SQLException, ProtoDBParserException {
+		Map<Integer, List<T>> map = new HashMap<Integer, List<T>>();
 		
 		while (rs.next()) {
 			int parentID = rs.getInt("L0__thisID");
 			
 			if (!map.containsKey(parentID)) {
-				map.put(parentID, new ArrayList<Object>()); 
+				map.put(parentID, new ArrayList<T>()); 
 			}
 			
 			map.get(parentID).add(getResult(instance, rs, StringUtils.EMPTY, getBlobs, excludedObjects));
