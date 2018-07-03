@@ -1479,6 +1479,39 @@ public class ProtoDB {
 		}
 	}
 
+	public int executeScalar(String sql) throws Exception {
+		Connection conn = null;
+
+		int value = -1;
+		
+		try {
+			conn = this.initialize();
+			PreparedStatement prep = conn.prepareStatement(sql);
+			ResultSet rs = prep.executeQuery();
+			
+			if (rs.next() ) {  
+              value = rs.getInt(1);  
+            }
+		}
+		catch (SQLException | ClassNotFoundException e) {			
+			try {
+				if (conn != null)
+					conn.rollback();
+
+			} catch (SQLException sqlEx) {}
+
+			System.out.println("Exception in ProtoDB!");
+			e.printStackTrace();
+
+			throw e;
+		}		
+		finally {
+			this.disconnect(conn);
+		}
+		
+		return value;
+	}
+
 	public Connection getConnection() throws SQLException, ClassNotFoundException {
 		Class.forName(this.getDatabaseBackend().getDriver());
 	    return DriverManager.getConnection(this.getDatabaseBackend().getConnectionString());
