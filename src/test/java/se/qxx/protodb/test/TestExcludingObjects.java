@@ -134,9 +134,8 @@ public class TestExcludingObjects extends TestBase {
 		
 			TestDomain.ObjectOne b = result.get(0);
 			assertEquals(b.getOois(), 986);
+			assertFalse(b.hasTestOne());
 			
-			TestDomain.SimpleTest o1 = b.getTestOne();
-			assertFalse(o1.isInitialized());
 			
 		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException e) {
 			e.printStackTrace();
@@ -161,9 +160,7 @@ public class TestExcludingObjects extends TestBase {
 		
 			TestDomain.ObjectOne b = result.get(0);
 			assertEquals(b.getOois(), 986);
-			
-			TestDomain.SimpleTest o1 = b.getTestOne();
-			assertFalse(o1.isInitialized());
+			assertFalse(b.hasTestOne());
 			
 		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException | SearchOptionsNotInitializedException e) {
 			e.printStackTrace();
@@ -183,18 +180,12 @@ public class TestExcludingObjects extends TestBase {
 
 			assertNotNull(result);
 			assertEquals(666, result.getOtis());
-			
-			TestDomain.SimpleTest o2testOne = result.getTestOne();
-			assertFalse(o2testOne.isInitialized());
+			assertFalse(result.hasTestOne());
+			assertTrue(result.hasTestTwo());
 			
 			TestDomain.ObjectOne o2TestTwo = result.getTestTwo();
-			assertTrue(o2TestTwo.isInitialized());
-			
 			assertEquals(986, o2TestTwo.getOois());
-			
-			TestDomain.SimpleTest o1TestOne = o2TestTwo.getTestOne();
-			assertFalse(o1TestOne.isInitialized());
-			
+			assertFalse(o2TestTwo.hasTestOne());
 			
 			
 		} catch (SQLException | ClassNotFoundException e) {
@@ -223,17 +214,14 @@ public class TestExcludingObjects extends TestBase {
 			
 			assertEquals(666, result.get(0).getOtis());
 			
-			TestDomain.SimpleTest o2testOne = result.get(0).getTestOne();
-			assertFalse(o2testOne.isInitialized());
+			assertFalse(result.get(0).hasTestOne());
 			
+			assertTrue(result.get(0).hasTestTwo());
 			TestDomain.ObjectOne o2TestTwo = result.get(0).getTestTwo();
 			assertTrue(o2TestTwo.isInitialized());
 			
 			assertEquals(986, o2TestTwo.getOois());
-			
-			TestDomain.SimpleTest o1TestOne = o2TestTwo.getTestOne();
-			assertFalse(o1TestOne.isInitialized());
-			
+			assertFalse(o2TestTwo.hasTestOne());
 			
 			
 		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException | SearchOptionsNotInitializedException e) {

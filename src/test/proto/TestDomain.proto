@@ -1,3 +1,5 @@
+syntax = "proto3";
+
 package se.qxx.protodb.test;
 
 option java_package = "se.qxx.protodb.test";
@@ -11,88 +13,88 @@ option java_generic_services = true;
 //----------------------------------------------------------------------- Objects
 //---------------------------------------------------------------------------------------
 message SimpleTest {
-  required int32 ID = 1;
-  optional double dd = 2;
-  optional float ff = 3;
-  optional int32 is = 4;
-  optional int64 il = 5;
-  optional bool bb = 6;  
-  optional string ss = 7;
-  optional bytes by = 8;
+  int32 ID = 1;
+  double dd = 2;
+  float ff = 3;
+  int32 is = 4;
+  int64 il = 5;
+  bool bb = 6;  
+  string ss = 7;
+  bytes by = 8;
 }
 
 message SimpleTwo {
-  required int32 ID = 1;
-  optional string title = 2;
-  optional string director = 3;
+  int32 ID = 1;
+  string title = 2;
+  string director = 3;
 }
 
 message ObjectOne {
-  required int32 ID = 1;
-  optional SimpleTest testOne = 2;
-  optional int32 oois = 3;
+  int32 ID = 1;
+  SimpleTest testOne = 2;
+  int32 oois = 3;
 }
 
 message ObjectTwo {
-  required int32 ID = 1;
-  optional SimpleTest testOne = 2;
-  optional ObjectOne testTwo = 3;
-  optional int32 otis = 4;
+  int32 ID = 1;
+  SimpleTest testOne = 2;
+  ObjectOne testTwo = 3;
+  int32 otis = 4;
 }
 
 message ObjectThree {
-  required int32 ID = 1;
-  optional SimpleTest apa = 2;
-  optional ObjectTwo bepa = 3;
+  int32 ID = 1;
+  SimpleTest apa = 2;
+  ObjectTwo bepa = 3;
 }
 
 message RepSimpleList {
-  required int32 ID = 1;
+  int32 ID = 1;
   repeated string list_of_strings = 2;
-  required int32 happycamper = 3;
+  int32 happycamper = 3;
 }
 
 message RepObjectOne {
-  required int32 ID = 1;
+  int32 ID = 1;
   repeated SimpleTwo list_of_objects = 2;
-  required int32 happycamper = 3;
+  int32 happycamper = 3;
 }
 
 enum Rating {
-	NotMatched = 1;
-	ProbableMatch = 2;
-	PositiveMatch = 3;
-	ExactMatch = 4;
-	SubsExist = 5;
+	NotMatched = 0;
+	ProbableMatch = 1;
+	PositiveMatch = 2;
+	ExactMatch = 3;
+	SubsExist = 4;
 }
 
 message EnumOne {
-	required int32 ID = 1;
-	optional string title = 2;
-	required Rating rating = 3;
+	int32 ID = 1;
+	string title = 2;
+	Rating rating = 3;
 }
 
 message EnumOneList {
-	required int32 ID = 1;
-	optional string title = 2;
+	int32 ID = 1;
+	string title = 2;
 	repeated Rating list_of_ratings = 3;
-	optional string producer = 4;
+	string producer = 4;
 }
 
 message ObjectFour {
-	required int32 ID = 1;
-	optional string fourTitle = 2;
+	int32 ID = 1;
+	string fourTitle = 2;
 	repeated bytes fourImage = 3;
 }
 
 message ObjectFive {
-	required int32 ID = 1;
-	required string fourTitle = 2;
-	required bytes fourImage = 3;
+	int32 ID = 1;
+	string fourTitle = 2;
+	bytes fourImage = 3;
 }
 
 message RepObjectTwo {
-	required int32 ID = 1;
-	required string title = 2;
+	int32 ID = 1;
+	string title = 2;
 	repeated RepObjectOne listRepObject = 3;
 }

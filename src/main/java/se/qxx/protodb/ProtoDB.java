@@ -260,17 +260,8 @@ public class ProtoDB {
 		}
 	}
 
-	private Boolean idFieldExists(ProtoDBScanner scanner) {
-		Boolean idFieldFound = false;
-		for (FieldDescriptor field : scanner.getBasicFields()) {
-			if (field.getName().equalsIgnoreCase("ID") 
-					&& field.getJavaType() == JavaType.INT
-					&& field.isRequired()) {
-				idFieldFound = true;
-				break;
-			}
-		}
-		return idFieldFound;
+	private boolean idFieldExists(ProtoDBScanner scanner) {
+		return scanner.getIdField() != null;
 	}
 	
 	private void setupDatabase(EnumDescriptor fieldName, Connection conn) throws SQLException {
