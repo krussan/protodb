@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.apache.commons.lang3.StringUtils;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -18,11 +19,13 @@ import se.qxx.protodb.JoinResult;
 import se.qxx.protodb.ProtoDB;
 import se.qxx.protodb.ProtoDBFactory;
 import se.qxx.protodb.ProtoDBScanner;
+import se.qxx.protodb.SearchOptions;
 import se.qxx.protodb.Searcher;
 import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
+import se.qxx.protodb.exceptions.SearchOptionsNotInitializedException;
 import se.qxx.protodb.model.ProtoDBSearchOperator;
 import se.qxx.protodb.test.TestDomain.EnumOne;
 import se.qxx.protodb.test.TestDomain.Rating;
@@ -70,10 +73,10 @@ public class TestSearchEnum extends TestBase {
 		try {
 			List<TestDomain.EnumOne> result =
 				db.search(
-					TestDomain.EnumOne.getDefaultInstance(), 
-					"rating", 
-					"ExactMatch", 
-					ProtoDBSearchOperator.Equals);
+					SearchOptions.newBuilder(TestDomain.EnumOne.getDefaultInstance())
+					.addFieldName("rating")
+					.addSearchArgument("ExactMatch")
+					.addOperator(ProtoDBSearchOperator.Equals));
 			
 			// we should get one single result..
 			assertEquals(1, result.size());
@@ -81,7 +84,7 @@ public class TestSearchEnum extends TestBase {
 			// we should get three sub results
 			assertEquals(1, result.get(0).getID());
 
-		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException  | ProtoDBParserException e) {
+		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException  | ProtoDBParserException | SearchOptionsNotInitializedException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
@@ -100,13 +103,13 @@ public class TestSearchEnum extends TestBase {
 				+ "A.%1$sID%2$s AS A_ID, "
 				+ "A.%1$stitle%2$s AS A_title, "
 				+ "AA.%1$svalue%2$s AS A_rating "
-				+ "FROM   EnumOne AS A   "
+				+ "FROM EnumOne AS A "
 				+ "LEFT JOIN Rating AS AA "
-				+ " ON A._rating_ID = AA.ID ",
+				+ "ON A._rating_ID = AA.ID ",
 				db.getDatabaseBackend().getStartBracket(),
 				db.getDatabaseBackend().getEndBracket());
 		
-		assertEquals(expected, result.getJoinClause());
+		assertEquals(expected, result.getSql());
 	}
 	
 }

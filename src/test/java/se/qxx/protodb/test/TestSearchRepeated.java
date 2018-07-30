@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.apache.commons.lang3.StringUtils;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -18,11 +19,13 @@ import se.qxx.protodb.JoinResult;
 import se.qxx.protodb.ProtoDB;
 import se.qxx.protodb.ProtoDBFactory;
 import se.qxx.protodb.ProtoDBScanner;
+import se.qxx.protodb.SearchOptions;
 import se.qxx.protodb.Searcher;
 import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
+import se.qxx.protodb.exceptions.SearchOptionsNotInitializedException;
 import se.qxx.protodb.model.ProtoDBSearchOperator;
 import se.qxx.protodb.test.TestDomain.RepObjectOne;
 import se.qxx.protodb.test.TestDomain.SimpleTwo;
@@ -81,10 +84,10 @@ public class TestSearchRepeated extends TestBase {
 		try {
 			List<TestDomain.RepObjectOne> result =
 				db.search(
-					TestDomain.RepObjectOne.getDefaultInstance(), 
-					"list_of_objects.title", 
-					"who_said_that", 
-					ProtoDBSearchOperator.Equals);
+					SearchOptions.newBuilder(TestDomain.RepObjectOne.getDefaultInstance())
+					 .addFieldName("list_of_objects.title")
+					 .addSearchArgument("who_said_that")
+					 .addOperator(ProtoDBSearchOperator.Equals));
 			
 			
 			// we should get one single result..
@@ -93,7 +96,7 @@ public class TestSearchRepeated extends TestBase {
 			// we should get three sub results
 			assertEquals(2, result.get(0).getListOfObjectsList().size());
 
-		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException e) {
+		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException | SearchOptionsNotInitializedException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
@@ -126,15 +129,12 @@ public class TestSearchRepeated extends TestBase {
 					"SELECT DISTINCT "
 					+ "A.%1$sID%2$s AS A_ID, "
 					+ "A.%1$shappycamper%2$s AS A_happycamper "
-					+ "FROM   RepObjectOne AS A   "
-					+ "LEFT JOIN RepObjectOneSimpleTwo_Listofobjects AS L1 "
-					+ " ON L1._repobjectone_ID = A.ID "
-					+ "LEFT JOIN SimpleTwo AS AA "
-					+ " ON L1._simpletwo_ID = AA.ID ",
+					+ "FROM RepObjectOne AS A ",
 					db.getDatabaseBackend().getStartBracket(),
 					db.getDatabaseBackend().getEndBracket());
 			
-			assertEquals(expected, result.getJoinClause());
+			assertEquals(expected, result.getSql());
+
 		}
 		catch (Exception e) {
 			e.printStackTrace();
@@ -147,11 +147,10 @@ public class TestSearchRepeated extends TestBase {
 		try {
 			List<TestDomain.RepObjectOne> result =
 				db.search(
-					TestDomain.RepObjectOne.getDefaultInstance(), 
-					"", 
-					"%", 
-					ProtoDBSearchOperator.Like,
-					true);
+					SearchOptions.newBuilder(TestDomain.RepObjectOne.getDefaultInstance())
+					.addSearchArgument("%")
+					.addOperator(ProtoDBSearchOperator.Like)
+					.setShallow(true));
 			
 			assertNotNull(result);
 			
@@ -161,7 +160,7 @@ public class TestSearchRepeated extends TestBase {
 			// we should get three sub results
 			assertEquals(0, result.get(0).getListOfObjectsList().size());
 
-		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException  e) {
+		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException | SearchOptionsNotInitializedException  e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
@@ -172,16 +171,15 @@ public class TestSearchRepeated extends TestBase {
 		try {
 			List<TestDomain.RepObjectOne> result =
 				db.search(
-					TestDomain.RepObjectOne.getDefaultInstance(), 
-					"", 
-					"%", 
-					ProtoDBSearchOperator.Like);
+					SearchOptions.newBuilder(TestDomain.RepObjectOne.getDefaultInstance())
+					.addSearchArgument("%")
+					.addOperator(ProtoDBSearchOperator.Like));
 			
 			// we should get two single result and not three as the join will create duplicates
 			// of the parent item. This is not wanted.
 			assertEquals(2, result.size());
 
-		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException e) {
+		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException | SearchOptionsNotInitializedException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}

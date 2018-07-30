@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.apache.commons.lang3.StringUtils;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -20,11 +21,13 @@ import se.qxx.protodb.JoinResult;
 import se.qxx.protodb.ProtoDB;
 import se.qxx.protodb.ProtoDBFactory;
 import se.qxx.protodb.ProtoDBScanner;
+import se.qxx.protodb.SearchOptions;
 import se.qxx.protodb.Searcher;
 import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
+import se.qxx.protodb.exceptions.SearchOptionsNotInitializedException;
 import se.qxx.protodb.model.ProtoDBSearchOperator;
 import se.qxx.protodb.test.TestDomain.EnumOne;
 import se.qxx.protodb.test.TestDomain.Rating;
@@ -84,20 +87,24 @@ public class TestSearchBlob extends TestBase{
 				+ "A.%1$sbb%2$s AS A_bb, "
 				+ "A.%1$sss%2$s AS A_ss, "
 				+ "AA.%1$sdata%2$s AS A_by "
-				+ "FROM   SimpleTest AS A   "
+				+ "FROM SimpleTest AS A "
 				+ "LEFT JOIN BlobData AS AA "
-				+ " ON A._by_ID = AA.ID ",
+				+ "ON A._by_ID = AA.ID ",
 				db.getDatabaseBackend().getStartBracket(),
 				db.getDatabaseBackend().getEndBracket());
 		
-		assertEquals(expected, result.getJoinClause());
+		assertEquals(expected, result.getSql());
 	}
 	
 	@Test
-	public void TestBlobPopulator() throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
+	public void TestBlobPopulator() throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException, SearchOptionsNotInitializedException {
 		TestDomain.SimpleTest o1 = TestDomain.SimpleTest.getDefaultInstance();
 
-		List<TestDomain.SimpleTest> result = db.search(o1, "ss", "ThisIsATest", ProtoDBSearchOperator.Equals);
+		List<TestDomain.SimpleTest> result = db.search(
+				SearchOptions.newBuilder(o1)
+				.addFieldName("ss")
+				.addSearchArgument("ThisIsATest")
+				.addOperator(ProtoDBSearchOperator.Equals));
 		
 		assertEquals(1, result.size());
 		assertEquals(3, result.get(0).getBy().size());

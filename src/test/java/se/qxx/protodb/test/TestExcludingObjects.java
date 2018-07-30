@@ -19,10 +19,12 @@ import com.google.protobuf.ByteString;
 
 import se.qxx.protodb.ProtoDB;
 import se.qxx.protodb.ProtoDBFactory;
+import se.qxx.protodb.SearchOptions;
 import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
+import se.qxx.protodb.exceptions.SearchOptionsNotInitializedException;
 import se.qxx.protodb.model.ProtoDBSearchOperator;
 import se.qxx.protodb.test.TestDomain.ObjectOne;
 import se.qxx.protodb.test.TestDomain.ObjectTwo;
@@ -133,9 +135,8 @@ public class TestExcludingObjects extends TestBase {
 		
 			TestDomain.ObjectOne b = result.get(0);
 			assertEquals(b.getOois(), 986);
+			assertFalse(b.hasTestOne());
 			
-			TestDomain.SimpleTest o1 = b.getTestOne();
-			assertFalse(o1.isInitialized());
 			
 		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException e) {
 			e.printStackTrace();
@@ -146,27 +147,23 @@ public class TestExcludingObjects extends TestBase {
 	@Test
 	public void TestExcludingSearch() {	
 		try {
-			List<String> excludedObjects = new ArrayList<String>();
-			excludedObjects.add("testOne");
-			
+
 			List<TestDomain.ObjectOne> result =
 				db.search(
-					TestDomain.ObjectOne.getDefaultInstance(), 
-					"testOne.ss", 
-					"ThisIsATestOfObjectOne", 
-					ProtoDBSearchOperator.Equals,
-					excludedObjects);
+					SearchOptions.newBuilder(TestDomain.ObjectOne.getDefaultInstance())
+					.addFieldName("testOne.ss")
+					.addSearchArgument("ThisIsATestOfObjectOne")
+					.addOperator(ProtoDBSearchOperator.Equals)
+					.addExcludedObject("testOne"));
 			
 			// we should get one single result..
 			assertEquals(1, result.size());
 		
 			TestDomain.ObjectOne b = result.get(0);
 			assertEquals(b.getOois(), 986);
+			assertFalse(b.hasTestOne());
 			
-			TestDomain.SimpleTest o1 = b.getTestOne();
-			assertFalse(o1.isInitialized());
-			
-		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException e) {
+		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException | SearchOptionsNotInitializedException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
@@ -184,18 +181,12 @@ public class TestExcludingObjects extends TestBase {
 
 			assertNotNull(result);
 			assertEquals(666, result.getOtis());
-			
-			TestDomain.SimpleTest o2testOne = result.getTestOne();
-			assertFalse(o2testOne.isInitialized());
+			assertFalse(result.hasTestOne());
+			assertTrue(result.hasTestTwo());
 			
 			TestDomain.ObjectOne o2TestTwo = result.getTestTwo();
-			assertTrue(o2TestTwo.isInitialized());
-			
 			assertEquals(986, o2TestTwo.getOois());
-			
-			TestDomain.SimpleTest o1TestOne = o2TestTwo.getTestOne();
-			assertFalse(o1TestOne.isInitialized());
-			
+			assertFalse(o2TestTwo.hasTestOne());
 			
 			
 		} catch (SQLException | ClassNotFoundException e) {
@@ -212,31 +203,29 @@ public class TestExcludingObjects extends TestBase {
 			excludedObjects.add("testOne");
 			
 			List<ObjectTwo> result = db.search(
-					TestDomain.ObjectTwo.getDefaultInstance(), 
-					"ID", 
-					1, 
-					ProtoDBSearchOperator.Equals,
-					excludedObjects);
+					SearchOptions.newBuilder(TestDomain.ObjectTwo.getDefaultInstance())
+					.addFieldName("ID")
+					.addSearchArgument(1)
+					.addOperator(ProtoDBSearchOperator.Equals)
+					.addExcludedObject("testTwo.testOne")
+					.addExcludedObject("testOne"));
 
 			assertNotNull(result);
 			assertEquals(1, result.size());
 			
 			assertEquals(666, result.get(0).getOtis());
 			
-			TestDomain.SimpleTest o2testOne = result.get(0).getTestOne();
-			assertFalse(o2testOne.isInitialized());
+			assertFalse(result.get(0).hasTestOne());
 			
+			assertTrue(result.get(0).hasTestTwo());
 			TestDomain.ObjectOne o2TestTwo = result.get(0).getTestTwo();
 			assertTrue(o2TestTwo.isInitialized());
 			
 			assertEquals(986, o2TestTwo.getOois());
-			
-			TestDomain.SimpleTest o1TestOne = o2TestTwo.getTestOne();
-			assertFalse(o1TestOne.isInitialized());
+			assertFalse(o2TestTwo.hasTestOne());
 			
 			
-			
-		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException e) {
+		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException | SearchOptionsNotInitializedException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}

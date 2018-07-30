@@ -18,10 +18,12 @@ import com.google.protobuf.ByteString;
 
 import se.qxx.protodb.ProtoDB;
 import se.qxx.protodb.ProtoDBFactory;
+import se.qxx.protodb.SearchOptions;
 import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
+import se.qxx.protodb.exceptions.SearchOptionsNotInitializedException;
 import se.qxx.protodb.model.ProtoDBSearchOperator;
 import se.qxx.protodb.test.TestDomain.ObjectFive;
 import se.qxx.protodb.test.TestDomain.ObjectFour;
@@ -79,10 +81,10 @@ public class TestSelectNoBlobs extends TestBase {
 		try {
 			db.setPopulateBlobs(false);
 			List<ObjectFive> list = db.search(
-					ObjectFive.getDefaultInstance(), 
-					"fourTitle", 
-					"%", 
-					ProtoDBSearchOperator.Like);
+					SearchOptions.newBuilder(ObjectFive.getDefaultInstance())
+						.addFieldName("fourTitle")
+						.addOperator(ProtoDBSearchOperator.Like)
+						.addSearchArgument("%"));
 	
 			
 			assertNotNull(list);
@@ -92,7 +94,7 @@ public class TestSelectNoBlobs extends TestBase {
 			assertEquals("this is a repeated blob filler", list.get(0).getFourTitle());
 			assertEquals(ByteString.EMPTY, list.get(0).getFourImage());
 			
-		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException e) {
+		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException | SearchOptionsNotInitializedException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}

@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.apache.commons.lang3.StringUtils;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -19,11 +20,13 @@ import se.qxx.protodb.ProtoDB;
 import se.qxx.protodb.ProtoDBFactory;
 import se.qxx.protodb.ProtoDBScanner;
 import se.qxx.protodb.ProtoDBSort;
+import se.qxx.protodb.SearchOptions;
 import se.qxx.protodb.Searcher;
 import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
+import se.qxx.protodb.exceptions.SearchOptionsNotInitializedException;
 import se.qxx.protodb.model.ProtoDBSearchOperator;
 import se.qxx.protodb.test.TestDomain.RepObjectOne;
 import se.qxx.protodb.test.TestDomain.SimpleTwo;
@@ -60,11 +63,12 @@ public class TestSearchLimitOffset extends TestBase {
 
 			List<TestDomain.RepObjectOne> result =
 				db.search(
-					TestDomain.RepObjectOne.getDefaultInstance(), 
-					"", 
-					"%", 
-					ProtoDBSearchOperator.Like,
-					10, 0);
+					SearchOptions.newBuilder(TestDomain.RepObjectOne.getDefaultInstance())
+						.addSearchArgument("%")
+						.addOperator(ProtoDBSearchOperator.Like)
+						.setOffset(0)
+						.setNumberOfResults(10));
+
 			
 			// we should get 10 results
 			assertEquals(10, result.size());
@@ -77,11 +81,11 @@ public class TestSearchLimitOffset extends TestBase {
 
 			
 			result = db.search(
-						TestDomain.RepObjectOne.getDefaultInstance(), 
-						"", 
-						"%", 
-						ProtoDBSearchOperator.Like,
-						10, 30);
+					SearchOptions.newBuilder(TestDomain.RepObjectOne.getDefaultInstance())
+					.addSearchArgument("%")
+					.addOperator(ProtoDBSearchOperator.Like)
+					.setOffset(30)
+					.setNumberOfResults(10));
 
 
 			// we should get 10 results
@@ -93,7 +97,7 @@ public class TestSearchLimitOffset extends TestBase {
 			// the last should be number 40
 			assertEquals(40, result.get(9).getHappycamper());
 
-		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException  e) {
+		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException | SearchOptionsNotInitializedException  e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}		
@@ -127,12 +131,8 @@ public class TestSearchLimitOffset extends TestBase {
 					"SELECT DISTINCT "
 					+ "A.%1$sID%2$s AS A_ID, "
 					+ "A.%1$shappycamper%2$s AS A_happycamper "
-					+ "FROM   RepObjectOne AS A   "
-					+ "LEFT JOIN RepObjectOneSimpleTwo_Listofobjects AS L1 "
-					+ " ON L1._repobjectone_ID = A.ID "
-					+ "LEFT JOIN SimpleTwo AS AA "
-					+ " ON L1._simpletwo_ID = AA.ID "
-					+ "  LIMIT 10 "
+					+ "FROM RepObjectOne AS A "
+					+ "LIMIT 10 "
 					+ "OFFSET 1",
 					db.getDatabaseBackend().getStartBracket(),
 					db.getDatabaseBackend().getEndBracket());
@@ -162,15 +162,14 @@ public class TestSearchLimitOffset extends TestBase {
 
 			List<TestDomain.RepObjectOne> result =
 				db.search(
-					TestDomain.RepObjectOne.getDefaultInstance(), 
-					"", 
-					"%", 
-					ProtoDBSearchOperator.Like,
-					10, 
-					0,
-					"happycamper",
-					ProtoDBSort.Desc);
-			
+						SearchOptions.newBuilder(TestDomain.RepObjectOne.getDefaultInstance())
+						.addSearchArgument("%")
+						.addOperator(ProtoDBSearchOperator.Like)
+						.setOffset(0)
+						.setNumberOfResults(10)
+						.setSortField("happycamper")
+						.setSortOrder(ProtoDBSort.Desc));
+
 			// we should get 10 results
 			assertEquals(10, result.size());
 			
@@ -180,7 +179,7 @@ public class TestSearchLimitOffset extends TestBase {
 			// the last should be number 10
 			assertEquals(40, result.get(9).getHappycamper());
 
-		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException  e) {
+		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException | SearchOptionsNotInitializedException  e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}		

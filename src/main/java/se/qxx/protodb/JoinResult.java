@@ -7,6 +7,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,22 +26,31 @@ import com.google.protobuf.Message.Builder;
 import se.qxx.protodb.backend.DatabaseBackend;
 import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
+import se.qxx.protodb.model.CaseInsensitiveMap;
+import se.qxx.protodb.model.Column;
+import se.qxx.protodb.model.ColumnResult;
 import se.qxx.protodb.model.ProtoDBSearchOperator;
+import se.qxx.protodb.model.SearchField;
+import se.qxx.protodb.model.WhereClause;
 
 public class JoinResult {
 
-	private HashMap<String, String> aliases = new HashMap<String,String>();
-	private String joinClause = StringUtils.EMPTY;
-	private List<String> whereClauses = new ArrayList<String>();
-	private List<Object> whereParameters = new ArrayList<Object>();
+	private CaseInsensitiveMap aliases = new CaseInsensitiveMap();
+	private List<JoinRow> joinClause = new ArrayList<JoinRow>();
+	private List<WhereClause> whereClauses = new ArrayList<WhereClause>();
+	
 	private boolean hasComplexJoins = false;
 	private DatabaseBackend backend = null;
 	private String sortSql = StringUtils.EMPTY;
+	private ColumnResult columnResult;
 
 	int nrOfResults = 0;
 	int offset = 0;
-	
-	
+
+	public ColumnResult getColumnResult() {
+		return columnResult;
+	}
+
 	public int getNrOfResults() {
 		return nrOfResults;
 	}
@@ -80,104 +90,92 @@ public class JoinResult {
 	public void setSortSql(String sortSql) {
 		this.sortSql = sortSql;
 	}
+	
+	public void setColumnResult(ColumnResult columnResult) {
+		this.columnResult = columnResult;
+	}
 
-	public JoinResult(String joinClause, HashMap<String, String> aliases, boolean hasComplexJoins, int nrOfResults, int offset, DatabaseBackend backend) {
+	public JoinResult(
+			List<JoinRow> joinClause,
+			ColumnResult columnResult,
+			CaseInsensitiveMap aliases, 
+			boolean hasComplexJoins, 
+			int nrOfResults, 
+			int offset,
+			DatabaseBackend backend) {
+		
 		this.setAliases(aliases);
 		this.setJoinClause(joinClause);
 		this.setComplexJoins(hasComplexJoins);
 		this.setNrOfResults(nrOfResults);
 		this.setOffset(offset);
 		this.setBackend(backend);
+		this.setColumnResult(columnResult);
 	}
 
-	public HashMap<String, String> getAliases() {
+	public CaseInsensitiveMap getAliases() {
 		return aliases;
 	}
 
-	private void setAliases(HashMap<String, String> aliases) {
+	private void setAliases(CaseInsensitiveMap aliases) {
 		this.aliases = aliases;
 	}
 
-	public String getJoinClause() {
+	public List<JoinRow> getJoinClause() {
 		return joinClause;
 	}
 
-	public void setJoinClause(String joinClause) {
+	public void setJoinClause(List<JoinRow> joinClause) {
 		this.joinClause = joinClause;
 	}
 	
 	public String getWhereClause() {
 		if (this.getWhereClauses().isEmpty())
 			return StringUtils.EMPTY;
-		else
-			return String.format(" WHERE %s",StringUtils.join(this.getWhereClauses(), " AND "));
-	}
-	
-	private List<String> getWhereClauses() {
-		return whereClauses;
-	}
-
-	private List<Object> getWhereParameters() {
-		return whereParameters;
-	}
-
-	public void addLinkWhereClause(List<Integer> parentIDs, ProtoDBScanner other) {
-		String listOfIds = StringUtils.join(parentIDs, ",");
-		
-		this.getWhereClauses().add(String.format("L0._" + other.getObjectName().toLowerCase() + "_ID IN (%s)", 
-				listOfIds));						
-	}
-	
-	public FieldDescriptor getWhereField(ProtoDBScanner scanner, String searchField) throws SearchFieldNotFoundException {
-		// We need to get the last field in the sequence and check if that field is an enum field
-		boolean isRootField = !StringUtils.contains(searchField, ".");
-		
-		if (isRootField) {
-			FieldDescriptor f = scanner.getFieldByName(searchField);
-			if (f == null)
-				throw new SearchFieldNotFoundException(searchField, scanner.getObjectName());
+		else {
+			StringBuilder sb = new StringBuilder(" WHERE ");
+			for (WhereClause wc : this.getWhereClauses() ) {
+				sb.append(String.format("%s AND ", wc.getSql()));
+			}
 			
-			return f;
-			
-		} else {
-			String nextField = StringUtils.substringBefore(searchField, ".");
-			String tail = StringUtils.substringAfter(searchField, ".");
-			
-			FieldDescriptor nf = scanner.getFieldByName(nextField);
-			DynamicMessage obj = DynamicMessage.getDefaultInstance(nf.getMessageType());
-			ProtoDBScanner other = new ProtoDBScanner(obj, scanner.getBackend());
-			
-			return getWhereField(other, tail);
-
+			String sql = sb.toString();
+			return StringUtils.left(sql, sql.length() - 4);
 		}
 	}
 	
+	private List<WhereClause> getWhereClauses() {
+		return whereClauses;
+	}
+
+//	private List<Object> getWhereParameters() {
+//		return whereParameters;
+//	}
+
+	public void addLinkWhereClause(List<Integer> parentIDs, ProtoDBScanner other) {
+		this.getWhereClauses().add(
+				WhereClause.createLink(other, parentIDs));
+	}
+	
+	
 	public void addWhereClause(ProtoDBScanner scanner, String searchField, Object value, ProtoDBSearchOperator op) throws SearchFieldNotFoundException {
 		if (!StringUtils.isEmpty(searchField)) {
-
-			SearchField field = findSearchField(scanner, searchField);
+			WhereClause clause = 
+					WhereClause.create(
+							scanner, 
+							this.getAliases(),
+							searchField.toLowerCase(), 
+							op, 
+							value);
 			
-			if (op == ProtoDBSearchOperator.In) {
-				this.getWhereClauses().add(
-						String.format("%s IN (%s)", 
-								field.getAliasFieldName(),
-								value));				
-			}
-			else {
-				this.getWhereClauses().add(
-						String.format("%s %s ?", 
-								field.getAliasFieldName(),
-								(op == ProtoDBSearchOperator.Like ? "LIKE" : "=")));
-				
-				this.getWhereParameters().add(value);
-			}
+			if (clause != null)
+				this.getWhereClauses().add(clause);
 			
 		}
 	}
 	
 	public void addSortOrder(ProtoDBScanner scanner, String sortField, ProtoDBSort sortOrder) throws SearchFieldNotFoundException {
 		if (!StringUtils.isEmpty(sortField)) {
-			SearchField field = findSearchField(scanner, sortField);
+			SearchField field = SearchField.find(scanner, this.getAliases(), sortField);
 			this.setSortSql(getSortClause(field.getAliasFieldName(), sortOrder));
 		}
 	}
@@ -194,36 +192,33 @@ public class JoinResult {
 		return "";
 	}
 
+		
+	private String getJoinSql() {
+		String joinSql = StringUtils.EMPTY;
+		for (JoinRow row : this.getJoinClause()) {
+			if (row.isIncluded())
+				joinSql += row.getJoinCluase();
+		}
+		
+		return joinSql;
+	}
 	
-	public SearchField findSearchField(ProtoDBScanner scanner, String searchField) throws SearchFieldNotFoundException {
-		boolean isRootField = !StringUtils.contains(searchField, ".");
-		FieldDescriptor whereField = getWhereField(scanner, searchField);
-		boolean isEnumField = whereField.getJavaType() == JavaType.ENUM;
-		
-		String alias = StringUtils.EMPTY;
-		String field = StringUtils.EMPTY;
-		
-		if (isEnumField) {
-			String key = "." + searchField;
-			field = "value";
-			alias = this.getAliases().get(key);				
-		}
-		else if (isRootField) {
-			alias = "A";
-			field = searchField;
-		}
-		else {
-			String key = "." + StringUtils.substringBeforeLast(searchField, ".");
-			field = StringUtils.substringAfterLast(searchField, ".");
-			alias = this.getAliases().get(key);
-		}
-		
-		return new SearchField(field, alias);
+	private String getResultSql() {
+		String sql = String.format("SELECT %s%s %s"
+				, this.hasComplexJoins() ? "DISTINCT " : ""
+				, this.getColumnResult().getSql()
+				, this.getJoinSql());
 
+		return sql;
 	}
 	
 	public String getSql() {
-		String sql = String.format("%s %s",this.getJoinClause(), this.getWhereClause());
+	
+		// Filter the joinclauses
+		filterJoins();
+		
+		// create output
+		String sql = String.format("%s %s",this.getResultSql(), this.getWhereClause());
 		
 		if (!StringUtils.isEmpty(this.getSortSql()))
 			sql += this.getSortSql();
@@ -235,30 +230,94 @@ public class JoinResult {
 			}
 		}
 		
-		
-		
-		return sql;
+		return StringUtils.replacePattern(sql, "\\s+", " ");
 	}
 	
 	public PreparedStatement getStatement(Connection conn) throws SQLException {
 		PreparedStatement prep = conn.prepareStatement(this.getSql());
 		
-		for(int i = 0; i<this.getWhereParameters().size(); i++) {
-			Object o = this.getWhereParameters().get(i);
-			prep.setObject(i + 1, o);
+		for(int i = 0; i<this.getWhereClauses().size(); i++) {
+			WhereClause wc = this.getWhereClauses().get(i);
+			
+			if (wc.getOperator() != ProtoDBSearchOperator.In)
+				prep.setObject(i + 1, wc.getValue());
+			
 		}
 		
 		return prep;
 	}
 	
-	public <T extends Message> Map<Integer, List<Object>> getResultLink(T instance, ResultSet rs, boolean getBlobs, List<String> excludedObjects) throws SQLException, ProtoDBParserException {
-		Map<Integer, List<Object>> map = new HashMap<Integer, List<Object>>();
+	public void filterJoins() {
+		// get a list of actual aliases used in the select
+		List<String> columnAliasesIncluded = getAliasIncluded();
+		
+		// Add list of where clauses included
+		columnAliasesIncluded.addAll(getWhereAliasIncluded());
+		
+		// get a list of aliases needed (include all joins in path if there is a hierarchy)
+		for (JoinRow r : this.getJoinClause()) {
+			setIncluded(columnAliasesIncluded, this.getJoinClause(), r, 0);
+		}
+	}
+	
+	private List<String> getWhereAliasIncluded() {
+		List<String> result = new ArrayList<String>();
+		for (WhereClause wc : this.getWhereClauses()) {
+			String alias = wc.getSearchField().getAlias();
+			if (!result.contains(alias))
+				result.add(alias);
+		}
+		
+		return result;
+	}
+	
+	private List<String> getAliasIncluded() {
+		List<String> result = new ArrayList<String>();
+		for (Column c : this.getColumnResult().getColumns()) {
+			String alias = c.getOtherAlias();
+			if (!result.contains(alias))
+				result.add(alias);
+		}
+		
+
+		
+		return result;
+	}
+	
+	private void setIncluded(List<String> aliasesIncluded, List<JoinRow> allRows, JoinRow r, int level) {
+		if (aliasesIncluded.contains(r.getAlias()) || level > 0) {
+			r.setIncluded(true);	
+			
+			List<JoinRow> parents = getParentRow(allRows, r);
+			for (JoinRow p : parents) {
+				if (p != null)
+					setIncluded(aliasesIncluded, allRows, p, level + 1);
+			}
+		}
+		
+	}
+	
+
+	private List<JoinRow> getParentRow(List<JoinRow> allRows, JoinRow r) {
+		String aliasToFind = r.getParentAlias();
+		List<JoinRow> rows = new ArrayList<JoinRow>();
+		
+		for (JoinRow current : allRows) {
+			if (StringUtils.equalsIgnoreCase(aliasToFind, current.getAlias()))
+				rows.add(current);
+		}
+		
+		return rows;
+	}
+
+	public <T extends Message> Map<Integer, List<T>> getResultLink(T instance, ResultSet rs, boolean getBlobs, List<String> excludedObjects) throws SQLException, ProtoDBParserException {
+		Map<Integer, List<T>> map = new HashMap<Integer, List<T>>();
 		
 		while (rs.next()) {
-			int parentID = rs.getInt("__thisID");
+			int parentID = rs.getInt("L0__thisID");
 			
 			if (!map.containsKey(parentID)) {
-				map.put(parentID, new ArrayList<Object>()); 
+				map.put(parentID, new ArrayList<T>()); 
 			}
 			
 			map.get(parentID).add(getResult(instance, rs, StringUtils.EMPTY, getBlobs, excludedObjects));

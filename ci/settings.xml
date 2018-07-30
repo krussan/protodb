@@ -3,7 +3,6 @@
     <profile>
       <id>travis-build</id>
       <properties>
-        <protoc.exec>${env.TRAVIS_BUILD_DIR}/ci/protoc</protoc.exec>
       </properties>
     </profile>
   </profiles>
