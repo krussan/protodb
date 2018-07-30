@@ -258,17 +258,15 @@ public class TestExcludingObjects extends TestBase {
 	@Test
 	public void TestExcludingBlobSearch() {
 		try {
-			List<String> excludedObjects = new ArrayList<String>();
-			excludedObjects.add("testOne.by");
 			
 			List<TestDomain.ObjectOne> result =
 				db.search(
-					TestDomain.ObjectOne.getDefaultInstance(), 
-					"testOne.ss", 
-					"ThisIsATestOfObjectOne", 
-					ProtoDBSearchOperator.Equals,
-					excludedObjects);
-			
+					SearchOptions.newBuilder(TestDomain.ObjectOne.getDefaultInstance())
+						.addFieldName("testOne.ss")
+						.addSearchArgument("ThisIsATestOfObjectOne")
+						.addOperator(ProtoDBSearchOperator.Equals)
+						.addExcludedObject("testOne.by"));
+				
 			// we should get one single result..
 			assertEquals(1, result.size());
 		
@@ -279,7 +277,7 @@ public class TestExcludingObjects extends TestBase {
 			ByteString data = o1.getBy();
 			assertTrue(data.isEmpty());
 			
-		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException e) {
+		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException | SearchOptionsNotInitializedException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
