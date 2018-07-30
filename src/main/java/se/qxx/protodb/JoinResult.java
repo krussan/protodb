@@ -310,7 +310,7 @@ public class JoinResult {
 		return rows;
 	}
 
-	public <T extends Message> Map<Integer, List<T>> getResultLink(T instance, ResultSet rs, boolean getBlobs, List<String> e) throws SQLException, ProtoDBParserException {
+	public <T extends Message> Map<Integer, List<T>> getResultLink(T instance, ResultSet rs, boolean getBlobs, List<String> excludedObjects) throws SQLException, ProtoDBParserException {
 		Map<Integer, List<T>> map = new HashMap<Integer, List<T>>();
 		
 		while (rs.next()) {
@@ -338,8 +338,7 @@ public class JoinResult {
 				getResult(instance, 
 						rs, 
 						StringUtils.EMPTY, 
-						getBlobs, 
-						excludedObjects));
+						getBlobs, excludedObjects));
 		}
 		
 		return result;
