@@ -193,7 +193,8 @@ public class Searcher {
 					joinClause.addAll(getJoinClauseRepeated(scanner, other, f.getName(), aliases, linkTableIterator,
 							fieldHierarchy, hierarchy));
 					joinClause.addAll(getJoinClause(scanner, other, f.getName(), aliases, linkTableIterator,
-							fieldHierarchy, hierarchy, travelComplexLinks, getBlobs, excludedObjects));
+							fieldHierarchy, hierarchy, travelComplexLinks, getBlobs, 
+							Populator.stripExcludedFields(f.getName(), excludedObjects)));
 				}
 			}
 		}
@@ -207,7 +208,8 @@ public class Searcher {
 
 				joinClause.addAll(getJoinClauseSimple(scanner, other, f.getName(), aliases, fieldHierarchy, hierarchy));
 				joinClause.addAll(getJoinClause(scanner, other, f.getName(), aliases, linkTableIterator, fieldHierarchy,
-						hierarchy, travelComplexLinks, getBlobs, excludedObjects));
+						hierarchy, travelComplexLinks, getBlobs, 
+						Populator.stripExcludedFields(f.getName(), excludedObjects)));
 			} else if (f.getJavaType() == JavaType.ENUM) {
 				joinClause.addAll(getJoinClauseEnum(f.getName(), aliases, fieldHierarchy, hierarchy));
 			}
