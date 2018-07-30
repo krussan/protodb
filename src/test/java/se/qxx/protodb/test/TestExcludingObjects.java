@@ -28,6 +28,7 @@ import se.qxx.protodb.exceptions.SearchOptionsNotInitializedException;
 import se.qxx.protodb.model.ProtoDBSearchOperator;
 import se.qxx.protodb.test.TestDomain.ObjectOne;
 import se.qxx.protodb.test.TestDomain.ObjectTwo;
+import se.qxx.protodb.test.TestDomain.RepObjectOne;
 import se.qxx.protodb.test.TestDomain.SimpleTest;
 
 @RunWith(Parameterized.class)
@@ -254,4 +255,57 @@ public class TestExcludingObjects extends TestBase {
 
 	}
 	
+	@Test
+	public void TestExcludingBlobSearch() {
+		try {
+			
+			List<TestDomain.ObjectOne> result =
+				db.search(
+					SearchOptions.newBuilder(TestDomain.ObjectOne.getDefaultInstance())
+						.addFieldName("testOne.ss")
+						.addSearchArgument("ThisIsATestOfObjectOne")
+						.addOperator(ProtoDBSearchOperator.Equals)
+						.addExcludedObject("testOne.by"));
+				
+			// we should get one single result..
+			assertEquals(1, result.size());
+		
+			TestDomain.ObjectOne b = result.get(0);
+			assertEquals(b.getOois(), 986);
+			
+			TestDomain.SimpleTest o1 = b.getTestOne();
+			ByteString data = o1.getBy();
+			assertTrue(data.isEmpty());
+			
+		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException | SearchOptionsNotInitializedException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
+		
+	}
+	
+
+	@Test
+	public void TestExcludeOnSubObjectsSearch() {
+		try {
+			List<RepObjectOne> result = db.search(
+				SearchOptions.newBuilder(TestDomain.RepObjectOne.getDefaultInstance())
+					.addFieldName("ID")
+					.addSearchArgument(1)
+					.addOperator(ProtoDBSearchOperator.Equals)
+					.addExcludedObject("list_of_objects"));
+			
+			assertNotNull(result);
+			assertEquals(1, result.size());
+			
+			assertEquals(0, result.get(0).getListOfObjectsCount());
+
+		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException | SearchOptionsNotInitializedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
+
+	}
+
 }

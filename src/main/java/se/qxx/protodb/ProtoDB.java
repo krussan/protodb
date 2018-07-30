@@ -430,7 +430,7 @@ public class ProtoDB {
 				for (T message : listOfObjects ) 
 					ids.add((int)message.getField(scanner.getIdField()));
 				
-				listOfObjects = getDeepCopy(listOfObjects, populateBlobs, excludedObjects, conn, scanner, ids);
+				listOfObjects = getDeepCopy(conn, listOfObjects, populateBlobs, excludedObjects, scanner, ids);
 			
 			}
 			catch (Exception e) {
@@ -449,50 +449,75 @@ public class ProtoDB {
 			
 	}
 
-	private <T extends Message> List<T> getDeepCopy(List<T> listOfObjects, boolean populateBlobs,
-			List<String> excludedObjects, Connection conn, ProtoDBScanner scanner, List<Integer> ids)
+	private <T extends Message> List<T> getDeepCopy(Connection conn, List<T> listOfObjects, boolean populateBlobs, List<String> excludedObjects) throws ClassNotFoundException, SQLException, ProtoDBParserException {
+		
+		if (listOfObjects != null && listOfObjects.size() > 0) {
+			
+			T instance = listOfObjects.get(0);
+			ProtoDBScanner scanner = new ProtoDBScanner(instance, this.getDatabaseBackend());;
+
+			// get a list of all parent id's
+			List<Integer> ids = new ArrayList<Integer>();
+			for (T message : listOfObjects ) 
+				ids.add((int)message.getField(scanner.getIdField()));
+			
+			listOfObjects = getDeepCopy(conn, listOfObjects, populateBlobs, excludedObjects, scanner, ids);
+		}
+		
+		return listOfObjects;
+			
+	}
+
+	private <T extends Message> List<T> getDeepCopy(Connection conn, List<T> listOfObjects, boolean populateBlobs,
+			List<String> excludedObjects, ProtoDBScanner scanner, List<Integer> ids)
 			throws SQLException, ProtoDBParserException, ClassNotFoundException {
 
 		// shallow copy exits. Loop through object fields
 		// and create a shallow copy for that field.
 		// map the results to the parent object
 		for (FieldDescriptor field : scanner.getRepeatedObjectFields()) {
-			DynamicMessage innerInstance = getInstanceFromField(field);
-			ProtoDBScanner innerScanner = new ProtoDBScanner(innerInstance, scanner.getBackend());
+			if (!Populator.isExcludedField(field.getName(), excludedObjects)) {
+				DynamicMessage innerInstance = getInstanceFromField(field);
+				ProtoDBScanner innerScanner = new ProtoDBScanner(innerInstance, scanner.getBackend());
+				
+				JoinResult joinResult = getLinkJoinResult(ids, scanner, field, populateBlobs);
 			
-			JoinResult joinResult = getLinkJoinResult(ids, scanner, field, populateBlobs);
-		
-			PreparedStatement prep = joinResult.getStatement(conn);
-			ResultSet rs = prep.executeQuery();
-			
-			Map<Integer, List<DynamicMessage>> result = joinResult.getResultLink(
-					innerInstance, 
-					rs, 
-					this.isPopulateBlobsActive(),
-					excludedObjects);
-			
-			// if the objects in turn has complex join do a subquery to
-			// get all the different sub objects
-			// get all the sub-ids 
-			if (joinResult.hasComplexJoins()) {
-				for (int i : result.keySet()) {
-					List<DynamicMessage> innerObjects = 
-						getDeepCopy(
-							result.get(i),
-							populateBlobs, 
-							excludedObjects);
-
-					// the innerObjects is an updated version of result.get(i) with sub-objects populated
-					// just update the map with the new objects
-					result.put(i, innerObjects);
+				PreparedStatement prep = joinResult.getStatement(conn);
+				ResultSet rs = prep.executeQuery();
+				
+				Map<Integer, List<DynamicMessage>> result = joinResult.getResultLink(
+						innerInstance, 
+						rs, 
+						this.isPopulateBlobsActive(),
+						excludedObjects);
+				
+				// if the objects in turn has complex join do a subquery to
+				// get all the different sub objects
+				// get all the sub-ids 
+				if (joinResult.hasComplexJoins()) {
+					for (int i : result.keySet()) {
+						List<DynamicMessage> innerObjects = 
+							getDeepCopy(
+								conn,
+								result.get(i),
+								populateBlobs, 
+								excludedObjects);
+	
+						// the innerObjects is an updated version of result.get(i) with sub-objects populated
+						// just update the map with the new objects
+						result.put(i, innerObjects);
+						
+					}
 				}
+				
+				listOfObjects = updateParentObjects(scanner, field, listOfObjects, result);
 			}
-			
-			listOfObjects = updateParentObjects(scanner, field, listOfObjects, result);
 		}
 		
 		for (FieldDescriptor field : scanner.getRepeatedBasicFields()) {
-			listOfObjects = updateRepeatedBasicObjects(scanner, field, listOfObjects, ids, conn);
+			if (!Populator.isExcludedField(field.getName(), excludedObjects)) {
+				listOfObjects = updateRepeatedBasicObjects(scanner, field, listOfObjects, ids, conn);
+			}
 		}
 		
 		return listOfObjects;
@@ -1430,6 +1455,7 @@ public class ProtoDB {
 
 			if (joinClause.hasComplexJoins())
 				result = getDeepCopy(
+						conn,
 						result, 
 						this.isPopulateBlobsActive(),
 						options.getExcludedObjects());
