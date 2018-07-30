@@ -320,7 +320,12 @@ public class JoinResult {
 				map.put(parentID, new ArrayList<T>()); 
 			}
 			
-			map.get(parentID).add(getResult(instance, rs, StringUtils.EMPTY, getBlobs, excludedObjects));
+			map.get(parentID).add(
+				getResult(instance, 
+						rs, 
+						StringUtils.EMPTY, 
+						getBlobs, 
+						excludedObjects));
 		}
 		
 		return map;
@@ -329,7 +334,11 @@ public class JoinResult {
 	public <T extends Message> List<T> getResult(T instance, ResultSet rs, boolean getBlobs, List<String> excludedObjects) throws SQLException, ProtoDBParserException {
 		List<T> result = new ArrayList<T>();
 		while (rs.next()) {
-			result.add(getResult(instance, rs, StringUtils.EMPTY, getBlobs, excludedObjects));
+			result.add(
+				getResult(instance, 
+						rs, 
+						StringUtils.EMPTY, 
+						getBlobs, excludedObjects));
 		}
 		
 		return result;
