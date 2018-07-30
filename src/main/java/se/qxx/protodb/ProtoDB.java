@@ -24,6 +24,7 @@ import se.qxx.protodb.backend.DatabaseBackend;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
+import se.qxx.protodb.exceptions.SearchOptionsNotInitializedException;
 import se.qxx.protodb.model.ProtoDBSearchOperator;
 
 import com.google.protobuf.ByteString;
@@ -259,17 +260,8 @@ public class ProtoDB {
 		}
 	}
 
-	private Boolean idFieldExists(ProtoDBScanner scanner) {
-		Boolean idFieldFound = false;
-		for (FieldDescriptor field : scanner.getBasicFields()) {
-			if (field.getName().equalsIgnoreCase("ID") 
-					&& field.getJavaType() == JavaType.INT
-					&& field.isRequired()) {
-				idFieldFound = true;
-				break;
-			}
-		}
-		return idFieldFound;
+	private boolean idFieldExists(ProtoDBScanner scanner) {
+		return scanner.getIdField() != null;
 	}
 	
 	private void setupDatabase(EnumDescriptor fieldName, Connection conn) throws SQLException {
@@ -421,7 +413,7 @@ public class ProtoDB {
 	 * @param listOfObjects
 	 * @return
 	 */
-	public <T extends Message> List<T> getByJoin(List<T> listOfObjects, boolean populateBlobs, List<String> excludedObjects) throws ClassNotFoundException, SQLException, ProtoDBParserException {
+	public <T extends Message> List<T> getDeepCopy(List<T> listOfObjects, boolean populateBlobs, List<String> excludedObjects) throws ClassNotFoundException, SQLException, ProtoDBParserException {
 		
 		if (listOfObjects != null && listOfObjects.size() > 0) {
 			
@@ -435,32 +427,10 @@ public class ProtoDB {
 	
 				// get a list of all parent id's
 				List<Integer> ids = new ArrayList<Integer>();
-				for (T message : listOfObjects ) {
+				for (T message : listOfObjects ) 
 					ids.add((int)message.getField(scanner.getIdField()));
-				}
 				
-				// shallow copy exits. Loop through object fields
-				// and create a shallow copy for that field.
-				// map the results to the parent object
-				for (FieldDescriptor field : scanner.getRepeatedObjectFields()) {
-					DynamicMessage innerInstance = getInstanceFromField(field);
-					JoinResult joinResult = getLinkJoinResult(ids, scanner, field, populateBlobs);
-				
-					PreparedStatement prep = joinResult.getStatement(conn);
-					ResultSet rs = prep.executeQuery();
-					
-					Map<Integer, List<Object>> result = joinResult.getResultLink(
-							innerInstance, 
-							rs, 
-							this.isPopulateBlobsActive(),
-							excludedObjects);
-					
-					listOfObjects = updateParentObjects(scanner, field, listOfObjects, result);
-				}
-				
-				for (FieldDescriptor field : scanner.getRepeatedBasicFields()) {
-					listOfObjects = updateRepeatedBasicObjects(scanner, field, listOfObjects, ids, conn);
-				}
+				listOfObjects = getDeepCopy(listOfObjects, populateBlobs, excludedObjects, conn, scanner, ids);
 			
 			}
 			catch (Exception e) {
@@ -478,7 +448,56 @@ public class ProtoDB {
 		return listOfObjects;
 			
 	}
-	
+
+	private <T extends Message> List<T> getDeepCopy(List<T> listOfObjects, boolean populateBlobs,
+			List<String> excludedObjects, Connection conn, ProtoDBScanner scanner, List<Integer> ids)
+			throws SQLException, ProtoDBParserException, ClassNotFoundException {
+
+		// shallow copy exits. Loop through object fields
+		// and create a shallow copy for that field.
+		// map the results to the parent object
+		for (FieldDescriptor field : scanner.getRepeatedObjectFields()) {
+			DynamicMessage innerInstance = getInstanceFromField(field);
+			ProtoDBScanner innerScanner = new ProtoDBScanner(innerInstance, scanner.getBackend());
+			
+			JoinResult joinResult = getLinkJoinResult(ids, scanner, field, populateBlobs);
+		
+			PreparedStatement prep = joinResult.getStatement(conn);
+			ResultSet rs = prep.executeQuery();
+			
+			Map<Integer, List<DynamicMessage>> result = joinResult.getResultLink(
+					innerInstance, 
+					rs, 
+					this.isPopulateBlobsActive(),
+					excludedObjects);
+			
+			// if the objects in turn has complex join do a subquery to
+			// get all the different sub objects
+			// get all the sub-ids 
+			if (joinResult.hasComplexJoins()) {
+				for (int i : result.keySet()) {
+					List<DynamicMessage> innerObjects = 
+						getDeepCopy(
+							result.get(i),
+							populateBlobs, 
+							excludedObjects);
+
+					// the innerObjects is an updated version of result.get(i) with sub-objects populated
+					// just update the map with the new objects
+					result.put(i, innerObjects);
+				}
+			}
+			
+			listOfObjects = updateParentObjects(scanner, field, listOfObjects, result);
+		}
+		
+		for (FieldDescriptor field : scanner.getRepeatedBasicFields()) {
+			listOfObjects = updateRepeatedBasicObjects(scanner, field, listOfObjects, ids, conn);
+		}
+		
+		return listOfObjects;
+	}
+
 	private <T extends Message> List<T> updateRepeatedBasicObjects(ProtoDBScanner scanner, FieldDescriptor field, List<T> listOfObjects, List<Integer> ids, Connection conn) throws SQLException {
 		String sql = scanner.getBasicLinkTableSelectStatementIn(field, ids);
 		
@@ -497,13 +516,39 @@ public class ProtoDB {
 			map.get(parentID).add(rs.getObject(2));
 		}		
 
-		return updateParentObjects(scanner, field, listOfObjects, map);
+		return updateBasicParentObjects(scanner, field, listOfObjects, map);
 	}
 	
 	
 	@SuppressWarnings("unchecked")
-	private <T extends Message> List<T> updateParentObjects(ProtoDBScanner parentScanner, FieldDescriptor field, List<T> listOfObjects, Map<Integer, List<Object>> result) {
+	private <T extends Message, U extends Message> List<T> updateParentObjects(ProtoDBScanner parentScanner, FieldDescriptor field, List<T> listOfObjects, Map<Integer, List<U>> result) {
 		List<T> parents = new ArrayList<T>();
+		
+		for (T obj : listOfObjects) {
+			int parentID = (int)obj.getField(parentScanner.getIdField());
+			List<U> subObjects = result.get(parentID);
+			
+			Builder b = obj.toBuilder();
+			
+			if (subObjects != null) {
+				for (Object sub : subObjects) {
+					if (field.getJavaType() == JavaType.BYTE_STRING)
+						b.addRepeatedField(field, ByteString.copyFrom((byte[])sub));
+					else
+						b.addRepeatedField(field, sub);
+				}
+			}
+			
+			parents.add((T)b.build());
+		}
+		
+		return parents;
+	}
+
+	@SuppressWarnings("unchecked")
+	private <T extends Message> List<T> updateBasicParentObjects(ProtoDBScanner parentScanner, FieldDescriptor field, List<T> listOfObjects, Map<Integer, List<Object>> result) {
+		List<T> parents = new ArrayList<T>();
+		
 		for (T obj : listOfObjects) {
 			int parentID = (int)obj.getField(parentScanner.getIdField());
 			List<Object> subObjects = result.get(parentID);
@@ -524,7 +569,7 @@ public class ProtoDB {
 		
 		return parents;
 	}
-	
+
 	private <T extends Message> JoinResult getLinkJoinResult(List<Integer> parentIDs, ProtoDBScanner scanner, FieldDescriptor field, boolean populateBlobs) {
 		if (field.getJavaType() == JavaType.MESSAGE) {
 			Message mg = getInstanceFromField(field);
@@ -535,7 +580,7 @@ public class ProtoDB {
 				JoinResult joinResult = Searcher.getJoinQuery(
 						other, 
 						populateBlobs, 
-						false, 
+						true, 
 						scanner, 
 						field.getName(), 
 						-1, 
@@ -571,9 +616,16 @@ public class ProtoDB {
 	 * @throws ClassNotFoundException
 	 * @throws SQLException
 	 * @throws SearchFieldNotFoundException
+	 * @throws SearchOptionsNotInitializedException 
 	 */
-	public <T extends Message> List<T> getByJoin(T instance, List<Integer> ids) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
-		return search(instance, "ID", StringUtils.join(ids, ","), ProtoDBSearchOperator.In, true);
+	public <T extends Message> List<T> getByJoin(T instance, List<Integer> ids) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException, SearchOptionsNotInitializedException {
+		SearchOptions<T> options = SearchOptions.newBuilder(instance)
+				.addFieldName("ID")
+				.addSearchArgument(StringUtils.join(ids, ","))
+				.addOperator(ProtoDBSearchOperator.In)
+				.setShallow(true);
+		
+		return search(options);
 	}
 	
 	/***
@@ -587,8 +639,9 @@ public class ProtoDB {
 	 * @throws ClassNotFoundException
 	 * @throws SQLException
 	 * @throws SearchFieldNotFoundException
+	 * @throws SearchOptionsNotInitializedException 
 	 */
-	public <T extends Message> List<T> getByJoin(T instance, int id) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
+	public <T extends Message> List<T> getByJoin(T instance, int id) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException, SearchOptionsNotInitializedException {
 		return getByJoin(instance, Arrays.asList(id));
 	}	
 
@@ -1328,123 +1381,35 @@ public class ProtoDB {
 		return ids;
 	}
 
-	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
-		return search(instance, fieldName, searchFor, op, false, null, -1, -1, StringUtils.EMPTY, ProtoDBSort.Asc);
-	}
 	
-	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, List<String> excludedObjects) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
-		return search(instance, fieldName, searchFor, op, false, excludedObjects, -1, -1, StringUtils.EMPTY, ProtoDBSort.Asc);
-	}
-	
-	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, String sortField) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
-		return search(instance, fieldName, searchFor, op, false, null, -1, -1, sortField, ProtoDBSort.Asc);
-	}
-
-	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, String sortField, List<String> excludedObjects) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
-		return search(instance, fieldName, searchFor, op, false, excludedObjects, -1, -1, sortField, ProtoDBSort.Asc);
-	}
-	
-	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, String sortField, ProtoDBSort sortOrder) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
-		return search(instance, fieldName, searchFor, op, false, null, -1, -1, sortField, sortOrder);
-	}
-
-	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, String sortField, ProtoDBSort sortOrder, List<String> excludedObjects) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
-		return search(instance, fieldName, searchFor, op, false, excludedObjects, -1, -1, sortField, sortOrder);
-	}
-
-	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, boolean searchShallow) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
-		return search(instance, fieldName, searchFor, op, searchShallow, null, -1, -1, StringUtils.EMPTY, ProtoDBSort.Asc);
-	}
-	
-	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, boolean searchShallow, String sortField) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
-		return search(instance, fieldName, searchFor, op, searchShallow, null, -1, -1, sortField, ProtoDBSort.Asc);
-	}
-
-	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, boolean searchShallow, String sortField, List<String> excludedObjects) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
-		return search(instance, fieldName, searchFor, op, searchShallow, excludedObjects, -1, -1, sortField, ProtoDBSort.Asc);
-	}
-	
-	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, boolean searchShallow, String sortField, ProtoDBSort sortOrder) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
-		return search(instance, fieldName, searchFor, op, searchShallow, null, -1, -1, sortField, sortOrder);
-	}
-
-	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, boolean searchShallow, String sortField, ProtoDBSort sortOrder, List<String> excludedObjects) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
-		return search(instance, fieldName, searchFor, op, searchShallow, excludedObjects, -1, -1, sortField, sortOrder);
-	}
-	
-	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, int numberOfResults, int offset) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
-		return search(instance, fieldName, searchFor, op, false, null, numberOfResults, offset, StringUtils.EMPTY, ProtoDBSort.Asc);
-	}
-
-	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, int numberOfResults, int offset, List<String> excludedObjects) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
-		return search(instance, fieldName, searchFor, op, false, excludedObjects, numberOfResults, offset, StringUtils.EMPTY, ProtoDBSort.Asc);
-	}
-	
-	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, int numberOfResults, int offset, String sortField) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
-		return search(instance, fieldName, searchFor, op, false, null, numberOfResults, offset, sortField, ProtoDBSort.Asc);
-	}
-
-	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, int numberOfResults, int offset, String sortField, List<String> excludedObjects) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
-		return search(instance, fieldName, searchFor, op, false, excludedObjects, numberOfResults, offset, sortField, ProtoDBSort.Asc);
-	}
-	
-	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, int numberOfResults, int offset, String sortField, ProtoDBSort sortOrder) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
-		return search(instance, fieldName, searchFor, op, false, null, numberOfResults, offset, sortField, sortOrder);
-	}
-
-	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, int numberOfResults, int offset, String sortField, ProtoDBSort sortOrder, List<String> excludedObjects) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
-		return search(instance, fieldName, searchFor, op, false, excludedObjects, numberOfResults, offset, sortField, sortOrder);
-	}
-
-	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, boolean searchShallow, List<String> excludedObjects) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
-		return search(instance, fieldName, searchFor, op, searchShallow, excludedObjects, -1, -1, StringUtils.EMPTY, ProtoDBSort.Asc);
-	}
-	
-	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, boolean searchShallow, List<String> excludedObjects, String sortField) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
-		return search(instance, fieldName, searchFor, op, searchShallow, excludedObjects, -1, -1, sortField, ProtoDBSort.Asc);
-	}
-	
-	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, boolean searchShallow, List<String> excludedObjects, String sortField, ProtoDBSort sortOrder) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
-		return search(instance, fieldName, searchFor, op, searchShallow, excludedObjects, -1, -1, sortField, sortOrder);
-	}
-	
-	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, boolean searchShallow, int numberOfResults, int offset) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
-		return search(instance, fieldName, searchFor, op, searchShallow, null, numberOfResults, offset, StringUtils.EMPTY, ProtoDBSort.Asc);
-	}
-	
-	public <T extends Message> List<T> search(T instance, String fieldName, Object searchFor, ProtoDBSearchOperator op, boolean searchShallow, List<String> excludedObjects,  int numberOfResults, int offset, String sortField) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
-		return search(instance, fieldName, searchFor, op, searchShallow, null, numberOfResults, offset, sortField, ProtoDBSort.Asc);
-	}
-	
-	public <T extends Message> List<T> search(
-			T instance, 
-			String fieldName, 
-			Object searchFor, 
-			ProtoDBSearchOperator op, 
-			boolean searchShallow, 
-			List<String> excludedObjects,  
-			int numberOfResults, 
-			int offset, 
-			String sortField, 
-			ProtoDBSort sortOrder) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException {
+	public <T extends Message> List<T> search(SearchOptions<T> options) throws ClassNotFoundException, SQLException, SearchFieldNotFoundException, ProtoDBParserException, SearchOptionsNotInitializedException {
+		
+		if (!options.validate())
+			throw new SearchOptionsNotInitializedException();
 		
 		Connection conn = null;
 		
 		try {
 			conn = this.initialize();
 
-			ProtoDBScanner scanner = new ProtoDBScanner(instance, this.getDatabaseBackend());
+			ProtoDBScanner scanner = new ProtoDBScanner(options.getInstance(), this.getDatabaseBackend());
 			JoinResult joinClause = Searcher.getJoinQuery(
 					scanner, 
 					populateBlobs, 
-					!searchShallow, 
-					numberOfResults, 
-					offset,
-					excludedObjects);
+					!options.isShallowSearch(), 
+					options.getNumberOfResults(), 
+					options.getOffset(),
+					options.getExcludedObjects());
 			
 			// check if this is a repeated (or enum)
-			joinClause.addWhereClause(scanner, fieldName, searchFor, op);
-			joinClause.addSortOrder(scanner, sortField, sortOrder);
+			joinClause.addWhereClause(scanner, 
+					options.getFieldName(), 
+					options.getSearchFor(), 
+					options.getOperator());
+			
+			joinClause.addSortOrder(scanner, 
+					options.getSortField(), 
+					options.getSortOrder());
 			
 			PreparedStatement prep = joinClause.getStatement(conn);
 			
@@ -1457,16 +1422,17 @@ public class ProtoDB {
 			// subobjects regardless of the search criteria (maybe this could be
 			// set as a parameter)
 			List<T> result = joinClause.getResult(
-					instance, 
+					options.getInstance(), 
 					rs, 
 					this.isPopulateBlobsActive(),
-					excludedObjects);
-			
+					options.getExcludedObjects());
+
+
 			if (joinClause.hasComplexJoins())
-				result = getByJoin(
+				result = getDeepCopy(
 						result, 
 						this.isPopulateBlobsActive(),
-						excludedObjects);
+						options.getExcludedObjects());
 
 			return result;
 		}
@@ -1556,6 +1522,39 @@ public class ProtoDB {
 		finally {
 			this.disconnect(conn);
 		}
+	}
+
+	public int executeScalar(String sql) throws Exception {
+		Connection conn = null;
+
+		int value = -1;
+		
+		try {
+			conn = this.initialize();
+			PreparedStatement prep = conn.prepareStatement(sql);
+			ResultSet rs = prep.executeQuery();
+			
+			if (rs.next() ) {  
+              value = rs.getInt(1);  
+            }
+		}
+		catch (SQLException | ClassNotFoundException e) {			
+			try {
+				if (conn != null)
+					conn.rollback();
+
+			} catch (SQLException sqlEx) {}
+
+			System.out.println("Exception in ProtoDB!");
+			e.printStackTrace();
+
+			throw e;
+		}		
+		finally {
+			this.disconnect(conn);
+		}
+		
+		return value;
 	}
 
 	public Connection getConnection() throws SQLException, ClassNotFoundException {

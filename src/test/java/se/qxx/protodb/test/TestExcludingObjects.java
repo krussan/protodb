@@ -26,6 +26,7 @@ import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
 import se.qxx.protodb.model.ProtoDBSearchOperator;
 import se.qxx.protodb.test.TestDomain.ObjectOne;
 import se.qxx.protodb.test.TestDomain.ObjectTwo;
+import se.qxx.protodb.test.TestDomain.RepObjectOne;
 import se.qxx.protodb.test.TestDomain.SimpleTest;
 
 @RunWith(Parameterized.class)
@@ -296,4 +297,28 @@ public class TestExcludingObjects extends TestBase {
 		
 	}
 	
+
+	@Test
+	public void TestExcludeOnSubObjectsSearch() {
+		try {
+			List<RepObjectOne> result = db.search(
+				SearchOptions.newBuilder(TestDomain.RepObjectOne.getDefaultInstance())
+					.addFieldName("ID")
+					.addSearchArgument(1)
+					.addOperator(ProtoDBSearchOperator.Equals)
+					.addExcludedObject("list_of_objects"));
+			
+			assertNotNull(result);
+			assertEquals(1, result.size());
+			
+			assertEquals(0, result.get(0).getListOfObjectsCount());
+
+		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException | SearchOptionsNotInitializedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
+
+	}
+
 }
