@@ -1,5 +1,6 @@
 package se.qxx.protodb;
 
+import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -48,7 +49,8 @@ public class ProtoDBScanner {
 	private HashMap<String, Integer> blobIDs = new HashMap<String,Integer>();
 
 	private CaseInsensitiveMap aliases = new CaseInsensitiveMap();
-	
+
+	private boolean isProto2 = false;
 
 	public ProtoDBScanner(MessageOrBuilder b, DatabaseBackend backend) {
 		this.setMessage(b);
@@ -64,9 +66,9 @@ public class ProtoDBScanner {
 	}
 	
 	private void scan(MessageOrBuilder b) {
-			
 		this.setObjectName(StringUtils.capitalize(b.getDescriptorForType().getName()));
-
+		this.setProto2(this.checkProto2());
+		
 		List<FieldDescriptor> fields = b.getDescriptorForType().getFields();
 		for(FieldDescriptor field : fields) {
 			JavaType jType = field.getJavaType();
@@ -570,5 +572,30 @@ public class ProtoDBScanner {
 		
 		return null;
 	}
+	
+	public boolean checkProto2() {
+		// get the first field (should always be one right?)
+		FieldDescriptor f = this.getMessage().getDescriptorForType().getFields().get(0);
+		String methodName = String.format("has%s", StringUtils.capitalize(f.getName()));
+	
+		// if the message has a has<fieldname> method then it is proto2 and not proto3
+		Method[] methods = this.getMessage().getClass().getDeclaredMethods();
+		
+		for (Method meth : methods) {
+			if (StringUtils.equalsIgnoreCase(meth.getName(), methodName) ) 
+				return true;
+		}
+		return false;
 
+	}
+
+
+	public boolean isProto2() {
+		return isProto2;
+	}
+
+	public void setProto2(boolean isProto2) {
+		this.isProto2 = isProto2;
+	}
+	
 }

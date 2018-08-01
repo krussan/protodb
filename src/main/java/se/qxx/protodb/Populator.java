@@ -102,7 +102,9 @@ public class Populator {
 			else if (field.getJavaType() == JavaType.ENUM){
 				//TODO: this is wrong. Should map correctly from database value instead
 				//proto3 changes so that the first value always is 0 (and database ID starts at 1)
-				b.setField(field, field.getEnumType().findValueByNumber(otherID - 1));
+				int adjustment = scanner.isProto2() ? 0 : -1;
+				
+				b.setField(field, field.getEnumType().findValueByNumber(otherID + adjustment));
 			}
 		}
 	}
