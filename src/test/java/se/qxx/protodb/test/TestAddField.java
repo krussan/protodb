@@ -18,30 +18,41 @@ import com.google.protobuf.Descriptors.FieldDescriptor;
 import se.qxx.protodb.ProtoDB;
 import se.qxx.protodb.ProtoDBFactory;
 import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
+import se.qxx.protodb.exceptions.FieldNotFoundException;
+import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 import se.qxx.protodb.test.TestDomain.ObjectTwo;
 
 @RunWith(Parameterized.class)
 public class TestAddField extends TestBase {
 	ProtoDB db = null;
-	
+
+	private final String[] REPOBJECTONE_FIELD_NAMES = {"ID", "happycamper", "otis"};
+	private final String[] REPOBJECTONE_FIELD_TYPES = {"INTEGER", "INTEGER", "INTEGER"};
+
 	@Parameters
     public static Collection<Object[]> data() {
     	return getParams("selectParamsFile");
     }
     
-    public TestAddField(String driver, String connectionString) throws DatabaseNotSupportedException {
+    public TestAddField(String driver, String connectionString) throws DatabaseNotSupportedException, ClassNotFoundException, SQLException {
     	db = ProtoDBFactory.getInstance(driver, connectionString);
+    	
+    	clearDatabase(db, connectionString);
+
     }	
 
 	
 	@Test
 	public void TestAddBasicField() {	
 		try {
-			TestDomain.RepObjectOne b = db.get(1, TestDomain.RepObjectOne.getDefaultInstance());
+			TestDomain.RepObjectOne b = TestDomain.RepObjectOne.getDefaultInstance();
 			FieldDescriptor field = ObjectTwo.getDescriptor().findFieldByName("otis");
 			
 			db.addField(b, field);
-		} catch (SQLException | ClassNotFoundException e) {
+			
+			TestSetup.testTableStructure(db, "RepObjectOne", REPOBJECTONE_FIELD_NAMES, REPOBJECTONE_FIELD_TYPES);
+			
+		} catch (SQLException | ClassNotFoundException | IDFieldNotFoundException | FieldNotFoundException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}

@@ -94,8 +94,8 @@ public class TestSetup extends TestBase {
 			db.setupDatabase(t);
 
 			// test if database structure is the one we want
-			testTableStructure(db, "SimpleTest", SIMPLE_FIELD_NAMES, SIMPLE_FIELD_TYPES);
-			testTableStructure(db, "BlobData", BLOBDATA_FIELD_NAMES, BLOBDATA_FIELD_TYPES);
+			TestSetup.testTableStructure(db, "SimpleTest", SIMPLE_FIELD_NAMES, SIMPLE_FIELD_TYPES);
+			TestSetup.testTableStructure(db, "BlobData", BLOBDATA_FIELD_NAMES, BLOBDATA_FIELD_TYPES);
 
 			
 		} catch (SQLException | ClassNotFoundException | IDFieldNotFoundException e) {
@@ -112,8 +112,8 @@ public class TestSetup extends TestBase {
 		try {
 			db.setupDatabase(t);
 			
-			testTableStructure(db, "ObjectOne", OBJECTONE_FIELD_NAMES, OBJECTONE_FIELD_TYPES);
-			testTableStructure(db, "SimpleTest", SIMPLE_FIELD_NAMES, SIMPLE_FIELD_TYPES);
+			TestSetup.testTableStructure(db, "ObjectOne", OBJECTONE_FIELD_NAMES, OBJECTONE_FIELD_TYPES);
+			TestSetup.testTableStructure(db, "SimpleTest", SIMPLE_FIELD_NAMES, SIMPLE_FIELD_TYPES);
 			
 		} catch (SQLException | ClassNotFoundException | IDFieldNotFoundException e) {
 			e.printStackTrace();
@@ -129,9 +129,9 @@ public class TestSetup extends TestBase {
 		try {
 			db.setupDatabase(t);
 			
-			testTableStructure(db, "ObjectTwo", OBJECTTWO_FIELD_NAMES, OBJECTTWO_FIELD_TYPES);
-			testTableStructure(db, "ObjectOne", OBJECTONE_FIELD_NAMES, OBJECTONE_FIELD_TYPES);
-			testTableStructure(db, "SimpleTest", SIMPLE_FIELD_NAMES, SIMPLE_FIELD_TYPES);
+			TestSetup.testTableStructure(db, "ObjectTwo", OBJECTTWO_FIELD_NAMES, OBJECTTWO_FIELD_TYPES);
+			TestSetup.testTableStructure(db, "ObjectOne", OBJECTONE_FIELD_NAMES, OBJECTONE_FIELD_TYPES);
+			TestSetup.testTableStructure(db, "SimpleTest", SIMPLE_FIELD_NAMES, SIMPLE_FIELD_TYPES);
 			
 		} catch (SQLException | ClassNotFoundException | IDFieldNotFoundException e) {
 			e.printStackTrace();
@@ -150,9 +150,9 @@ public class TestSetup extends TestBase {
 		try {
 			db.setupDatabase(t);
 			
-			testTableStructure(db, "SimpleTwo", SIMPLETWO_FIELD_NAMES, SIMPLETWO_FIELD_TYPES);
-			testTableStructure(db, "RepObjectOne", REPOBJECTONE_FIELD_NAMES, REPOBJECTONE_FIELD_TYPES);			
-			testTableStructure(db, "RepObjectOneSimpleTwo_ListOfObjects", REPOBJECTONE_LINK_FIELD_NAMES, REPOBJECTONE_LINK_FIELD_TYPES);
+			TestSetup.testTableStructure(db, "SimpleTwo", SIMPLETWO_FIELD_NAMES, SIMPLETWO_FIELD_TYPES);
+			TestSetup.testTableStructure(db, "RepObjectOne", REPOBJECTONE_FIELD_NAMES, REPOBJECTONE_FIELD_TYPES);			
+			TestSetup.testTableStructure(db, "RepObjectOneSimpleTwo_ListOfObjects", REPOBJECTONE_LINK_FIELD_NAMES, REPOBJECTONE_LINK_FIELD_TYPES);
 			
 		} catch (SQLException | ClassNotFoundException | IDFieldNotFoundException e) {
 			e.printStackTrace();
@@ -171,8 +171,8 @@ public class TestSetup extends TestBase {
 		try {
 			db.setupDatabase(t);
 			
-			testTableStructure(db, "RepSimpleList", REPSIMPLELIST_FIELD_NAMES, REPSIMPLELIST_FIELD_TYPES);
-			testTableStructure(db, "RepSimpleList_ListOfStrings", REPSIMPLELIST_LISTOFSTRINGS_FIELD_NAMES, REPSIMPLELIST_LISTOFSTRINGS_FIELD_TYPES);			
+			TestSetup.testTableStructure(db, "RepSimpleList", REPSIMPLELIST_FIELD_NAMES, REPSIMPLELIST_FIELD_TYPES);
+			TestSetup.testTableStructure(db, "RepSimpleList_ListOfStrings", REPSIMPLELIST_LISTOFSTRINGS_FIELD_NAMES, REPSIMPLELIST_LISTOFSTRINGS_FIELD_TYPES);			
 			
 		} catch (SQLException | ClassNotFoundException | IDFieldNotFoundException e) {
 			e.printStackTrace();
@@ -192,8 +192,8 @@ public class TestSetup extends TestBase {
 		try {
 			db.setupDatabase(t);
 			
-			testTableStructure(db, "EnumOne", ENUMONE_FIELD_NAMES, ENUMONE_FIELD_TYPES);
-			testTableStructure(db, "Rating", RATING_FIELD_NAMES, RATING_FIELD_TYPES);			
+			TestSetup.testTableStructure(db, "EnumOne", ENUMONE_FIELD_NAMES, ENUMONE_FIELD_TYPES);
+			TestSetup.testTableStructure(db, "Rating", RATING_FIELD_NAMES, RATING_FIELD_TYPES);			
 			
 		} catch (SQLException | ClassNotFoundException | IDFieldNotFoundException e) {
 			e.printStackTrace();
@@ -212,9 +212,9 @@ public class TestSetup extends TestBase {
 		try {
 			db.setupDatabase(t);
 			
-			testTableStructure(db, "EnumOneList", ENUMONELIST_FIELD_NAMES, ENUMONELIST_FIELD_TYPES);
-			testTableStructure(db, "Rating", RATING_FIELD_NAMES, RATING_FIELD_TYPES);			
-			testTableStructure(db, "EnumOneListRating_ListOfRatings", ENUMONELIST_LINK_FIELD_NAMES, ENUMONELIST_LINK_FIELD_TYPES);
+			TestSetup.testTableStructure(db, "EnumOneList", ENUMONELIST_FIELD_NAMES, ENUMONELIST_FIELD_TYPES);
+			TestSetup.testTableStructure(db, "Rating", RATING_FIELD_NAMES, RATING_FIELD_TYPES);			
+			TestSetup.testTableStructure(db, "EnumOneListRating_ListOfRatings", ENUMONELIST_LINK_FIELD_NAMES, ENUMONELIST_LINK_FIELD_TYPES);
 			
 		} catch (SQLException | ClassNotFoundException | IDFieldNotFoundException e) {
 			e.printStackTrace();
@@ -222,10 +222,8 @@ public class TestSetup extends TestBase {
 		}
 
 	}
-		
 	
-	
-	private void testTableStructure(
+	public static void testTableStructure(
 			ProtoDB db,
 			String expectedTableName,
 			String[] fieldNames, 

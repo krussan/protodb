@@ -306,17 +306,23 @@ public class ProtoDB {
 	}
 	
 	public void addField(MessageOrBuilder b, String fieldName) throws ClassNotFoundException, IDFieldNotFoundException, SQLException, FieldNotFoundException {
+		FieldDescriptor f = b.getDescriptorForType().findFieldByName(fieldName);
+		if (f != null) {
+			this.addField(b, f);	
+		}
+		else {
+			throw new FieldNotFoundException(fieldName, b.getDescriptorForType().getName());
+		}
+	}
+	
+	public void addField(MessageOrBuilder b, FieldDescriptor field) throws ClassNotFoundException, IDFieldNotFoundException, SQLException, FieldNotFoundException {
 		Connection conn = null;
 
 		try {
 			conn = this.initialize();
 			conn.setAutoCommit(false);
-
-			Field f = b.getDescriptorForType().findFieldByName(fieldName);
-			if (f != null) {
-				this.addField(b, f, conn);	
-			}
 			
+			this.addField(b, field, conn);
 
 			conn.commit();
 		} catch (SQLException e) {
@@ -335,10 +341,6 @@ public class ProtoDB {
 			this.disconnect(conn);
 		}
 		
-	}
-	
-		
-		throw new FieldNotFoundException(fieldName, b.getDescriptorForType().getName());
 	}
 	
 	private void addField(MessageOrBuilder b, FieldDescriptor field, Connection conn) throws SQLException, IDFieldNotFoundException {
