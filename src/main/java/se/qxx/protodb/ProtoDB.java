@@ -312,7 +312,11 @@ public class ProtoDB {
 			conn = this.initialize();
 			conn.setAutoCommit(false);
 
-			this.addField(b, fieldName, conn);
+			Field f = b.getDescriptorForType().findFieldByName(fieldName);
+			if (f != null) {
+				this.addField(b, f, conn);	
+			}
+			
 
 			conn.commit();
 		} catch (SQLException e) {
@@ -333,12 +337,6 @@ public class ProtoDB {
 		
 	}
 	
-	private void addField(MessageOrBuilder b, String fieldName, Connection conn) throws FieldNotFoundException, SQLException, IDFieldNotFoundException {
-		for (FieldDescriptor f : b.getDescriptorForType().getFields()) {
-			if (StringUtils.equalsIgnoreCase(f.getName(), fieldName)) {
-				addField(b, f, conn);
-			}
-		}
 		
 		throw new FieldNotFoundException(fieldName, b.getDescriptorForType().getName());
 	}
