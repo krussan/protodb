@@ -51,6 +51,17 @@ public class ProtoDBScanner {
 	private CaseInsensitiveMap aliases = new CaseInsensitiveMap();
 
 	private boolean isProto2 = false;
+	
+	public enum FieldType {
+		ID,
+		RepeatedObject,
+		RepeatedEnum,
+		RepeatedBasic,
+		Object,
+		Enum,
+		Blob,
+		Basic		
+	}
 
 	public ProtoDBScanner(MessageOrBuilder b, DatabaseBackend backend) {
 		this.setMessage(b);
@@ -65,51 +76,90 @@ public class ProtoDBScanner {
 		return t;
 	}
 	
+	
+	
 	private void scan(MessageOrBuilder b) {
 		this.setObjectName(StringUtils.capitalize(b.getDescriptorForType().getName()));
 		this.setProto2(this.checkProto2());
 		
 		List<FieldDescriptor> fields = b.getDescriptorForType().getFields();
 		for(FieldDescriptor field : fields) {
-			JavaType jType = field.getJavaType();
-			
-			if (field.getName().equalsIgnoreCase("ID"))
-				this.setIdField(field);
-			
-			if (field.isRepeated())
-			{
-				if (jType == JavaType.MESSAGE 
-//						|| jType == JavaType.BYTE_STRING
-					) 
-					this.addRepeatedObjectField(field);		
-				else if (jType == JavaType.ENUM) {
-					this.addRepeatedObjectField(field);
-				}
-				else {
-					this.addRepeatedBasicField(field);
-				}
+			FieldType type = getFieldType(field);
+			switch (type) {
+			case Basic:
+				this.addBasicField(field);
+				break;
+			case Blob:
+				this.addBlobField(field);
+				break;
+			case Enum:
+				this.addObjectField(field);
+				this.addObjectFieldTarget(field.getEnumType().getName());					
 
+				break;
+			case ID:
+				this.setIdField(field);
+				break;
+			case Object:
+				MessageOrBuilder target = (MessageOrBuilder)this.getMessage().getField(field);
+				ProtoDBScanner dbInternal = new ProtoDBScanner(target, this.getBackend());			
+				
+				this.addObjectField(field);
+				this.addObjectFieldTarget(dbInternal.getObjectName());
+
+				break;
+			case RepeatedBasic:
+				this.addRepeatedBasicField(field);
+				break;
+			case RepeatedEnum:
+				this.addRepeatedObjectField(field);
+				break;
+			case RepeatedObject:
+				this.addRepeatedObjectField(field);
+				break;
+			default:
+				break;
+			
+			}
+			
+		}		
+		
+	}
+	
+	public FieldType getFieldType(FieldDescriptor field) {
+		JavaType jType = field.getJavaType();
+		
+		if (field.getName().equalsIgnoreCase("ID"))
+			return FieldType.ID;
+		
+		if (field.isRepeated())
+		{
+			if (jType == JavaType.MESSAGE 
+//					|| jType == JavaType.BYTE_STRING
+				) 
+				return FieldType.RepeatedObject;		
+			else if (jType == JavaType.ENUM) {
+				return FieldType.RepeatedEnum;
 			}
 			else {
-				if (jType == JavaType.MESSAGE) {
-					MessageOrBuilder target = (MessageOrBuilder)this.getMessage().getField(field);
-					ProtoDBScanner dbInternal = new ProtoDBScanner(target, this.getBackend());			
-					
-					this.addObjectField(field);
-					this.addObjectFieldTarget(dbInternal.getObjectName());
-				}			
-				else if (jType == JavaType.ENUM){					
-					this.addObjectField(field);
-					this.addObjectFieldTarget(field.getEnumType().getName());					
-				}
-				else if (jType == JavaType.BYTE_STRING)  {
-					this.addBlobField(field);
-				}
-				else {
-					this.addBasicField(field);
-				}
+				return FieldType.RepeatedBasic;
 			}
-		}		
+
+		}
+		else {
+			if (jType == JavaType.MESSAGE) {
+				return FieldType.Object;
+			}			
+			else if (jType == JavaType.ENUM){
+				return FieldType.Enum;
+			}
+			else if (jType == JavaType.BYTE_STRING)  {
+				return FieldType.Blob;
+			}
+			else {
+				return FieldType.Basic;
+			}
+		}
 		
 	}
 
@@ -209,7 +259,21 @@ public class ProtoDBScanner {
 		return "DELETE FROM " + this.getObjectName() + " WHERE ID = ?";
 	}
 	
-	public String getCreateStatement(DatabaseBackend backend) {
+	public String getAddColumnStatement(FieldDescriptor field) {
+		FieldType type = getFieldType(field);
+		String columnDefinition = "ERROR";
+		
+		if (type == FieldType.Basic) {
+			columnDefinition = getColumnDefinitionRef(field, target, checkOptionality);
+		}
+		
+		String sql = "ALTER TABLE %s ADD COLUMN %s %s %s";
+		return String.format(sql,
+				this.getObjectName(),
+				
+	}
+	
+	public String getCreateStatement() {
 		String sql = String.format("CREATE TABLE %s ", this.getObjectName());
 		List<String> cols = new ArrayList<String>();
 		
@@ -217,30 +281,42 @@ public class ProtoDBScanner {
 			FieldDescriptor field = this.getObjectFields().get(i);
 			String target = this.getObjectFieldTargets().get(i);
 			
-			cols.add(String.format("%s INTEGER %s REFERENCES %s (ID)",
-					getQuotedColumn(getObjectFieldName(field)), 
-					field.isOptional() ? "NULL" : "NOT NULL",
-					target));
+			cols.add(getColumnDefinitionRef(field, target, true));
 		}
 		
 		for (FieldDescriptor field : this.getBlobFields()) {
-			cols.add(String.format("%s INTEGER %s REFERENCES BlobData (ID)",
-					getQuotedColumn(getObjectFieldName(field)), 
-					field.isOptional() ? "NULL" : "NOT NULL"));
+			cols.add(getColumnDefinitionBlob(field, true));
 		}
 		
 		for(FieldDescriptor field : this.getBasicFields()) {
 			if (!field.getName().equalsIgnoreCase("ID"))
-				cols.add(String.format("%s %s %s", 
-					getQuotedColumn(getBasicFieldName(field)), 
-					getDBType(field), 
-					field.isOptional() ? "NULL" : "NOT NULL"));
+				cols.add(getColumnDefinitionBasic(field, true));
 		}
 		
 		
-		sql += String.format("(%s, %s)", backend.getIdentityDefinition(), StringUtils.join(cols, ","));
+		sql += String.format("(%s, %s)", this.getBackend().getIdentityDefinition(), StringUtils.join(cols, ","));
 		
 		return sql;
+	}
+
+	private String getColumnDefinitionBasic(FieldDescriptor field, boolean checkOptionality) {
+		return String.format("%s %s %s", 
+			getQuotedColumn(getBasicFieldName(field)), 
+			getDBType(field), 
+			field.isOptional() && checkOptionality ? "NULL" : "NOT NULL");
+	}
+
+	private String getColumnDefinitionBlob(FieldDescriptor field, boolean checkOptionality) {
+		return String.format("%s INTEGER %s REFERENCES BlobData (ID)",
+				getQuotedColumn(getObjectFieldName(field)), 
+				field.isOptional() && checkOptionality ? "NULL" : "NOT NULL");
+	}
+
+	private String getColumnDefinitionRef(FieldDescriptor field, String target, boolean checkOptionality) {
+		return String.format("%s INTEGER %s REFERENCES %s (ID)",
+				getQuotedColumn(getObjectFieldName(field)), 
+				field.isOptional() && checkOptionality ? "NULL" : "NOT NULL",
+				target);
 	}
 	
 	public String getLinkTableName(ProtoDBScanner other, String fieldName) {
