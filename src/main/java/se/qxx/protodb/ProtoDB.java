@@ -264,9 +264,13 @@ public class ProtoDB {
 			throws SQLException, IDFieldNotFoundException {
 		if (!field.isRepeated()) {
 			if (field.getJavaType() == JavaType.MESSAGE)
-				setupDatabase((MessageOrBuilder) b.getField(field), conn);
+				setupDatabase(
+					(MessageOrBuilder) b.getField(field), 
+					conn);
 			else if (field.getJavaType() == JavaType.ENUM) {
-				setupDatabase(field.getEnumType(), conn);
+				setupDatabase(
+					field.getEnumType(), 
+					conn);
 			}
 		}
 	}
