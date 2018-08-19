@@ -35,7 +35,7 @@ public class TestAddField extends TestBase {
 
 	@Parameters
     public static Collection<Object[]> data() {
-    	return getParams("selectParamsFile");
+    	return getParams("testParamsFile");
     }
     
     public TestAddField(String driver, String connectionString) throws DatabaseNotSupportedException, ClassNotFoundException, SQLException {
