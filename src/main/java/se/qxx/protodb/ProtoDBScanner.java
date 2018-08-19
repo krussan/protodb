@@ -79,6 +79,7 @@ public class ProtoDBScanner {
 				break;
 			case ID:
 				this.setIdField(field);
+				this.addBasicField(field);
 				break;
 			case Object:
 				this.addObjectField(field);
