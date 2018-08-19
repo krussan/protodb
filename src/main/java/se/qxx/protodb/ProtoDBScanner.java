@@ -10,18 +10,12 @@ import java.util.HashMap;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.mutable.MutableInt;
-
 import com.google.protobuf.ByteString;
-import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.EnumDescriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
-import com.google.protobuf.DynamicMessage;
 import com.google.protobuf.MessageOrBuilder;
 
 import se.qxx.protodb.backend.DatabaseBackend;
-import se.qxx.protodb.model.CaseInsensitiveMap;
-import se.qxx.protodb.model.ProtoField;
 import se.qxx.protodb.model.ProtoTable;
 
 import com.google.protobuf.Descriptors.FieldDescriptor;
@@ -33,8 +27,6 @@ public class ProtoDBScanner {
 	private DatabaseBackend backend = null;
 	
 	private List<FieldDescriptor> objectFields = new ArrayList<FieldDescriptor>();
-	private List<String> objectFieldTargets = new ArrayList<String>();
-
 	private List<FieldDescriptor> repeatedObjectFields = new ArrayList<FieldDescriptor>();
 	
 	private List<FieldDescriptor> basicFields = new ArrayList<FieldDescriptor>();
@@ -47,8 +39,6 @@ public class ProtoDBScanner {
 
 	private HashMap<String, Integer> objectIDs = new HashMap<String,Integer>();
 	private HashMap<String, Integer> blobIDs = new HashMap<String,Integer>();
-
-	private CaseInsensitiveMap aliases = new CaseInsensitiveMap();
 
 	private boolean isProto2 = false;
 	
@@ -69,15 +59,6 @@ public class ProtoDBScanner {
 		this.scan(b);
 	}
 	
-	private ProtoTable init(MessageOrBuilder b) {
-		
-		ProtoTable t = new ProtoTable(b, "A");
-		
-		return t;
-	}
-	
-	
-	
 	private void scan(MessageOrBuilder b) {
 		this.setObjectName(StringUtils.capitalize(b.getDescriptorForType().getName()));
 		this.setProto2(this.checkProto2());
@@ -94,19 +75,13 @@ public class ProtoDBScanner {
 				break;
 			case Enum:
 				this.addObjectField(field);
-				this.addObjectFieldTarget(field.getEnumType().getName());					
 
 				break;
 			case ID:
 				this.setIdField(field);
 				break;
 			case Object:
-				MessageOrBuilder target = (MessageOrBuilder)this.getMessage().getField(field);
-				ProtoDBScanner dbInternal = new ProtoDBScanner(target, this.getBackend());			
-				
 				this.addObjectField(field);
-				this.addObjectFieldTarget(dbInternal.getObjectName());
-
 				break;
 			case RepeatedBasic:
 				this.addRepeatedBasicField(field);
@@ -263,13 +238,21 @@ public class ProtoDBScanner {
 		FieldType type = getFieldType(field);
 		String columnDefinition = "ERROR";
 		
-		if (type == FieldType.Basic) {
-			columnDefinition = getColumnDefinitionRef(field, target, checkOptionality);
+		if (type == FieldType.Enum || type == FieldType.Object) {
+			columnDefinition = getColumnDefinitionRef(field, false);
+		}
+		else if (type == FieldType.Basic) {
+			columnDefinition = getColumnDefinitionBasic(field, false);
+		}
+		else if(type == FieldType.Blob) {
+			columnDefinition = getColumnDefinitionBlob(field, false);
 		}
 		
-		String sql = "ALTER TABLE %s ADD COLUMN %s %s %s";
+		String sql = "ALTER TABLE %s ADD COLUMN %s ";
+		
 		return String.format(sql,
-				this.getObjectName(),
+			this.getObjectName(),
+			columnDefinition);
 				
 	}
 	
@@ -279,9 +262,7 @@ public class ProtoDBScanner {
 		
 		for(int i=0;i<this.getObjectFields().size();i++) {
 			FieldDescriptor field = this.getObjectFields().get(i);
-			String target = this.getObjectFieldTargets().get(i);
-			
-			cols.add(getColumnDefinitionRef(field, target, true));
+			cols.add(getColumnDefinitionRef(field, true));
 		}
 		
 		for (FieldDescriptor field : this.getBlobFields()) {
@@ -303,19 +284,20 @@ public class ProtoDBScanner {
 		return String.format("%s %s %s", 
 			getQuotedColumn(getBasicFieldName(field)), 
 			getDBType(field), 
-			field.isOptional() && checkOptionality ? "NULL" : "NOT NULL");
+			field.isOptional() || !checkOptionality ? "NULL" : "NOT NULL");
 	}
 
 	private String getColumnDefinitionBlob(FieldDescriptor field, boolean checkOptionality) {
 		return String.format("%s INTEGER %s REFERENCES BlobData (ID)",
 				getQuotedColumn(getObjectFieldName(field)), 
-				field.isOptional() && checkOptionality ? "NULL" : "NOT NULL");
+				field.isOptional() || !checkOptionality ? "NULL" : "NOT NULL");
 	}
 
-	private String getColumnDefinitionRef(FieldDescriptor field, String target, boolean checkOptionality) {
+	private String getColumnDefinitionRef(FieldDescriptor field, boolean checkOptionality) {
+		String target = getObjectFieldTarget(field);
 		return String.format("%s INTEGER %s REFERENCES %s (ID)",
 				getQuotedColumn(getObjectFieldName(field)), 
-				field.isOptional() && checkOptionality ? "NULL" : "NOT NULL",
+				field.isOptional() || !checkOptionality ? "NULL" : "NOT NULL",
 				target);
 	}
 	
@@ -504,7 +486,7 @@ public class ProtoDBScanner {
 		return prep;
 	}
 
-	private static void compileArgument(int i, PreparedStatement prep, JavaType jType, Object value) throws SQLException {
+	private void compileArgument(int i, PreparedStatement prep, JavaType jType, Object value) throws SQLException {
 		if (jType == JavaType.BOOLEAN)
 			prep.setBoolean(i, (boolean)value);
 		else if (jType == JavaType.DOUBLE)
@@ -560,23 +542,6 @@ public class ProtoDBScanner {
 	public void addBlobField(FieldDescriptor field) {
 		this.blobFields.add(field);
 	}	
-
-	public List<String> getObjectFieldTargets() {
-		return objectFieldTargets;
-	}
-
-	public void addObjectFieldTarget(String target) {
-		this.objectFieldTargets.add(target);
-	}
-	
-//	public List<String> getRepeatedObjectFieldTargets() {
-//		return repeatedObjectFieldTargets;
-//	}
-//
-//	public void addRepeatedObjectFieldTarget(String target) {
-//		this.repeatedObjectFieldTargets.add(target);
-//	}	
-	
 
 	public List<FieldDescriptor> getBasicFields() {
 		return basicFields;
@@ -672,6 +637,21 @@ public class ProtoDBScanner {
 
 	public void setProto2(boolean isProto2) {
 		this.isProto2 = isProto2;
+	}
+	
+	public String getObjectFieldTarget(FieldDescriptor field) {
+		FieldType type = getFieldType(field);
+		if (type == FieldType.Enum)
+			return field.getEnumType().getName();
+		
+		if (type == FieldType.Object) {
+			MessageOrBuilder target = (MessageOrBuilder)this.getMessage().getField(field);
+			ProtoDBScanner dbInternal = new ProtoDBScanner(target, this.getBackend());
+			
+			return dbInternal.getObjectName();
+		}
+
+		return StringUtils.EMPTY;
 	}
 	
 }

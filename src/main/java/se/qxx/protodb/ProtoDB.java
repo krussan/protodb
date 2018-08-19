@@ -207,7 +207,7 @@ public class ProtoDB {
 
 		// setup this object
 		if (!tableExist(scanner.getObjectName(), conn)) {
-			executeStatement(scanner.getCreateStatement(this.getDatabaseBackend()), conn);
+			executeStatement(scanner.getCreateStatement(), conn);
 		}
 
 		// setup all repeated fields as many-to-many relations
@@ -305,7 +305,7 @@ public class ProtoDB {
 					this.getDatabaseBackend().getTypeMap(JDBCType.BLOB)), conn);
 	}
 	
-	public void addField(MessageOrBuilder b, String fieldName) throws ClassNotFoundException, IDFieldNotFoundException, SQLException {
+	public void addField(MessageOrBuilder b, String fieldName) throws ClassNotFoundException, IDFieldNotFoundException, SQLException, FieldNotFoundException {
 		Connection conn = null;
 
 		try {
@@ -333,7 +333,7 @@ public class ProtoDB {
 		
 	}
 	
-	private void addField(MessageOrBuilder b, String fieldName, Connection conn) throws FieldNotFoundException {
+	private void addField(MessageOrBuilder b, String fieldName, Connection conn) throws FieldNotFoundException, SQLException, IDFieldNotFoundException {
 		for (FieldDescriptor f : b.getDescriptorForType().getFields()) {
 			if (StringUtils.equalsIgnoreCase(f.getName(), fieldName)) {
 				addField(b, f, conn);
@@ -357,10 +357,13 @@ public class ProtoDB {
 
 		// setup this object
 		if (!tableExist(scanner.getObjectName(), conn)) {
-			executeStatement(scanner.getCreateStatement(this.getDatabaseBackend()), conn);
+			executeStatement(scanner.getCreateStatement(), conn);
 		}
 		else {
 			// add column statement
+			executeStatement(
+				scanner.getAddColumnStatement(field), 
+				conn);
 		}
 
 		if (type == FieldType.RepeatedEnum || type == FieldType.RepeatedObject) 
