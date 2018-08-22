@@ -19,8 +19,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 
+import se.qxx.protodb.ProtoDBScanner.FieldType;
 import se.qxx.protodb.backend.ColumnDefinition;
 import se.qxx.protodb.backend.DatabaseBackend;
+import se.qxx.protodb.exceptions.FieldNotFoundException;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
@@ -205,7 +207,7 @@ public class ProtoDB {
 
 		// setup this object
 		if (!tableExist(scanner.getObjectName(), conn)) {
-			executeStatement(scanner.getCreateStatement(this.getDatabaseBackend()), conn);
+			executeStatement(scanner.getCreateStatement(), conn);
 		}
 
 		// setup all repeated fields as many-to-many relations
@@ -220,28 +222,33 @@ public class ProtoDB {
 	private void setupRepeatedObjects(Connection conn, ProtoDBScanner scanner)
 			throws SQLException, IDFieldNotFoundException {
 		for (FieldDescriptor field : scanner.getRepeatedObjectFields()) {
-			if (field.getJavaType() == JavaType.MESSAGE) {
-				Message mg = getInstanceFromField(field);
+			setupRepeatedObject(conn, scanner, field);
+		}
+	}
 
-				if (mg instanceof MessageOrBuilder) {
-					MessageOrBuilder b2 = (MessageOrBuilder) mg;
+	private void setupRepeatedObject(Connection conn, ProtoDBScanner scanner, FieldDescriptor field)
+			throws SQLException, IDFieldNotFoundException {
+		if (field.getJavaType() == JavaType.MESSAGE) {
+			Message mg = getInstanceFromField(field);
 
-					// create other object
-					setupDatabase(b2, conn);
+			if (mg instanceof MessageOrBuilder) {
+				MessageOrBuilder b2 = (MessageOrBuilder) mg;
 
-					// create link table
-					ProtoDBScanner other = new ProtoDBScanner(b2, this.getDatabaseBackend());
-					if (!tableExist(scanner.getLinkTableName(other, field.getName()), conn))
-						executeStatement(scanner.getLinkCreateStatement(other, field.getName()), conn);
-				}
-			} else if (field.getJavaType() == JavaType.ENUM) {
-				setupDatabase(field.getEnumType(), conn);
+				// create other object
+				setupDatabase(b2, conn);
 
-				if (!tableExist(scanner.getEnumLinkTableName(field), conn)) {
-					PreparedStatement prep = conn.prepareStatement(scanner.getEnumLinkCreateStatement(field));
+				// create link table
+				ProtoDBScanner other = new ProtoDBScanner(b2, this.getDatabaseBackend());
+				if (!tableExist(scanner.getLinkTableName(other, field.getName()), conn))
+					executeStatement(scanner.getLinkCreateStatement(other, field.getName()), conn);
+			}
+		} else if (field.getJavaType() == JavaType.ENUM) {
+			setupDatabase(field.getEnumType(), conn);
 
-					prep.execute();
-				}
+			if (!tableExist(scanner.getEnumLinkTableName(field), conn)) {
+				PreparedStatement prep = conn.prepareStatement(scanner.getEnumLinkCreateStatement(field));
+
+				prep.execute();
 			}
 		}
 	}
@@ -249,12 +256,21 @@ public class ProtoDB {
 	private void setupSubObjects(MessageOrBuilder b, Connection conn, ProtoDBScanner scanner)
 			throws SQLException, IDFieldNotFoundException {
 		for (FieldDescriptor field : scanner.getObjectFields()) {
-			if (!field.isRepeated()) {
-				if (field.getJavaType() == JavaType.MESSAGE)
-					setupDatabase((MessageOrBuilder) b.getField(field), conn);
-				else if (field.getJavaType() == JavaType.ENUM) {
-					setupDatabase(field.getEnumType(), conn);
-				}
+			setupSubObject(b, conn, field);
+		}
+	}
+
+	private void setupSubObject(MessageOrBuilder b, Connection conn, FieldDescriptor field)
+			throws SQLException, IDFieldNotFoundException {
+		if (!field.isRepeated()) {
+			if (field.getJavaType() == JavaType.MESSAGE)
+				setupDatabase(
+					(MessageOrBuilder) b.getField(field), 
+					conn);
+			else if (field.getJavaType() == JavaType.ENUM) {
+				setupDatabase(
+					field.getEnumType(), 
+					conn);
 			}
 		}
 	}
@@ -291,6 +307,76 @@ public class ProtoDB {
 			executeStatement(String.format("CREATE TABLE BlobData (%s, data %s)",
 					this.getDatabaseBackend().getIdentityDefinition(),
 					this.getDatabaseBackend().getTypeMap(JDBCType.BLOB)), conn);
+	}
+	
+	public void addField(MessageOrBuilder b, String fieldName) throws ClassNotFoundException, IDFieldNotFoundException, SQLException, FieldNotFoundException {
+		FieldDescriptor f = b.getDescriptorForType().findFieldByName(fieldName);
+		if (f != null) {
+			this.addField(b, f);	
+		}
+		else {
+			throw new FieldNotFoundException(fieldName, b.getDescriptorForType().getName());
+		}
+	}
+	
+	public void addField(MessageOrBuilder b, FieldDescriptor field) throws ClassNotFoundException, IDFieldNotFoundException, SQLException, FieldNotFoundException {
+		Connection conn = null;
+
+		try {
+			conn = this.initialize();
+			conn.setAutoCommit(false);
+			
+			this.addField(b, field, conn);
+
+			conn.commit();
+		} catch (SQLException e) {
+			try {
+				if (conn != null)
+					conn.rollback();
+
+			} catch (SQLException sqlEx) {
+			}
+
+			System.out.println("Exception in ProtoDB!");
+			e.printStackTrace();
+
+			throw e;
+		} finally {
+			this.disconnect(conn);
+		}
+		
+	}
+	
+	private void addField(MessageOrBuilder b, FieldDescriptor field, Connection conn) throws SQLException, IDFieldNotFoundException {
+		ProtoDBScanner scanner = new ProtoDBScanner(b, this.getDatabaseBackend());
+		FieldType type = scanner.getFieldType(field);
+
+		// setup all sub objects
+		if (type == FieldType.Object || type == FieldType.Enum) 
+			 setupSubObject(b, conn, field);
+		
+		// setup blob data if blobs exist
+		if (type == FieldType.Blob)
+			setupBlobdata(conn);
+
+		// setup this object
+		if (!tableExist(scanner.getObjectName(), conn)) {
+			executeStatement(scanner.getCreateStatement(), conn);
+		}
+		else {
+			// add column statement
+			executeStatement(
+				scanner.getAddColumnStatement(field), 
+				conn);
+		}
+
+		if (type == FieldType.RepeatedEnum || type == FieldType.RepeatedObject) 
+			setupRepeatedObject(conn, scanner, field);
+		
+
+		if (type == FieldType.RepeatedBasic) 
+			executeStatement(scanner.getBasicLinkCreateStatement(field), conn);			
+		
 	}
 
 	private void executeStatement(String sql, Connection conn) throws SQLException {
