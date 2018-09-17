@@ -222,7 +222,7 @@ public class TestInsert extends TestBase {
 	public void TestEnumOne() {
 		TestDomain.EnumOne t = TestDomain.EnumOne.newBuilder()
 			.setID(-1)
-			.setRating(TestDomain.Rating.PositiveMatch)
+			.setEnumRating(TestDomain.Rating.PositiveMatch)
 			.setTitle("ThisIsAnEnumTitle")
 			.build();
 		
@@ -233,13 +233,13 @@ public class TestInsert extends TestBase {
 			//int id = db.save(t);	
 			
 			assertNotEquals(oo.getID(), -1);
-			assertEquals(t.getRating().toString(), oo.getRating().toString());
+			assertEquals(t.getEnumRating().toString(), oo.getEnumRating().toString());
 			assertEquals(t.getTitle(), oo.getTitle());
 			
 			TestDomain.EnumOne pp = db.get(oo.getID(), TestDomain.EnumOne.getDefaultInstance());
 			
 			assertEquals(oo.getID(), pp.getID());
-			assertEquals(oo.getRating().toString(), pp.getRating().toString());
+			assertEquals(oo.getEnumRating().toString(), pp.getEnumRating().toString());
 			assertEquals(oo.getTitle(), pp.getTitle());
 						
 		} catch (SQLException | ClassNotFoundException | IDFieldNotFoundException e) {

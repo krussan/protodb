@@ -66,7 +66,7 @@ public class TestSetup extends TestBase {
 	private final String[] BLOBDATA_FIELD_NAMES = {"ID", "data"};
 	private final String[] BLOBDATA_FIELD_TYPES = {"INTEGER", "LONGVARBINARY"};
 
-	private final String[] ENUMONE_FIELD_NAMES = {"ID", "_rating_ID", "title"};
+	private final String[] ENUMONE_FIELD_NAMES = {"ID", "_enumrating_ID", "title"};
 	private final String[] ENUMONE_FIELD_TYPES = {"INTEGER", "INTEGER", "LONGVARCHAR"};
 	
 	private final String[] RATING_FIELD_NAMES = {"ID", "value"};
@@ -186,7 +186,7 @@ public class TestSetup extends TestBase {
 		TestDomain.EnumOne t = TestDomain.EnumOne.newBuilder()
 				.setID(-1)
 				.setTitle("ThisIsAnEnumTitle")
-				.setRating(Rating.SubsExist)
+				.setEnumRating(Rating.SubsExist)
 				.build();
 		
 		try {

@@ -71,7 +71,7 @@ enum Rating {
 message EnumOne {
 	int32 ID = 1;
 	string title = 2;
-	Rating rating = 3;
+	Rating enumRating = 3;
 }
 
 message EnumOneList {

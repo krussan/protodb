@@ -54,13 +54,13 @@ public class TestSearchEnum extends TestBase {
 
 		EnumOne o1 = EnumOne.newBuilder()
 				.setID(1)
-				.setRating(Rating.ExactMatch)
+				.setEnumRating(Rating.ExactMatch)
 				.setTitle("ExactMatch")
 				.build();
 
 		EnumOne o2 = EnumOne.newBuilder()
 				.setID(2)
-				.setRating(Rating.PositiveMatch)
+				.setEnumRating(Rating.PositiveMatch)
 				.setTitle("PositiveMatch")
 				.build();
 		
@@ -74,7 +74,7 @@ public class TestSearchEnum extends TestBase {
 			List<TestDomain.EnumOne> result =
 				db.search(
 					SearchOptions.newBuilder(TestDomain.EnumOne.getDefaultInstance())
-					.addFieldName("rating")
+					.addFieldName("enumRating")
 					.addSearchArgument("ExactMatch")
 					.addOperator(ProtoDBSearchOperator.Equals));
 			
@@ -102,10 +102,10 @@ public class TestSearchEnum extends TestBase {
 				"SELECT "
 				+ "A.%1$sID%2$s AS A_ID, "
 				+ "A.%1$stitle%2$s AS A_title, "
-				+ "AA.%1$svalue%2$s AS A_rating "
+				+ "AA.%1$svalue%2$s AS A_enumRating "
 				+ "FROM EnumOne AS A "
 				+ "LEFT JOIN Rating AS AA "
-				+ "ON A._rating_ID = AA.ID ",
+				+ "ON A._enumRating_ID = AA.ID ",
 				db.getDatabaseBackend().getStartBracket(),
 				db.getDatabaseBackend().getEndBracket());
 		
