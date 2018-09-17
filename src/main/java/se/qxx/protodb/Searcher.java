@@ -61,8 +61,18 @@ public class Searcher {
 
 		setMainTable(scanner, other, linkFieldName, columns, joinClause);
 
-		joinClause.addAll(Searcher.getJoinClause(null, scanner, StringUtils.EMPTY, aliases, new MutableInt(1),
-				StringUtils.EMPTY, StringUtils.EMPTY, travelComplexLinks, getBlobs, excludedObjects));
+		joinClause.addAll(
+			Searcher.getJoinClause(
+					null, 
+					scanner, 
+					StringUtils.EMPTY, 
+					aliases, 
+					new MutableInt(1),
+					StringUtils.EMPTY, 
+					StringUtils.EMPTY, 
+					travelComplexLinks, 
+					getBlobs, 
+					excludedObjects));
 
 		// If complex join set a distinct on the first object only
 		// This to do a simple search query. The result needs to be picked up by
@@ -136,14 +146,28 @@ public class Searcher {
 		return joinClause;
 	}
 
-	private static List<JoinRow> getJoinClauseEnum(String enumFieldName, CaseInsensitiveMap aliases,
-			String parentHierarchy, String fieldHierarchy) {
+	private static List<JoinRow> getJoinClauseEnum(
+			FieldDescriptor enumField,
+			CaseInsensitiveMap aliases,
+			String parentHierarchy, 
+			String fieldHierarchy) {
+
+		String tableName = enumField.getEnumType().getName();
+		String enumFieldName = enumField.getName();
+		
+		
 		List<JoinRow> joinClause = new ArrayList<JoinRow>();
 
-		joinClause.add(new JoinRow(aliases.get(parentHierarchy), aliases.get(fieldHierarchy),
-				String.format("LEFT JOIN %s AS %s  ON %s._%s_ID = %s.ID ", StringUtils.capitalize(enumFieldName),
-						aliases.get(fieldHierarchy), aliases.get(parentHierarchy), enumFieldName,
-						aliases.get(fieldHierarchy))));
+		joinClause.add(
+			new JoinRow(
+				aliases.get(parentHierarchy), 
+				aliases.get(fieldHierarchy),
+				String.format("LEFT JOIN %s AS %s  ON %s._%s_ID = %s.ID ", 
+					StringUtils.capitalize(tableName),
+					aliases.get(fieldHierarchy), 
+					aliases.get(parentHierarchy), 
+					enumFieldName,
+					aliases.get(fieldHierarchy))));
 
 		return joinClause;
 	}
@@ -207,11 +231,22 @@ public class Searcher {
 				ProtoDBScanner other = new ProtoDBScanner(mg, scanner.getBackend());
 
 				joinClause.addAll(getJoinClauseSimple(scanner, other, f.getName(), aliases, fieldHierarchy, hierarchy));
-				joinClause.addAll(getJoinClause(scanner, other, f.getName(), aliases, linkTableIterator, fieldHierarchy,
-						hierarchy, travelComplexLinks, getBlobs, 
+				joinClause.addAll(
+					getJoinClause(
+						scanner, 
+						other, 
+						f.getName(), 
+						aliases, 
+						linkTableIterator, 
+						fieldHierarchy,
+						hierarchy, 
+						travelComplexLinks, 
+						getBlobs, 
 						Populator.stripExcludedFields(f.getName(), excludedObjects)));
+				
 			} else if (f.getJavaType() == JavaType.ENUM) {
-				joinClause.addAll(getJoinClauseEnum(f.getName(), aliases, fieldHierarchy, hierarchy));
+				joinClause.addAll(
+					getJoinClauseEnum(f, aliases, fieldHierarchy, hierarchy));
 			}
 		}
 

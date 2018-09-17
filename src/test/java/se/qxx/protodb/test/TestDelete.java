@@ -165,7 +165,7 @@ public class TestDelete extends TestBase {
 	public void TestEnumOne() {
 		TestDomain.EnumOne t = TestDomain.EnumOne.newBuilder()
 			.setID(-1)
-			.setRating(TestDomain.Rating.PositiveMatch)
+			.setEnumRating(TestDomain.Rating.PositiveMatch)
 			.setTitle("ThisIsAnEnumTitle")
 			.build();
 		
@@ -176,7 +176,7 @@ public class TestDelete extends TestBase {
 			//int id = db.save(t);	
 			
 			assertNotEquals(oo.getID(), -1);
-			assertEquals(t.getRating().toString(), oo.getRating().toString());
+			assertEquals(t.getEnumRating().toString(), oo.getEnumRating().toString());
 			assertEquals(t.getTitle(), oo.getTitle());
 
 			db.delete(oo);

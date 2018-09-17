@@ -964,7 +964,8 @@ public class ProtoDB {
 
 	private int saveEnum(FieldDescriptor field, String value, Connection conn) throws SQLException {
 		PreparedStatement prep = conn.prepareStatement(
-				String.format("SELECT ID FROM %s WHERE value = ?", StringUtils.capitalize(field.getName())));
+				String.format("SELECT ID FROM %s WHERE value = ?", 
+					StringUtils.capitalize(field.getEnumType().getName())));
 
 		prep.setString(1, value);
 		ResultSet rs = prep.executeQuery();
@@ -1434,8 +1435,14 @@ public class ProtoDB {
 			conn = this.initialize();
 
 			ProtoDBScanner scanner = new ProtoDBScanner(options.getInstance(), this.getDatabaseBackend());
-			JoinResult joinClause = Searcher.getJoinQuery(scanner, populateBlobs, !options.isShallowSearch(),
-					options.getNumberOfResults(), options.getOffset(), options.getExcludedObjects());
+			JoinResult joinClause = 
+					Searcher.getJoinQuery(
+							scanner, 
+							populateBlobs, 
+							!options.isShallowSearch(),
+							options.getNumberOfResults(), 
+							options.getOffset(), 
+							options.getExcludedObjects());
 
 			// check if this is a repeated (or enum)
 			joinClause.addWhereClause(scanner, options.getFieldName(), options.getSearchFor(), options.getOperator());
