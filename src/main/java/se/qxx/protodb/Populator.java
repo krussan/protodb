@@ -39,6 +39,9 @@ public class Populator {
 	}
 
 	public static void populateField(Builder b, FieldDescriptor field, Object o) {
+		if (o == null)
+			return;
+		
 		if (field.getJavaType() == JavaType.DOUBLE)
 			if (o instanceof Double)
 				b.setField(field, (double)o);
