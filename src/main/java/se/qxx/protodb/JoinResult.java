@@ -396,20 +396,20 @@ public class JoinResult {
 			}
 		}
 		
-		if (getBlobs) {
-			for (FieldDescriptor f : scanner.getBlobFields()) {
-				if (!Populator.isExcludedField(f.getName(), excludedObjects)) {
-					String alias = this.getAliases().get(parentHierarchy);
-					String columnName = String.format("%s_%s", alias, f.getName());
-					
-					byte[] byteData = rs.getBytes(columnName);
-					
-					Populator.populateField(b, f, byteData);
-				}
+		for (FieldDescriptor f : scanner.getBlobFields()) {
+			if (getBlobs &&
+					!Populator.isExcludedField(f.getName(), excludedObjects)) {
+				
+				String alias = this.getAliases().get(parentHierarchy);
+				String columnName = String.format("%s_%s", alias, f.getName());
+				
+				byte[] byteData = rs.getBytes(columnName);
+				
+				Populator.populateField(b, f, byteData);
 			}
-		}
-		else {
-			Populator.populateRequiredBlobs(b, scanner);
+			else if (f.isRequired()) {
+				b.setField(f, ByteString.EMPTY);
+			}
 		}
 		
 		// invoke parseFrom by reflection to cast this from dynamicMessage to the actual type
