@@ -90,7 +90,7 @@ message ObjectFour {
 message ObjectFive {
 	int32 ID = 1;
 	string fourTitle = 2;
-	required bytes fourImage = 3;
+	bytes fourImage = 3;
 }
 
 message RepObjectTwo {
