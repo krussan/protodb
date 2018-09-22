@@ -407,7 +407,7 @@ public class JoinResult {
 				
 				Populator.populateField(b, f, byteData);
 			}
-			else if (f.isRequired()) {
+			else {
 				b.setField(f, ByteString.EMPTY);
 			}
 		}
