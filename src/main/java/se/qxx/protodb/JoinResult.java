@@ -405,7 +405,12 @@ public class JoinResult {
 				
 				byte[] byteData = rs.getBytes(columnName);
 				
-				Populator.populateField(b, f, byteData);
+				if (byteData != null) {
+					Populator.populateField(b, f, byteData);
+				}
+				else {
+					b.setField(f, ByteString.EMPTY);	
+				}
 			}
 			else {
 				b.setField(f, ByteString.EMPTY);
