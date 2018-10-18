@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 
+import org.apache.commons.codec.cli.Digest;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -890,10 +892,24 @@ public class ProtoDB {
 
 		// Get hashes on all blob fields
 		/*
-		 SELECT 'field.getName()', ID, MD5(data)
-		 getQuotedColumn(getObjectFieldName(field))
+		 0. SELECT 199, 'image', _image_ID FROM Movie WHERE ID = 199 UNION SELECT 199, 'thumbnail', _thumbnail_id FROM Movie WHERE ID = 199;
+		 1. SELECT 'object_id', 'field.getName()', ID, MD5(data) FROM object A INNER JOIN BlobData B 
+		 SELECT A.*, MD5(B.data) FROM (
+		 	SELECT 199, 'image', _image_ID AS _blob_ID FROM Movie WHERE ID = 199 
+		 	UNION 
+		 	SELECT 199, 'thumbnail', _thumbnail_id AS _blob_ID FROM Movie WHERE ID = 199
+	 	 ) A 
+		 INNER JOIN BlobData B ON A._image_ID = B.ID;
+
+		 2. Calculate MD5 hashes of current blob fields (lets hope java matches the mysql implementation)
+ 			DigestUtils.md5Hex(data)
+ 			
+ 		 3. If hashes matches return the blobID
+ 		 4. If not the update the blobdata and return the blobID
 		 */
 
+
+		
 		if (objectExist)
 			deleteBlobs(scanner, conn);
 
