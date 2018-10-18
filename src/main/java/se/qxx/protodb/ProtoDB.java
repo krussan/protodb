@@ -816,7 +816,7 @@ public class ProtoDB {
 
 			if (field.getJavaType() == JavaType.MESSAGE && !field.isRepeated()) {
 				ProtoDBScanner other = new ProtoDBScanner((Message) o, this.getDatabaseBackend());
-				;
+
 				Message ob = save((Message) o, conn);
 				scanner.addObjectID(fieldName, (int) ob.getField(other.getIdField()));
 
@@ -831,18 +831,7 @@ public class ProtoDB {
 		}
 
 		// delete blobs
-		if (objectExist)
-			deleteBlobs(scanner, conn);
-
-		// save blobs
-		for (FieldDescriptor field : scanner.getBlobFields()) {
-			String fieldName = field.getName();
-
-			ByteString bs = (ByteString) b.getField(field);
-			int blobID = saveBlob(bs.toByteArray(), conn);
-			scanner.addBlobID(fieldName, blobID);
-			mainBuilder.setField(field, bs);
-		}
+		updateBlobs(b, conn, mainBuilder, scanner, objectExist);
 
 		// save this object
 		int thisID = saveThisObject(b, scanner, objectExist, conn);
@@ -894,6 +883,29 @@ public class ProtoDB {
 		}
 
 		return (T) mainBuilder.build();
+	}
+
+	private <T extends Message> void updateBlobs(T b, Connection conn, Builder mainBuilder, ProtoDBScanner scanner,
+			Boolean objectExist) throws SQLException {
+
+		// Get hashes on all blob fields
+		/*
+		 SELECT 'field.getName()', ID, MD5(data)
+		 getQuotedColumn(getObjectFieldName(field))
+		 */
+
+		if (objectExist)
+			deleteBlobs(scanner, conn);
+
+		// save blobs
+		for (FieldDescriptor field : scanner.getBlobFields()) {
+			String fieldName = field.getName();
+
+			ByteString bs = (ByteString) b.getField(field);
+			int blobID = saveBlob(bs.toByteArray(), conn);
+			scanner.addBlobID(fieldName, blobID);
+			mainBuilder.setField(field, bs);
+		}
 	}
 
 	private void deleteBasicLinkObject(ProtoDBScanner scanner, FieldDescriptor field, Connection conn)
