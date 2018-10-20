@@ -88,6 +88,8 @@ public abstract class DatabaseBackend {
 	
 	public abstract DBType getDBType();
 	
+	public abstract String getMD5Function();
+	
 	public String getTypeMap(JDBCType type) {
 		if (typeMap.containsKey(type))
 			return typeMap.get(type);

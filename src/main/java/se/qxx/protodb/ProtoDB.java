@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 
+import org.apache.commons.codec.cli.Digest;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -816,7 +818,7 @@ public class ProtoDB {
 
 			if (field.getJavaType() == JavaType.MESSAGE && !field.isRepeated()) {
 				ProtoDBScanner other = new ProtoDBScanner((Message) o, this.getDatabaseBackend());
-				;
+
 				Message ob = save((Message) o, conn);
 				scanner.addObjectID(fieldName, (int) ob.getField(other.getIdField()));
 
@@ -831,18 +833,7 @@ public class ProtoDB {
 		}
 
 		// delete blobs
-		if (objectExist)
-			deleteBlobs(scanner, conn);
-
-		// save blobs
-		for (FieldDescriptor field : scanner.getBlobFields()) {
-			String fieldName = field.getName();
-
-			ByteString bs = (ByteString) b.getField(field);
-			int blobID = saveBlob(bs.toByteArray(), conn);
-			scanner.addBlobID(fieldName, blobID);
-			mainBuilder.setField(field, bs);
-		}
+		updateBlobs(b, conn, mainBuilder, scanner, objectExist);
 
 		// save this object
 		int thisID = saveThisObject(b, scanner, objectExist, conn);
@@ -895,6 +886,99 @@ public class ProtoDB {
 
 		return (T) mainBuilder.build();
 	}
+
+	private <T extends Message> void updateBlobs(T b, Connection conn, Builder mainBuilder, ProtoDBScanner scanner,
+			Boolean objectExist) throws SQLException {
+
+		// Get hashes on all blob fields
+		/*
+		 0. SELECT 199, 'image', _image_ID FROM Movie WHERE ID = 199 UNION SELECT 199, 'thumbnail', _thumbnail_id FROM Movie WHERE ID = 199;
+		 1. SELECT 'object_id', 'field.getName()', ID, MD5(data) FROM object A INNER JOIN BlobData B 
+		 SELECT A.*, MD5(B.data) FROM (
+		 	SELECT 199, 'image', _image_ID AS _blob_ID FROM Movie WHERE ID = 199 
+		 	UNION 
+		 	SELECT 199, 'thumbnail', _thumbnail_id AS _blob_ID FROM Movie WHERE ID = 199
+	 	 ) A 
+		 INNER JOIN BlobData B ON A._image_ID = B.ID;
+
+		 2. Calculate MD5 hashes of current blob fields (lets hope java matches the mysql implementation)
+ 			DigestUtils.md5Hex(data)
+ 			
+ 		 3. If hashes matches return the blobID
+ 		 4. If not the update the blobdata and return the blobID
+		 */
+		if (!objectExist || StringUtils.isEmpty(this.getDatabaseBackend().getMD5Function())) 
+			updateBlobByResave(b, conn, mainBuilder, scanner, objectExist);
+		else
+			updateBlobByHash(b, conn, mainBuilder, scanner, objectExist);
+
+	}
+
+	private <T extends Message> void  updateBlobByHash(T b, Connection conn, Builder mainBuilder,
+			ProtoDBScanner scanner, Boolean objectExist) throws SQLException {
+		String sql = scanner.getHashBlobSql();
+
+		PreparedStatement prep = conn.prepareStatement(sql);
+		prep.setInt(1, scanner.getIdValue());
+		ResultSet rs = prep.executeQuery();
+
+		while(rs.next()) {
+			// fieldName, _blob_ID, __hash__
+			String fieldName = rs.getString("fieldName");
+			int blobID = rs.getInt("_blob_ID");
+			String hash = rs.getString("__hash__");
+			
+			FieldDescriptor field = scanner.getFieldByName(fieldName);
+			ByteString bs = (ByteString)b.getField(field);
+			String newHash = DigestUtils.md5Hex(bs.toByteArray());
+			
+			if (!StringUtils.equalsIgnoreCase(hash, newHash)) {
+				// hashes does not match update the blob
+				updateBlob(b, conn, mainBuilder, scanner, field, blobID);
+			}
+			else {
+				scanner.addBlobID(fieldName, blobID);
+				mainBuilder.setField(field, bs);
+			}
+		}
+	}
+
+	private <T extends Message> void updateBlobByResave(T b, Connection conn, Builder mainBuilder,
+			ProtoDBScanner scanner, Boolean objectExist) throws SQLException {
+		if (objectExist) {
+			deleteBlobs(scanner, conn);
+		}
+
+		// save blobs
+		for (FieldDescriptor field : scanner.getBlobFields()) {
+			addBlob(b, conn, mainBuilder, scanner, field);
+		}
+	}
+
+	private <T extends Message> void addBlob(T b, Connection conn, Builder mainBuilder, ProtoDBScanner scanner,
+			FieldDescriptor field) throws SQLException {
+		String fieldName = field.getName();
+
+		ByteString bs = (ByteString) b.getField(field);
+		int blobID = saveBlob(bs.toByteArray(), conn);
+		scanner.addBlobID(fieldName, blobID);
+		mainBuilder.setField(field, bs);
+	}
+	
+	private <T extends Message> void updateBlob(T b, Connection conn, Builder mainBuilder, ProtoDBScanner scanner,
+			FieldDescriptor field, int blobID) throws SQLException {
+		ByteString bs = (ByteString) b.getField(field);
+		
+		PreparedStatement prep = conn.prepareStatement(scanner.getUpdateBlobSql());
+		prep.setBytes(1, bs.toByteArray());
+		prep.setInt(2, blobID);
+
+		String fieldName = field.getName();
+
+		scanner.addBlobID(fieldName, blobID);
+		mainBuilder.setField(field, bs);
+	}
+
 
 	private void deleteBasicLinkObject(ProtoDBScanner scanner, FieldDescriptor field, Connection conn)
 			throws SQLException {
