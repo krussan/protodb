@@ -53,4 +53,9 @@ public class MysqlBackend extends DatabaseBackend {
 	public String getEscapeString() {
 		return "ESCAPE '\\\\'";
 	}
+	
+	@Override
+	public String getMD5Function() {
+		return "MD5(%s)";
+	}
 }

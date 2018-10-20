@@ -7,6 +7,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 
+import org.apache.commons.lang3.StringUtils;
+
 import se.qxx.protodb.DBType;
 
 public class SqliteBackend extends DatabaseBackend {
@@ -42,5 +44,10 @@ public class SqliteBackend extends DatabaseBackend {
 	@Override
 	public DBType getDBType() {
 		return DBType.Sqlite;
+	}
+	
+	@Override
+	public String getMD5Function() {
+		return StringUtils.EMPTY;
 	}
 }

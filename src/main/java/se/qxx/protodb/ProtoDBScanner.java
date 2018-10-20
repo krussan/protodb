@@ -654,5 +654,37 @@ public class ProtoDBScanner {
 
 		return StringUtils.EMPTY;
 	}
-	
+
+	public String getHashBlobSql() {
+		/* SELECT 'object_id', 'field.getName()', ID, MD5(data) FROM object A INNER JOIN BlobData B 
+		 SELECT A.*, MD5(B.data) FROM (
+				 	SELECT 199, 'image', _image_ID AS _blob_ID FROM Movie WHERE ID = 199 
+				 	UNION 
+				 	SELECT 199, 'thumbnail', _thumbnail_id AS _blob_ID FROM Movie WHERE ID = 199
+			 	 ) A
+	 	 		 INNER JOIN BlobData B ON A._blob_ID = B.ID;
+	 	 */
+		List<String> rows = new ArrayList<String>();
+		for (FieldDescriptor f : this.getBlobFields()) {
+			rows.add(String.format("SELECT '%3$s' AS fieldName, %1$s%4$s%2$s AS _blob_ID FROM %1$s%5$s%2$s WHERE ID = ?",
+					this.getBackend().getStartBracket(),
+					this.getBackend().getEndBracket(),
+					f.getName().toLowerCase(),
+					getObjectFieldName(f),
+					this.getObjectName(),
+					this.getIdValue()));
+		}
+		String md5 = String.format(this.getBackend().getMD5Function(), "B.data");
+		
+		return String.format("SELECT A.fieldName, A._blob_ID, %3$s AS %1$s__hash__%2$s FROM (%4$s) A INNER JOIN BlobData B ON A._blob_ID = B.ID",
+				this.getBackend().getStartBracket(),
+				this.getBackend().getEndBracket(),
+				md5,
+				String.join(" UNION ", rows));
+		
+	}
+
+	public String getUpdateBlobSql() {
+		return "UPDATE BlobData SET data = ? WHERE ID = ?";
+	}
 }
