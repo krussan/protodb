@@ -666,7 +666,7 @@ public class ProtoDBScanner {
 	 	 */
 		List<String> rows = new ArrayList<String>();
 		for (FieldDescriptor f : this.getBlobFields()) {
-			rows.add(String.format("SELECT '%3$s' AS fieldName, %1$s%4$s%2$s AS _blob_ID FROM %1$s%5$s%2$s WHERE ID = ?",
+			rows.add(String.format("SELECT '%3$s' AS fieldName, %1$s%4$s%2$s AS _blob_ID FROM %1$s%5$s%2$s WHERE ID = %6$s",
 					this.getBackend().getStartBracket(),
 					this.getBackend().getEndBracket(),
 					f.getName().toLowerCase(),

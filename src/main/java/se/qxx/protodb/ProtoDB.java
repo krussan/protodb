@@ -907,10 +907,12 @@ public class ProtoDB {
  		 3. If hashes matches return the blobID
  		 4. If not the update the blobdata and return the blobID
 		 */
-		if (!objectExist || StringUtils.isEmpty(this.getDatabaseBackend().getMD5Function())) 
-			updateBlobByResave(b, conn, mainBuilder, scanner, objectExist);
-		else
-			updateBlobByHash(b, conn, mainBuilder, scanner, objectExist);
+		if (scanner.getBlobFields().size() > 0) {
+			if (!objectExist || StringUtils.isEmpty(this.getDatabaseBackend().getMD5Function())) 
+				updateBlobByResave(b, conn, mainBuilder, scanner, objectExist);
+			else
+				updateBlobByHash(b, conn, mainBuilder, scanner, objectExist);
+		}
 
 	}
 
@@ -919,7 +921,6 @@ public class ProtoDB {
 		String sql = scanner.getHashBlobSql();
 
 		PreparedStatement prep = conn.prepareStatement(sql);
-		prep.setInt(1, scanner.getIdValue());
 		ResultSet rs = prep.executeQuery();
 
 		while(rs.next()) {
