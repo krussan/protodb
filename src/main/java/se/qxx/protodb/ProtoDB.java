@@ -1013,15 +1013,36 @@ public class ProtoDB {
 
 	private void deleteBlobs(ProtoDBScanner scanner, Connection conn) throws SQLException {
 		for (FieldDescriptor field : scanner.getBlobFields()) {
-			String sql = "DELETE FROM BlobData WHERE ID IN (SELECT " + scanner.getObjectFieldName(field) + " FROM "
-					+ scanner.getObjectName() + " WHERE ID = ?)";
-			Logger.log(sql);
-
-			PreparedStatement prep = conn.prepareStatement(sql);
-			prep.setInt(1, scanner.getIdValue());
-
-			prep.execute();
+			// get id first, then delete
+			int id = getBlobIdFromField(scanner, conn, field);
+			
+			if (id > 0) {
+				String sql = "DELETE FROM BlobData WHERE ID = ?";
+				Logger.log(sql);
+	
+				PreparedStatement prep = conn.prepareStatement(sql);
+				prep.setInt(1, id);
+	
+				prep.execute();
+			}
 		}
+	}
+
+	private int getBlobIdFromField(ProtoDBScanner scanner, Connection conn, FieldDescriptor field)
+			throws SQLException {
+		String sql = String.format("SELECT %1$s%3$s%2$s FROM %1$s%4$s%2$s WHERE ID = ?",
+				scanner.getBackend().getStartBracket(),
+				scanner.getBackend().getEndBracket(),
+				scanner.getObjectFieldName(field),
+				scanner.getObjectName());
+		PreparedStatement prep = conn.prepareStatement(sql);
+		prep.setInt(1, scanner.getIdValue());
+		ResultSet rs = prep.executeQuery();
+		if (rs.next()) {
+			return rs.getInt(1);
+		}
+		
+		return -1;
 	}
 
 	private Boolean checkExisting(ProtoDBScanner scanner, Connection conn) throws SQLException {
