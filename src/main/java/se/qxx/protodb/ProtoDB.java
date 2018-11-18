@@ -541,24 +541,24 @@ public class ProtoDB {
 		// map the results to the parent object
 		for (FieldDescriptor field : scanner.getRepeatedObjectFields()) {
 			if (!Populator.isExcludedField(field.getName(), excludedObjects)) {
-				List<String> tailExcludedFields = Populator.stripExcludedFields(field.getName(), excludedObjects);
+				List<String> tailExcludedObjects = Populator.stripExcludedFields(field.getName(), excludedObjects);
 				
 				DynamicMessage innerInstance = getInstanceFromField(field);
-				JoinResult joinResult = getLinkJoinResult(ids, scanner, field, populateBlobs, tailExcludedFields );
+				JoinResult joinResult = getLinkJoinResult(ids, scanner, field, populateBlobs, tailExcludedObjects );
 
 				PreparedStatement prep = joinResult.getStatement(conn);
 				ResultSet rs = prep.executeQuery();
 
 				Map<Integer, List<DynamicMessage>> result = joinResult.getResultLink(innerInstance, rs,
 						this.isPopulateBlobsActive(), 
-						tailExcludedFields);
+						tailExcludedObjects);
 
 				// if the objects in turn has complex join do a subquery to
 				// get all the different sub objects
 				// get all the sub-ids
 				if (joinResult.hasComplexJoins()) {
 					for (int i : result.keySet()) {
-						List<DynamicMessage> innerObjects = getDeepCopy(conn, result.get(i), populateBlobs, tailExcludedFields );
+						List<DynamicMessage> innerObjects = getDeepCopy(conn, result.get(i), populateBlobs, tailExcludedObjects );
 
 						// the innerObjects is an updated version of result.get(i) with sub-objects
 						// populated
