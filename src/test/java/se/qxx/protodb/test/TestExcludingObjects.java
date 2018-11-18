@@ -17,9 +17,12 @@ import org.junit.runners.Parameterized.Parameters;
 
 import com.google.protobuf.ByteString;
 
+import se.qxx.protodb.JoinResult;
 import se.qxx.protodb.ProtoDB;
 import se.qxx.protodb.ProtoDBFactory;
+import se.qxx.protodb.ProtoDBScanner;
 import se.qxx.protodb.SearchOptions;
+import se.qxx.protodb.Searcher;
 import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
 import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 import se.qxx.protodb.exceptions.ProtoDBParserException;
@@ -284,6 +287,36 @@ public class TestExcludingObjects extends TestBase {
 		
 	}
 	
+
+	@Test
+	public void TestExcludingBlobSearchSQL() {
+		ProtoDBScanner scanner = new ProtoDBScanner(TestDomain.ObjectOne.getDefaultInstance(), db.getDatabaseBackend());
+		List<String> excludedObjects = new ArrayList<String>();
+		excludedObjects.add("testOne.by");
+		
+		JoinResult result = Searcher.getJoinQuery(scanner, true, true, -1, -1, excludedObjects);
+		
+		String expected = 
+				String.format(
+					"SELECT "
+					+ "A.%1$sID%2$s AS A_ID, "
+					+ "A.%1$soois%2$s AS A_oois, "
+					+ "AA.%1$sID%2$s AS AA_ID, "
+					+ "AA.%1$sdd%2$s AS AA_dd, "
+					+ "AA.%1$sff%2$s AS AA_ff, "
+					+ "AA.%1$sis%2$s AS AA_is, "
+					+ "AA.%1$sil%2$s AS AA_il, "
+					+ "AA.%1$sbb%2$s AS AA_bb, "
+					+ "AA.%1$sss%2$s AS AA_ss "
+					+ "FROM ObjectOne AS A "
+					+ "LEFT JOIN SimpleTest AS AA "
+					+ "ON A._testone_ID = AA.ID ",
+					db.getDatabaseBackend().getStartBracket(),
+					db.getDatabaseBackend().getEndBracket());
+			
+			assertEquals(expected, result.getSql());
+		
+	}
 
 	@Test
 	public void TestExcludeOnSubObjectsSearch() {
