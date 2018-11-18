@@ -541,22 +541,24 @@ public class ProtoDB {
 		// map the results to the parent object
 		for (FieldDescriptor field : scanner.getRepeatedObjectFields()) {
 			if (!Populator.isExcludedField(field.getName(), excludedObjects)) {
+				List<String> tailExcludedFields = Populator.stripExcludedFields(field.getName(), excludedObjects);
+				
 				DynamicMessage innerInstance = getInstanceFromField(field);
-				JoinResult joinResult = getLinkJoinResult(ids, scanner, field, populateBlobs);
+				JoinResult joinResult = getLinkJoinResult(ids, scanner, field, populateBlobs, tailExcludedFields );
 
 				PreparedStatement prep = joinResult.getStatement(conn);
 				ResultSet rs = prep.executeQuery();
 
 				Map<Integer, List<DynamicMessage>> result = joinResult.getResultLink(innerInstance, rs,
-						this.isPopulateBlobsActive(), excludedObjects);
+						this.isPopulateBlobsActive(), 
+						tailExcludedFields);
 
 				// if the objects in turn has complex join do a subquery to
 				// get all the different sub objects
 				// get all the sub-ids
 				if (joinResult.hasComplexJoins()) {
 					for (int i : result.keySet()) {
-						List<DynamicMessage> innerObjects = getDeepCopy(conn, result.get(i), populateBlobs,
-								Populator.stripExcludedFields(field.getName(), excludedObjects));
+						List<DynamicMessage> innerObjects = getDeepCopy(conn, result.get(i), populateBlobs, tailExcludedFields );
 
 						// the innerObjects is an updated version of result.get(i) with sub-objects
 						// populated
@@ -654,16 +656,16 @@ public class ProtoDB {
 	}
 
 	private <T extends Message> JoinResult getLinkJoinResult(List<Integer> parentIDs, ProtoDBScanner scanner,
-			FieldDescriptor field, boolean populateBlobs) {
+			FieldDescriptor field, boolean populateBlobs, List<String> excludedObjects) {
 		if (field.getJavaType() == JavaType.MESSAGE) {
 			Message mg = getInstanceFromField(field);
 
 			if (mg instanceof MessageOrBuilder) {
 
 				ProtoDBScanner other = new ProtoDBScanner(mg, this.getDatabaseBackend());
-				;
+				
 				JoinResult joinResult = Searcher.getJoinQuery(other, populateBlobs, true, scanner, field.getName(), -1,
-						-1, null);
+						-1, excludedObjects);
 
 				joinResult.addLinkWhereClause(parentIDs, scanner);
 

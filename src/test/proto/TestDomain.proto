@@ -98,3 +98,9 @@ message RepObjectTwo {
 	string title = 2;
 	repeated RepObjectOne listRepObject = 3;
 }
+
+message RepObjectThree {
+	int32 ID = 1;
+	string title = 2;
+	repeated SimpleTest listObjects = 3;
+}

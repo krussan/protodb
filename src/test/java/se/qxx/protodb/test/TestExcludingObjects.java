@@ -32,6 +32,7 @@ import se.qxx.protodb.model.ProtoDBSearchOperator;
 import se.qxx.protodb.test.TestDomain.ObjectOne;
 import se.qxx.protodb.test.TestDomain.ObjectTwo;
 import se.qxx.protodb.test.TestDomain.RepObjectOne;
+import se.qxx.protodb.test.TestDomain.RepObjectThree;
 import se.qxx.protodb.test.TestDomain.SimpleTest;
 
 @RunWith(Parameterized.class)
@@ -55,6 +56,7 @@ public class TestExcludingObjects extends TestBase {
 	public void Setup() throws ClassNotFoundException, SQLException, IDFieldNotFoundException {		
 	    db.setupDatabase(TestDomain.ObjectTwo.newBuilder());
 	    db.setupDatabase(TestDomain.RepObjectOne.newBuilder());
+	    db.setupDatabase(TestDomain.RepObjectThree.newBuilder());
 	    
 	    ObjectTwo o2 = db.get(1, TestDomain.ObjectTwo.getDefaultInstance());
 	    
@@ -67,6 +69,17 @@ public class TestExcludingObjects extends TestBase {
 				.setIl(999999998)
 				.setIs(999999998)
 				.setSs("ThisIsATest")
+				.build();
+		
+		TestDomain.SimpleTest tt = TestDomain.SimpleTest.newBuilder()
+				.setID(-1)
+				.setBb(false)
+				.setBy(ByteString.copyFrom(new byte[] {7, 8, 9}))
+				.setDd(1467802579378.62352352)
+				.setFf((float) 555444333.213)
+				.setIl(999999998)
+				.setIs(999999998)
+				.setSs("ABCDEFGHIJK")
 				.build();
 		
 		TestDomain.ObjectOne o1 = TestDomain.ObjectOne.newBuilder()
@@ -116,6 +129,23 @@ public class TestExcludingObjects extends TestBase {
 	    		.build();
 	    
 	    db.save(r1);
+	    
+	    TestDomain.RepObjectThree r3 = TestDomain.RepObjectThree.newBuilder()
+	    		.setID(-1)
+	    		.setTitle("TitleA")
+	    		.addListObjects(t)
+	    		.addListObjects(tt)
+	    		.build();
+
+	    TestDomain.RepObjectThree r31 = TestDomain.RepObjectThree.newBuilder()
+	    		.setID(-1)
+	    		.setTitle("TitleB")
+	    		.addListObjects(t)
+	    		.addListObjects(tt)
+	    		.build();
+
+	    db.save(r3);
+	    db.save(r31);
 	    
 	}
 	
@@ -332,6 +362,33 @@ public class TestExcludingObjects extends TestBase {
 			assertEquals(1, result.size());
 			
 			assertEquals(0, result.get(0).getListOfObjectsCount());
+
+		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException | SearchOptionsNotInitializedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
+
+	}
+
+	@Test
+	public void TestExcludeBlobsOnSubObjectsSearch() {
+		try {
+
+			List<RepObjectThree> result = db.search(
+				SearchOptions.newBuilder(TestDomain.RepObjectThree.getDefaultInstance())
+					.addFieldName("title")
+					.addSearchArgument("%")
+					.addOperator(ProtoDBSearchOperator.Like)
+					.addExcludedObject("listobjects.by"));
+			
+			assertNotNull(result);
+			assertEquals(2, result.size());
+			
+			assertEquals(0, result.get(0).getListObjects(0).getBy().size());
+			assertEquals(0, result.get(0).getListObjects(1).getBy().size());
+			assertEquals(0, result.get(1).getListObjects(0).getBy().size());
+			assertEquals(0, result.get(1).getListObjects(1).getBy().size());
 
 		} catch (SQLException | ClassNotFoundException | SearchFieldNotFoundException | ProtoDBParserException | SearchOptionsNotInitializedException e) {
 			// TODO Auto-generated catch block
