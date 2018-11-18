@@ -15,11 +15,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 
-import org.apache.commons.codec.cli.Digest;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.MutablePair;
-import org.apache.commons.lang3.tuple.Pair;
+
+import com.google.protobuf.ByteString;
+import com.google.protobuf.Descriptors.Descriptor;
+import com.google.protobuf.Descriptors.EnumDescriptor;
+import com.google.protobuf.Descriptors.EnumValueDescriptor;
+import com.google.protobuf.Descriptors.FieldDescriptor;
+import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
+import com.google.protobuf.DynamicMessage;
+import com.google.protobuf.Message;
+import com.google.protobuf.Message.Builder;
+import com.google.protobuf.MessageOrBuilder;
 
 import se.qxx.protodb.ProtoDBScanner.FieldType;
 import se.qxx.protodb.backend.ColumnDefinition;
@@ -30,18 +38,6 @@ import se.qxx.protodb.exceptions.ProtoDBParserException;
 import se.qxx.protodb.exceptions.SearchFieldNotFoundException;
 import se.qxx.protodb.exceptions.SearchOptionsNotInitializedException;
 import se.qxx.protodb.model.ProtoDBSearchOperator;
-
-import com.google.protobuf.ByteString;
-import com.google.protobuf.Descriptors.EnumValueDescriptor;
-import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
-import com.google.protobuf.DynamicMessage;
-import com.google.protobuf.Message;
-import com.google.protobuf.Message.Builder;
-import com.google.protobuf.MessageOrBuilder;
-import com.mysql.jdbc.DatabaseMetaData;
-import com.google.protobuf.Descriptors.Descriptor;
-import com.google.protobuf.Descriptors.EnumDescriptor;
-import com.google.protobuf.Descriptors.FieldDescriptor;
 
 public class ProtoDB {
 	private boolean populateBlobs = true;
@@ -98,20 +94,6 @@ public class ProtoDB {
 		}
 
 		return result;
-	}
-
-	/***
-	 * Database function for retrieving column information
-	 * 
-	 * @param table
-	 * @param conn
-	 * @return
-	 * @throws SQLException
-	 */
-	private ResultSet retreiveColumns(String table, Connection conn) throws SQLException {
-		PreparedStatement prep = conn.prepareStatement(String.format("PRAGMA table_info('%s')", table));
-
-		return prep.executeQuery();
 	}
 
 	// ---------------------------------------------------------------------------------
@@ -560,8 +542,6 @@ public class ProtoDB {
 		for (FieldDescriptor field : scanner.getRepeatedObjectFields()) {
 			if (!Populator.isExcludedField(field.getName(), excludedObjects)) {
 				DynamicMessage innerInstance = getInstanceFromField(field);
-				ProtoDBScanner innerScanner = new ProtoDBScanner(innerInstance, scanner.getBackend());
-
 				JoinResult joinResult = getLinkJoinResult(ids, scanner, field, populateBlobs);
 
 				PreparedStatement prep = joinResult.getStatement(conn);
@@ -692,10 +672,6 @@ public class ProtoDB {
 		}
 
 		return null;
-	}
-
-	private void updateRepeatedBasicFields() {
-
 	}
 
 	private DynamicMessage getInstanceFromField(FieldDescriptor field) {
@@ -846,20 +822,21 @@ public class ProtoDB {
 
 		// save underlying repeated objects
 		for (FieldDescriptor field : scanner.getRepeatedObjectFields()) {
+
+			// delete all from link table referenced by this object
+			deleteAllLinkObjects(scanner, field, conn);
+
 			// for each repeated field get insert statement according to _this_ID, _other_ID
 			int fieldCount = b.getRepeatedFieldCount(field);
+
 			for (int i = 0; i < fieldCount; i++) {
 				Object mg = b.getRepeatedField(field, i);
 				if (mg instanceof Message) {
 					Message b2 = (Message) mg;
 					ProtoDBScanner other = new ProtoDBScanner(b2, this.getDatabaseBackend());
-					;
 
 					// save other object
 					Message ob = save(b2, conn);
-
-					// delete from link table
-					deleteLinkObject(scanner, other, field, conn);
 
 					// save link table
 					int otherID = (int) ob.getField(other.getIdField());
@@ -992,14 +969,16 @@ public class ProtoDB {
 		prep.execute();
 	}
 
-	private void deleteLinkObject(ProtoDBScanner scanner, ProtoDBScanner other, FieldDescriptor field, Connection conn)
+	private void deleteAllLinkObjects(ProtoDBScanner scanner, FieldDescriptor field, Connection conn)
 			throws SQLException {
+		Message b2 = getInstanceFromField(field);
+		ProtoDBScanner other = new ProtoDBScanner(b2, this.getDatabaseBackend());
+
 		String sql = scanner.getLinkTableDeleteStatement(other, field.getName());
 		Logger.log(sql);
 
 		PreparedStatement prep = conn.prepareStatement(sql);
 		prep.setInt(1, scanner.getIdValue());
-		prep.setInt(2, other.getIdValue());
 
 		prep.execute();
 	}
@@ -1223,19 +1202,18 @@ public class ProtoDB {
 
 		// delete underlying repeated objects
 		for (FieldDescriptor field : scanner.getRepeatedObjectFields()) {
+			// delete from link table
+			deleteAllLinkObjects(scanner, field, conn);
+
 			int fieldCount = b.getRepeatedFieldCount(field);
 			for (int i = 0; i < fieldCount; i++) {
 				Object mg = b.getRepeatedField(field, i);
 				if (mg instanceof MessageOrBuilder) {
 					MessageOrBuilder b2 = (MessageOrBuilder) mg;
-					ProtoDBScanner other = new ProtoDBScanner(b2, this.getDatabaseBackend());
-					;
 
 					// delete other object
 					delete(b2, conn);
 
-					// delete from link table
-					deleteLinkObject(scanner, other, field, conn);
 				}
 			}
 		}
