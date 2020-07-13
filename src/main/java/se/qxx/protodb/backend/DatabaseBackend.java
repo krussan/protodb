@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang3.StringUtils;
 import se.qxx.protodb.DBType;
 
 public abstract class DatabaseBackend {
@@ -75,7 +76,10 @@ public abstract class DatabaseBackend {
 		List<String> result = new ArrayList<String>();
 		
 		while (rs.next()) {
-			result.add(rs.getString("TABLE_NAME"));
+			String schema = rs.getString("TABLE_SCHEMA");
+			String table = rs.getString("TABLE_NAME");
+			if (!StringUtils.equalsIgnoreCase(schema, "INFORMATION_SCHEMA"))
+				result.add(table);
 		}
 		
 		return result;
