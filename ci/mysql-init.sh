@@ -9,10 +9,10 @@ chmod 666 $TRAVIS_BUILD_DIR/ci/mysql/*
 
 cat << HERE > $TRAVIS_BUILD_DIR/selectTestParams.csv
 org.sqlite.JDBC;jdbc:sqlite:protodb_select_test.db
-com.mysql.jdbc.Driver;jdbc:mysql://localhost/protodb_select?user=protodb&password=protodb&connectTimeout=1500
+com.mysql.cj.jdbc.Driver;jdbc:mysql://localhost/protodb_select?user=protodb&password=protodb&connectTimeout=1500
 HERE
 
 cat << HERE > $TRAVIS_BUILD_DIR/testParams.csv
 org.sqlite.JDBC;jdbc:sqlite:protodb_test.db
-com.mysql.jdbc.Driver;jdbc:mysql://localhost/protodb?user=protodb&password=protodb&connectTimeout=1500
+com.mysql.cj.jdbc.Driver;jdbc:mysql://localhost/protodb?user=protodb&password=protodb&connectTimeout=1500
 HERE

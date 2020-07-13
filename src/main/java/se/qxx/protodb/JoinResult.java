@@ -325,7 +325,7 @@ public class JoinResult {
 						rs,
 						StringUtils.EMPTY,
 						getBlobs,
-						excludedObjects)
+						excludedObjects);
 
 				map.get(parentID).add(obj);
 			}

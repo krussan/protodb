@@ -15,7 +15,7 @@ import se.qxx.protodb.DBType;
 public abstract class DatabaseBackend {
 	private String driver;
 	private String connectionString;
-	private Map<JDBCType, String> typeMap = new HashMap<JDBCType, String>();
+	private Map<JDBCType, String> typeMap = new HashMap<>();
 	
 	public DatabaseBackend(String driver, String connectionString) {
 		this.setDriver(driver);
