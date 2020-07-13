@@ -76,7 +76,7 @@ public abstract class DatabaseBackend {
 		List<String> result = new ArrayList<String>();
 		
 		while (rs.next()) {
-			String schema = rs.getString("TABLE_SCHEMA");
+			String schema = rs.getString("TABLE_SCHEM");
 			String table = rs.getString("TABLE_NAME");
 			if (!StringUtils.equalsIgnoreCase(schema, "INFORMATION_SCHEMA"))
 				result.add(table);
