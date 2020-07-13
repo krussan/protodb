@@ -72,14 +72,12 @@ public abstract class DatabaseBackend {
 	
 	public List<String> getAllTables(Connection conn) throws SQLException {
 		DatabaseMetaData meta = conn.getMetaData();
-		ResultSet rs = meta.getTables(null, null, "%", null);
+		ResultSet rs = meta.getTables(null, "", "%", null);
 		List<String> result = new ArrayList<String>();
 		
 		while (rs.next()) {
-			String schema = rs.getString("TABLE_SCHEM");
 			String table = rs.getString("TABLE_NAME");
-			if (!StringUtils.equalsIgnoreCase(schema, "INFORMATION_SCHEMA"))
-				result.add(table);
+			result.add(table);
 		}
 		
 		return result;
