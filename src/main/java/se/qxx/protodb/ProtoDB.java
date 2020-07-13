@@ -518,7 +518,6 @@ public class ProtoDB {
 
 			T instance = listOfObjects.get(0);
 			ProtoDBScanner scanner = new ProtoDBScanner(instance, this.getDatabaseBackend());
-			;
 
 			// get a list of all parent id's
 			List<Integer> ids = new ArrayList<Integer>();

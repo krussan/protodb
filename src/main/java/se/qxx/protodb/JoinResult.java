@@ -319,13 +319,20 @@ public class JoinResult {
 			if (!map.containsKey(parentID)) {
 				map.put(parentID, new ArrayList<T>()); 
 			}
-			
-			map.get(parentID).add(
-				getResult(instance, 
-						rs, 
-						StringUtils.EMPTY, 
-						getBlobs, 
-						excludedObjects));
+
+			try {
+				T obj = getResult(instance,
+						rs,
+						StringUtils.EMPTY,
+						getBlobs,
+						excludedObjects)
+
+				map.get(parentID).add(obj);
+			}
+			catch (Exception e) {
+				// if one of the items are in error, continue with next
+				e.printStackTrace();
+			}
 		}
 		
 		return map;
