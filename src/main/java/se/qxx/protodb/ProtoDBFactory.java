@@ -38,7 +38,8 @@ public class ProtoDBFactory {
 	public static DBType getDatabaseType(String driver, String connectionString) {
 		try {
 			String productName = getDatabaseProductName(driver, connectionString);
-			
+
+			System.out.println(productName);
 			if (StringUtils.containsIgnoreCase(productName, "mysql"))
 				return DBType.Mysql;
 			else if (StringUtils.containsIgnoreCase(productName, "sqlite"))
@@ -48,6 +49,7 @@ public class ProtoDBFactory {
 			
 		} catch (ClassNotFoundException | SQLException e) {
 			// TODO Auto-generated catch block
+			System.out.println(e.toString());
 			return DBType.Unsupported;
 		}
 	}

@@ -10,12 +10,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang3.StringUtils;
 import se.qxx.protodb.DBType;
 
 public abstract class DatabaseBackend {
 	private String driver;
 	private String connectionString;
-	private Map<JDBCType, String> typeMap = new HashMap<JDBCType, String>();
+	private Map<JDBCType, String> typeMap = new HashMap<>();
 	
 	public DatabaseBackend(String driver, String connectionString) {
 		this.setDriver(driver);
@@ -75,7 +76,10 @@ public abstract class DatabaseBackend {
 		List<String> result = new ArrayList<String>();
 		
 		while (rs.next()) {
-			result.add(rs.getString("TABLE_NAME"));
+			String schema = rs.getString("TABLE_SCHEM");
+			String table = rs.getString("TABLE_NAME");
+			if (!StringUtils.equalsIgnoreCase(schema, "INFORMATION_SCHEMA"))
+				result.add(table);
 		}
 		
 		return result;
