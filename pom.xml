@@ -4,7 +4,7 @@
 
   <groupId>se.qxx.protodb</groupId>
   <artifactId>protodb-java</artifactId>
-  <version>2.5.4</version>
+  <version>2.5.5</version>
   <packaging>jar</packaging>
 
   <name>protodb</name>
@@ -21,7 +21,7 @@
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>4.11</version>
+      <version>4.13.1</version>
       <scope>test</scope>
     </dependency>
 
@@ -36,6 +36,7 @@
         <groupId>mysql</groupId>
         <artifactId>mysql-connector-java</artifactId>
         <version>5.1.45</version>
+        <scope>test</scope>
     </dependency>
 
     <dependency>
@@ -86,7 +87,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
-        <version>2.20.1</version>
+        <version>2.22.2</version>
         <configuration>
           <systemPropertyVariables>
             <selectParamsFile>${test.select.file}</selectParamsFile>
