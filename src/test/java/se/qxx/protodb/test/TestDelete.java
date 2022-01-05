@@ -1,31 +1,20 @@
 package se.qxx.protodb.test;
 
-import static org.junit.Assert.*;
+import com.google.protobuf.ByteString;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
+import se.qxx.protodb.ProtoDB;
+import se.qxx.protodb.ProtoDBFactory;
+import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
+import se.qxx.protodb.exceptions.IDFieldNotFoundException;
 
-import java.io.File;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Properties;
 
-import org.apache.commons.lang3.StringUtils;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.experimental.theories.ParametersSuppliedBy;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
-import org.junit.runner.RunWith;
-
-import se.qxx.protodb.DBType;
-import se.qxx.protodb.ProtoDB;
-import se.qxx.protodb.ProtoDBFactory;
-import se.qxx.protodb.backend.Drivers;
-import se.qxx.protodb.backend.MysqlBackend;
-import se.qxx.protodb.exceptions.DatabaseNotSupportedException;
-import se.qxx.protodb.exceptions.IDFieldNotFoundException;
-import se.qxx.protodb.exceptions.ProtoDBParserException;
-
-import com.google.protobuf.ByteString;
+import static org.junit.Assert.*;
 
 @RunWith(Parameterized.class)
 public class TestDelete extends TestBase {
