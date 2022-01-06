@@ -32,6 +32,7 @@ before_deploy:
  - export RELEASE_PKG_FILE=`find target/ -name '*.jar' -exec basename {} \;`
  - export GIT_BASE=$HOME
  - echo "Deploying ${RELEASE_PKG_FILE} to GitHub releases"
+ - ./ci/git-creds.sh
  - ./ci/git-tag.sh
 
 deploy:
