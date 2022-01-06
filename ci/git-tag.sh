@@ -12,6 +12,6 @@ echo "TRAVIS_PULL_REQUEST :: $TRAVIS_PULL_REQUEST"
 if [[ "$TRAVIS_PULL_REQUEST" == "false" ]] && [[ "$TRAVIS_BRANCH" == "master" ]];then
    echo Tagging repository with version
    git tag $VERSION -a -m "Version $VERSION"
-   #git push -q https://$GH_TOKEN@github.com/krussan/protodb --tags
-   git push origin master --tags
+   git push -q https://github.com/krussan/protodb --tags
+   #git push origin master --tags
 fi
